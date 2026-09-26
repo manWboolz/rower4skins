@@ -1,4 +1,5 @@
 :root {
+    color-scheme: dark;
     --bg: #0b0e14;
     --bg-2: #121722;
     --panel: #171d2b;
@@ -138,7 +139,7 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 
 .header {
     position: sticky;
-    top: 0;
+    top: env(safe-area-inset-top, 0px);
     z-index: 20;
     background: rgba(11, 14, 20, .92);
     backdrop-filter: blur(8px);

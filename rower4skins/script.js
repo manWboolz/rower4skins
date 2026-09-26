@@ -266,7 +266,7 @@ let busy = false;
 
 function renderCase(id) {
     currentCase = CASE[id];
-    if (!currentCase) { location.hash = '#/'; return; }
+    if (!currentCase) { route('#/'); return; }
     const c = currentCase;
     $('#caseHead').innerHTML = `${crate(c.color)}<h2>${c.name}</h2>`;
     if (!busy) renderRolls();
@@ -556,8 +556,18 @@ $('#sellAllBtn').addEventListener('click', () => {
     if (state.inv.length) sell(state.inv.map(i => i.uid));
 });
 
+let resetArmed = null;
+
 $('#resetBtn').addEventListener('click', () => {
-    if (!confirm('Na pewno zresetować konto? Stracisz monety i skiny.')) return;
+    // Drugie kliknięcie w ciągu 3 s potwierdza reset (bez confirm(), który bywa zablokowany).
+    if (!resetArmed) {
+        $('#resetBtn').textContent = 'Kliknij ponownie, by zresetować';
+        resetArmed = setTimeout(() => { resetArmed = null; $('#resetBtn').textContent = 'Reset konta'; }, 3000);
+        return;
+    }
+    clearTimeout(resetArmed);
+    resetArmed = null;
+    $('#resetBtn').textContent = 'Reset konta';
     state = defaultState();
     save();
     renderBalance();
@@ -574,8 +584,9 @@ function refreshCurrent() {
     if (currentPage === 'upgrader') renderUpgrader();
 }
 
-function route() {
-    const [, page = '', arg] = location.hash.split('/');
+// Nawigacja bez zmiany adresu, żeby działała też po otwarciu pliku lokalnie i w osadzonym oknie.
+function route(path) {
+    const [, page = '', arg] = path.split('/');
     currentPage = page === 'case' ? 'case' : (['battles', 'upgrader', 'inventory'].includes(page) ? page : 'home');
 
     document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === `page-${currentPage}`));
@@ -589,11 +600,16 @@ function route() {
     window.scrollTo(0, 0);
 }
 
-window.addEventListener('hashchange', route);
+document.addEventListener('click', e => {
+    const a = e.target.closest('a[href^="#/"]');
+    if (!a) return;
+    e.preventDefault();
+    route(a.getAttribute('href'));
+});
 
 renderHome();
 renderBalance();
-route();
+route('#/');
 for (let i = 0; i < 14; i++) {
     const c = CASES[Math.floor(Math.random() * CASES.length)];
     pushDrop(roll(c), BOT_NAMES[Math.floor(Math.random() * BOT_NAMES.length)]);
