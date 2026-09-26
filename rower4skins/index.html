@@ -3,22 +3,158 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Rower4Skins</title>
+    <title>Rower4Skins — otwieraj skrzynie</title>
     <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-    <h1>Rower4Skins - otwieraj skrzynie CS2 i walcz!</h1>
-    <div id="balance">Twój rower: 100</div>
+    <div class="live">
+        <div class="live-label"><span class="live-dot"></span>LIVE</div>
+        <div class="live-track" id="liveTrack"></div>
+    </div>
 
-    <button id="depositBtn">Wpłać rower (+10)</button>
-    <button id="openCaseBtn">Otwórz skrzynię (koszt: 20)</button>
+    <header class="header">
+        <div class="container">
+            <a class="logo" href="#/">
+                <svg viewBox="0 0 64 64" fill="none" stroke="#ffb400" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="16" cy="42" r="11" />
+                    <circle cx="48" cy="42" r="11" />
+                    <path d="M16 42 26 22h18l4 20M26 22l10 20h12M22 16h8M40 16h8" />
+                </svg>
+                <span>ROWER<b>4</b>SKINS</span>
+            </a>
+            <nav class="nav">
+                <a href="#/" data-page="home">Skrzynki</a>
+                <a href="#/battles" data-page="battles">Bitwy</a>
+                <a href="#/upgrader" data-page="upgrader">Upgrader</a>
+                <a href="#/inventory" data-page="inventory">Ekwipunek</a>
+            </nav>
+            <div class="wallet">
+                <div class="balance"><span class="coin"></span><span id="balance">0.00</span></div>
+                <button class="btn btn-primary" id="depositBtn" title="Darmowe wirtualne monety">+ Wpłać rower</button>
+            </div>
+        </div>
+    </header>
 
-    <h2>Twoje skiny:</h2>
-    <ul id="skinsList"></ul>
+    <main class="container">
+        <!-- Strona główna -->
+        <section class="page" id="page-home">
+            <div class="hero">
+                <h1>Otwieraj skrzynie.<br /><span>Wygrywaj skiny.</span></h1>
+                <p>Rower4Skins to symulator otwierania skrzynek. Wpłać rower, zgarnij monety i sprawdź, czy dropniesz złotego noża.</p>
+                <a class="btn btn-primary btn-lg" href="#/case/starter">Otwórz pierwszą skrzynię</a>
+                <div class="stats">
+                    <div class="stat"><b id="statOpened">0</b><span>Otwartych skrzyń</span></div>
+                    <div class="stat"><b id="statBattles">0</b><span>Bitew</span></div>
+                    <div class="stat"><b id="statBest">0.00</b><span>Najlepszy drop</span></div>
+                </div>
+                <svg class="hero-bike" viewBox="0 0 64 64" fill="none" stroke="#ffb400" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="16" cy="42" r="11" />
+                    <circle cx="48" cy="42" r="11" />
+                    <path d="M16 42 26 22h18l4 20M26 22l10 20h12M22 16h8M40 16h8" />
+                </svg>
+            </div>
 
-    <h2>Bitwy</h2>
-    <button id="battleBtn">Walcz o skina!</button>
-    <div id="battleResult"></div>
+            <div class="section-title">Skrzynki</div>
+            <div class="cases" id="casesGrid"></div>
+        </section>
+
+        <!-- Strona skrzynki -->
+        <section class="page" id="page-case">
+            <a class="back" href="#/">← Wszystkie skrzynki</a>
+            <div class="case-head" id="caseHead"></div>
+            <div class="rolls" id="rolls"></div>
+            <div class="case-actions">
+                <div class="qty" id="qty">
+                    <button data-n="1" class="on">1x</button>
+                    <button data-n="2">2x</button>
+                    <button data-n="3">3x</button>
+                    <button data-n="4">4x</button>
+                </div>
+                <button class="btn btn-primary btn-lg" id="openBtn">Otwórz</button>
+                <button class="btn btn-ghost" id="fastBtn">Szybko: wył.</button>
+            </div>
+            <div class="section-title">Zawartość skrzynki</div>
+            <div class="contents" id="contents"></div>
+        </section>
+
+        <!-- Bitwy -->
+        <section class="page" id="page-battles">
+            <div class="section-title">Bitwa skrzynek</div>
+            <div class="panel battle-setup">
+                <div>
+                    <div class="field-label">Wybierz skrzynię</div>
+                    <div class="pick-cases" id="battlePick"></div>
+                </div>
+                <div>
+                    <div class="field-label">Rundy</div>
+                    <div class="qty" id="battleRounds">
+                        <button data-n="1" class="on">1</button>
+                        <button data-n="2">2</button>
+                        <button data-n="3">3</button>
+                        <button data-n="5">5</button>
+                    </div>
+                    <div style="height:12px"></div>
+                    <button class="btn btn-primary btn-lg" id="battleBtn">Walcz z botem</button>
+                    <div class="field-label" style="margin-top:10px" id="battleCost"></div>
+                </div>
+            </div>
+            <div class="arena" id="arena"></div>
+            <div class="battle-status" id="battleStatus"></div>
+        </section>
+
+        <!-- Upgrader -->
+        <section class="page" id="page-upgrader">
+            <div class="section-title">Upgrader</div>
+            <div class="upgrader">
+                <div class="up-slot" id="upFrom">Wybierz skina z ekwipunku poniżej</div>
+                <div class="wheel-wrap">
+                    <div class="wheel" id="wheel" style="--pct:0">
+                        <div class="needle" id="needle"></div>
+                        <div class="wheel-center"><b id="upChance">0%</b><span>szansa</span></div>
+                    </div>
+                    <button class="btn btn-primary btn-lg" id="upBtn" disabled>Upgrade</button>
+                </div>
+                <div class="up-slot" id="upTo">Wybierz cel poniżej</div>
+            </div>
+            <div class="section-title">Twój skin</div>
+            <div class="grid-items" id="upInv"></div>
+            <div class="section-title">Cel</div>
+            <div class="grid-items" id="upTargets"></div>
+        </section>
+
+        <!-- Ekwipunek -->
+        <section class="page" id="page-inventory">
+            <div class="section-title">Ekwipunek</div>
+            <div class="toolbar">
+                <div class="sum">Przedmiotów: <b id="invCount">0</b> · Wartość: <b id="invValue">0.00</b></div>
+                <div class="row" style="display:flex;gap:8px">
+                    <button class="btn btn-green" id="sellAllBtn">Sprzedaj wszystko</button>
+                    <button class="btn btn-ghost" id="resetBtn">Reset konta</button>
+                </div>
+            </div>
+            <div class="grid-items" id="invGrid"></div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div>© Rower4Skins — symulator. Wirtualne monety, brak prawdziwych pieniędzy i przedmiotów Steam.</div>
+            <div>Stan gry zapisuje się tylko w Twojej przeglądarce.</div>
+        </div>
+    </footer>
+
+    <div class="modal-bg" id="modal" hidden>
+        <div class="modal">
+            <h2 id="modalTitle">Wygrałeś!</h2>
+            <div class="won" id="modalItems"></div>
+            <div class="row">
+                <button class="btn btn-green" id="modalSell">Sprzedaj</button>
+                <button class="btn btn-primary" id="modalKeep">Zatrzymaj</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toasts" id="toasts"></div>
 
     <script src="script.js"></script>
 </body>
