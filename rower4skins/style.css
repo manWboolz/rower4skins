@@ -437,6 +437,14 @@ code { background: var(--panel3); padding: 1px 6px; border-radius: 4px; font-siz
 
 .dtile .duser { font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 
+.dtile.has-case { cursor: pointer; }
+
+.dcase { position: absolute; inset: 0 0 28px; display: grid; place-items: center; padding: 6px 8px 0; background: inherit; opacity: 0; transition: opacity .15s; }
+
+.dcase svg { width: 100%; height: auto; }
+
+.dtile.has-case:hover .dcase { opacity: 1; }
+
 .dtile.mine { box-shadow: inset 0 0 0 2px var(--yellow); }
 
 .dtile.mine .duser { color: var(--yellow); font-weight: 800; }
@@ -1201,6 +1209,25 @@ input::placeholder { color: #5d667d; }
 .rk.top2 { background: #c2410c; color: #fff; }
 
 .rname { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; min-width: 150px; }
+
+.confetti { position: fixed; inset: 0; z-index: 85; pointer-events: none; overflow: hidden; }
+
+.confetti i {
+    position: absolute;
+    top: -20px;
+    width: 9px;
+    height: 14px;
+    border-radius: 2px;
+    animation: fall 2.4s cubic-bezier(.3, .6, .5, 1) forwards;
+}
+
+@keyframes fall {
+    to { transform: translate(var(--dx), 105vh) rotate(var(--r)); opacity: .2; }
+}
+
+.meme-empty img { width: 150px; height: auto; border-radius: 16px; border: 3px solid var(--line); }
+
+.meme-empty b { color: var(--text); }
 
 .toasts { position: fixed; right: 16px; bottom: 80px; z-index: 90; display: grid; gap: 8px; }
 

@@ -183,6 +183,18 @@ const CASES = [
     { id: 'km', name: 'KM Case', color: '#14b8a6', sec: 'creator', badge: 'CREATOR', deco: 'creator', mono: 'KM',
         items: pool([[R('classified'), 40], [R('covert'), 18], [R('gold'), 2.5]]) },
 
+    // Skrzynki memów
+    { id: 'm-zlodziej', name: 'Złodziej Rowerów', color: '#65a30d', sec: 'meme', badge: 'MEME', deco: 'photo', img: 'img/meme-zlodziej.webp',
+        items: pool([[s => ['pistol', 'smg'].includes(s.type), RW()], [R('covert'), 2], [s => s.id === 'kn1', 0.4]]) },
+    { id: 'm-golab', name: 'Gołąb z KFC', color: '#f59e0b', sec: 'meme', badge: 'MEME', deco: 'photo', img: 'img/meme-golab.webp',
+        items: pool([[R('consumer', 'industrial'), RW()], [R('milspec'), RW(0.5)], [R('restricted'), RW(0.3)], [s => s.id === 'kn2', 0.08]]) },
+    { id: 'm-pies', name: 'Pies Sąsiada', color: '#d4a373', sec: 'meme', badge: 'MEME', deco: 'photo', img: 'img/meme-pies.webp',
+        items: pool([[R('industrial', 'milspec', 'restricted'), RW()], [R('classified'), RW()], [R('covert'), RW(0.6)]]) },
+    { id: 'm-mis', name: 'Miś Miodek', color: '#facc15', sec: 'meme', badge: 'MEME', deco: 'photo', img: 'img/meme-mis.webp',
+        items: pool([[R('milspec', 'restricted'), RW()], [s => ['de2', 'glk3', 'gl1'].includes(s.id), 3], [R('classified'), RW()]]) },
+    { id: 'm-cyborg', name: 'Mięsny Cyborg', color: '#ef4444', sec: 'meme', badge: 'MEME', deco: 'photo', img: 'img/meme-cyborg.webp',
+        items: pool([[R('restricted'), 40], [R('classified'), 40], [R('covert'), 16], [R('gold'), 2]]) },
+
     // Rowerowe Urodziny (event)
     { id: 'tort', name: 'Tort Urodzinowy', color: '#ec4899', sec: 'bday', badge: 'NEW', deco: 'cake',
         items: pool([[s => s.rarity !== 'gold', RW()], [R('gold'), 0.5]]) },
@@ -253,6 +265,7 @@ const USD_CASES = CASES.filter(c => c.currency === 'usd');
 
 const SECTIONS = [
     { id: 'creator', title: 'Skrzynki twórców', icon: 'user' },
+    { id: 'meme', title: 'Skrzynki memów', icon: 'bolt' },
     { id: 'bday', title: 'Rowerowe Urodziny', icon: 'cake' },
     { id: 'rar', title: 'Rzadkości', icon: 'star' },
     { id: 'wpn', title: 'Bronie', icon: 'target' },
@@ -267,6 +280,11 @@ const BIKES = [
 ];
 
 const IMG = {
+    zlodziej: 'img/meme-zlodziej.webp',
+    golab: 'img/meme-golab.webp',
+    pies: 'img/meme-pies.webp',
+    mis: 'img/meme-mis.webp',
+    cyborg: 'img/meme-cyborg.webp',
     logo: 'img/logo.png',
     engwe: 'img/engwe-ep2-boost.png',
     gt73: 'img/ridingtimes-gt73-pro.png',
@@ -517,6 +535,14 @@ function caseArt(c) {
     if (c.deco === 'hidden') {
         behind = `<text x="120" y="92" text-anchor="middle" font-size="90" font-weight="900" fill="${col}" stroke="#1c1917" stroke-width="3" font-family="Saira, sans-serif">?</text>`;
     }
+    if (c.deco === 'photo') {
+        behind = `<defs><clipPath id="${id}p"><rect x="74" y="0" width="92" height="105" rx="10"/></clipPath></defs>
+            <g transform="rotate(-7 120 60)">
+                <rect x="70" y="-4" width="100" height="113" rx="13" fill="#fff"/>
+                <image href="${c.img}" x="74" y="0" width="92" height="105" preserveAspectRatio="xMidYMid slice" clip-path="url(#${id}p)"/>
+                <rect x="74" y="0" width="92" height="105" rx="10" fill="none" stroke="${col}" stroke-width="3"/>
+            </g>`;
+    }
     if (c.deco === 'creator') {
         behind = `<defs><linearGradient id="${id}c" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".35"/><stop offset=".4" stop-color="${col}"/><stop offset="1" stop-color="#0b0e16"/></linearGradient></defs>
             <g transform="rotate(-8 120 60)"><rect x="78" y="8" width="84" height="96" rx="12" fill="url(#${id}c)" stroke="#fff" stroke-width="3"/>
@@ -624,17 +650,31 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal
 
 let winUids = [];
 
-function showWin(ids, uids, title) {
+function confetti() {
+    const box = document.createElement('div');
+    box.className = 'confetti';
+    const cols = ['#a54ef2', '#45d15b', '#ffc41f', '#1fa3ef', '#ff4d5e', '#fff'];
+    box.innerHTML = Array.from({ length: 90 }, () => {
+        const x = Math.random() * 100, d = 1.6 + Math.random() * 1.6, dl = Math.random() * 0.5, r = Math.random() * 720 - 360;
+        return `<i style="left:${x}%;background:${pick(cols)};animation-duration:${d}s;animation-delay:${dl}s;--r:${r}deg;--dx:${Math.random() * 160 - 80}px"></i>`;
+    }).join('');
+    document.body.appendChild(box);
+    setTimeout(() => box.remove(), 3800);
+}
+
+function showWin(ids, uids, title, reopen = false) {
     winUids = uids;
     const total = round2(ids.reduce((s, id) => s + SKIN[id].price, 0));
     const big = ids.some(id => ['covert', 'gold'].includes(SKIN[id].rarity));
     winSound(big);
+    if (big) confetti();
     modal(`<h2 class="mtitle">${title}</h2>
         <div class="win-items ${ids.length > 4 ? 'many' : ''}">${ids.map(id => itemCard(SKIN[id], { cls: 'glow' })).join('')}</div>
         <div class="win-total">Łączna wartość: <b>${money(total)}</b></div>
         <div class="mrow">
             <button class="btn btn-green" data-act="winsell">${ic('wallet')}Sprzedaj za ${money(total)}</button>
             <button class="btn btn-purple" data-act="modalclose">${ic('check')}Zatrzymaj</button>
+            ${reopen ? `<button class="btn btn-dark" data-act="reopen">${ic('refresh')}Otwórz ponownie</button>` : ''}
         </div>`, big ? 'big-win' : '');
 }
 
@@ -704,8 +744,8 @@ function renderTop() {
 let drops = [];
 let dropMode = 'all';
 
-function pushDrop(id, user, mine = false) {
-    drops.unshift({ id, user, mine, st: Math.random() < 0.12 });
+function pushDrop(id, user, mine = false, caseId = null) {
+    drops.unshift({ id, user, mine, c: caseId, st: Math.random() < 0.12 });
     drops.length = Math.min(drops.length, 80);
     renderDrops(true);
 }
@@ -714,8 +754,10 @@ function renderDrops(animate) {
     const list = drops.filter(d => dropMode === 'all' || SKIN[d.id].price >= 10).slice(0, 30);
     $('#dTrack').innerHTML = list.map((d, i) => {
         const s = SKIN[d.id];
-        return `<div class="dtile ${d.mine ? 'mine' : ''} ${animate && i === 0 ? 'new' : ''}" style="--rc:${RAR[s.rarity].c}" title="${esc(s.weapon)} | ${esc(s.name)} — ${money(s.price)} · ${esc(d.user)}">
-            ${d.st ? '<span class="st">ST</span>' : ''}${art(s)}
+        const c = d.c && CASE[d.c];
+        const link = c ? `data-act="go" data-arg="#/case/${c.id}"` : '';
+        return `<div class="dtile ${d.mine ? 'mine' : ''} ${c ? 'has-case' : ''} ${animate && i === 0 ? 'new' : ''}" ${link} style="--rc:${RAR[s.rarity].c}" title="${esc(s.weapon)} | ${esc(s.name)} — ${money(s.price)} · ${esc(d.user)}${c ? ` · z: ${esc(c.name)}` : ''}">
+            ${d.st ? '<span class="st">ST</span>' : ''}${art(s)}${c ? `<span class="dcase">${caseArt(c)}</span>` : ''}
             <span class="dname">${esc(s.name)}</span><span class="duser">${esc(d.user)}</span>
         </div>`;
     }).join('');
@@ -723,7 +765,7 @@ function renderDrops(animate) {
 
 function botDropLoop() {
     const c = pick(USD_CASES);
-    pushDrop(roll(c), pick(BOT_NAMES));
+    pushDrop(roll(c), pick(BOT_NAMES), false, c.id);
     setTimeout(botDropLoop, 1800 + Math.random() * 3200);
 }
 
@@ -1018,8 +1060,8 @@ async function openCase(demo) {
         const uids = giveItems(winners, `Skrzynka ${c.name}`);
         state.stats.opened += n;
         save();
-        winners.forEach(w => pushDrop(w, state.name, true));
-        showWin(winners, uids, n > 1 ? 'Twoje dropy!' : 'Twój drop!');
+        winners.forEach(w => pushDrop(w, state.name, true, c.id));
+        showWin(winners, uids, n > 1 ? 'Twoje dropy!' : 'Twój drop!', c.currency !== 'free');
     }
     updateOpenBar();
     if (!demo && route.name === 'case' && c.currency === 'free') {
@@ -1501,7 +1543,7 @@ function profInvHtml() {
     let list = state.inv.filter(i => !q || (SKIN[i.id].weapon + ' ' + SKIN[i.id].name).toLowerCase().includes(q));
     const s = { old: (a, b) => a.t - b.t, pd: (a, b) => SKIN[b.id].price - SKIN[a.id].price, pa: (a, b) => SKIN[a.id].price - SKIN[b.id].price }[pSort];
     if (s) list = [...list].sort(s);
-    if (!list.length) return `<div class="empty">${ic('box')}<p>${state.inv.length ? 'Nic nie pasuje do wyszukiwania.' : 'Ekwipunek jest pusty.'}</p></div>`;
+    if (!list.length) return state.inv.length ? `<div class="empty">${ic('search')}<p>Nic nie pasuje do wyszukiwania.</p></div>` : emptyInv();
     return `<div class="igrid">${list.map(i => itemCard(SKIN[i.id], { bottom: `<button class="sell-btn" data-act="sell" data-arg="${i.uid}">${ic('wallet')}Sprzedaj</button>` })).join('')}</div>`;
 }
 
@@ -1664,12 +1706,14 @@ function notesModal() {
         ${state.notes.length ? `<div class="table">${state.notes.map(n => `<div class="trow"><span>${fmtTime(n.t)}</span><span>${esc(n.text)}</span></div>`).join('')}</div>` : `<div class="empty small">Brak powiadomień.</div>`}`);
 }
 
+const emptyInv = () => `<div class="empty meme-empty"><img src="${IMG.golab}" alt="Gołąb z talerzem kurczaka"><p><b>Gołąb zjadł wszystkie Twoje skiny.</b><br>Otwórz skrzynkę, żeby coś mu uciekło.</p><button class="btn btn-green" data-act="go" data-arg="#/">Do skrzynek</button></div>`;
+
 function renderDrawer() {
     $('#drawer').innerHTML = `<div class="drawer-head"><h3>${ic('box')}Twoje przedmioty (${state.inv.length})</h3><span class="money">${money(invValue())}</span>
         <button class="btn btn-green" data-act="sellAll" ${state.inv.length ? '' : 'disabled'}>Sprzedaj wszystko</button>
         <button class="sq" data-act="drawer" aria-label="Zamknij">${ic('x')}</button></div>
         ${state.inv.length ? `<div class="igrid sm">${state.inv.slice(0, 60).map(i => itemCard(SKIN[i.id], { bottom: `<button class="sell-btn" data-act="sell" data-arg="${i.uid}">${ic('wallet')}Sprzedaj</button>` })).join('')}</div>`
-            : `<div class="empty small">Ekwipunek jest pusty.</div>`}`;
+            : emptyInv()}`;
 }
 
 // ============================================================
@@ -1697,6 +1741,7 @@ const ACT = {
     ffav: (_, el) => { filt.fav = !filt.fav; el.classList.toggle('on', filt.fav); refreshSections(); },
     qty: n => { if (busy) return; qty = Number(n); $$('[data-act="qty"]').forEach(b => b.classList.toggle('on', b.dataset.arg === n)); updateOpenBar(); layoutReels(); },
     open: () => openCase(false),
+    reopen: () => { if (route.name === 'case') openCase(false); },
     demo: () => openCase(true),
     winsell: () => { sellUids(winUids); closeModal(); refreshAfterInv(); },
     depositModal: () => depositModal(),
@@ -1953,7 +1998,7 @@ function tick() {
 
 renderShell();
 renderTop();
-for (let i = 0; i < 30; i++) drops.push({ id: roll(pick(USD_CASES)), user: pick(BOT_NAMES), mine: false, st: Math.random() < 0.12 });
+for (let i = 0; i < 30; i++) { const c = pick(USD_CASES); drops.push({ id: roll(c), user: pick(BOT_NAMES), mine: false, c: c.id, st: Math.random() < 0.12 }); }
 renderDrops(false);
 for (let i = 0; i < 8; i++) BATTLES.push(newBotBattle());
 go('#/');
