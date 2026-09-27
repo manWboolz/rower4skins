@@ -123,6 +123,30 @@ const RAR = {
 const SKINS = [
     ...GUN_DATA.map(([id, weapon, name, rarity, price, img, tint, type]) => ({ id, weapon, name, rarity, price, img, f: TINTS[tint] || '', type })),
     ...KNIFE_DATA.map(([id, weapon, name, price, type, c1, c2, pat]) => ({ id, weapon, name, rarity: 'gold', price, type, c1, c2, pat })),
+    // Rower4Skins Exclusive — wymyślone, bardzo drogie skiny (tylko w skrzynkach Skarbca).
+    ...[
+        ['ex-awp-zlota-szprycha', 'AWP', 'Złota Szprycha', 'covert', 6500, 'awp_dragon_lore', 'gold'],
+        ['ex-awp-omega-mx', 'AWP', 'Omega MX', 'covert', 9800, 'awp_man_o_war', 'green'],
+        ['ex-awp-dragon-lore-souvenir', 'AWP', 'Dragon Lore (Souvenir)', 'covert', 24000, 'awp_dragon_lore', 'none'],
+        ['ex-ak-47-smok-na-rowerze', 'AK-47', 'Smok na Rowerze', 'covert', 7200, 'ak_fire_serpent', 'red'],
+        ['ex-ak-47-szafirowa-detka', 'AK-47', 'Szafirowa Dętka', 'covert', 5400, 'ak_vulcan', 'blue'],
+        ['ex-m4a4-zloty-wyjec', 'M4A4', 'Złoty Wyjec', 'covert', 12000, 'm4a4_buzz_kill', 'gold'],
+        ['ex-m4a1-s-neonowy-peleton', 'M4A1-S', 'Neonowy Peleton', 'covert', 3900, 'm4a1s_hyper_beast', 'purple'],
+        ['ex-usp-s-kolarz-potwierdzony', 'USP-S', 'Kolarz Potwierdzony', 'covert', 2800, 'usps_kill_confirmed', 'gold'],
+        ['ex-ssg-08-smocza-kadencja', 'SSG 08', 'Smocza Kadencja', 'covert', 3300, 'ssg_dragonfire', 'orange'],
+        ['ex-p90-karbonowy-asiimov', 'P90', 'Karbonowy Asiimov', 'covert', 2500, 'p90_asiimov', 'black'],
+        ['ex-sport-gloves-r4s-vice', '★ Sport Gloves', 'Rower4Skins Vice', 'gold', 7800, 'base_gloves_ct', 'pink', 'gloves'],
+        ['ex-specialist-gloves-karmazyn', '★ Specialist Gloves', 'Karmazynowa Kadencja', 'gold', 5200, 'base_gloves_t', 'red', 'gloves'],
+        ['ex-driver-gloves-zloty-kask', '★ Driver Gloves', 'Złoty Kask', 'gold', 4600, 'base_gloves_ct', 'gold', 'gloves'],
+    ].map(([id, weapon, name, rarity, price, img, tint, type = 'gun']) => ({ id, weapon, name, rarity, price, img: `img/sk/${img}.webp`, f: TINTS[tint] || '', type, ex: true })),
+    ...[
+        ['ex-karambit-omega-max', '★ Karambit', 'Omega MAX', 25000, 'karambit', '#365314', '#a3e635'],
+        ['ex-karambit-szafirowa-szprycha', '★ Karambit', 'Szafirowa Szprycha', 14500, 'karambit', '#1e3a8a', '#60a5fa'],
+        ['ex-butterfly-rubinowy-lancuch', '★ Butterfly Knife', 'Rubinowy Łańcuch', 11800, 'butterfly', '#7f1d1d', '#f87171'],
+        ['ex-m9-szmaragdowa-detka', '★ M9 Bayonet', 'Szmaragdowa Dętka', 9600, 'm9', '#064e3b', '#34d399'],
+        ['ex-talon-czarna-perla', '★ Talon Knife', 'Czarna Perła Omega', 8700, 'talon', '#1e1b4b', '#a78bfa'],
+        ['ex-bayonet-zloty-pedal', '★ Bayonet', 'Złoty Pedał', 6900, 'bayonet', '#78350f', '#fde68a'],
+    ].map(([id, weapon, name, price, type, c1, c2]) => ({ id, weapon, name, rarity: 'gold', price, type, c1, c2, pat: 'f', ex: true })),
 ];
 
 const SKIN = Object.fromEntries(SKINS.map(s => [s.id, s]));
@@ -131,7 +155,8 @@ const SKIN = Object.fromEntries(SKINS.map(s => [s.id, s]));
 // waga to łączna szansa całej grupy (liczba albo funkcja od skina, np. RW()).
 // W grupie drogie skiny są rzadsze (∝ (mediana/cena)^skew). `per` ogranicza liczbę skinów w grupie
 // (wybór losowy, ale zawsze ten sam dla danej skrzynki), `mix` traktuje wpis jako jedną grupę.
-function pool(spec, { per: perAll = 8, seed = '', skew = 0.7, mix = false } = {}) {
+const RARE_CUT = { classified: 0.8, covert: 0.55, gold: 0.3 };
+function pool(spec, { per: perAll = 8, seed = '', skew = 1.0, mix = false } = {}) {
     const out = new Map();
     // Trzeci element wpisu może nadpisać limit, np. [KNIFE, 0.25, { per: 6 }].
     spec.forEach(([f, w, opt = {}], k) => {
@@ -139,7 +164,8 @@ function pool(spec, { per: perAll = 8, seed = '', skew = 0.7, mix = false } = {}
         const groups = {};
         for (const s of SKINS) if (f(s)) (groups[mix ? 'all' : s.rarity] ||= []).push(s);
         for (const [g, list0] of Object.entries(groups)) {
-            const mass = typeof w === 'function' ? w(list0[0]) : w;
+            // Jak na g4skins: najlepsze rzadkości wypadają dużo rzadziej, niż wynikałoby z wag skrzynki.
+            const mass = (typeof w === 'function' ? w(list0[0]) : w) * (mix ? 1 : RARE_CUT[g] ?? 1);
             if (!(mass > 0)) continue;
             const rnd = srand(hash(seed + k + g));
             const list = per && list0.length > per ? list0.map(s => [s, rnd()]).sort((a, b) => a[1] - b[1]).slice(0, per).map(x => x[0]) : list0;
@@ -151,11 +177,12 @@ function pool(spec, { per: perAll = 8, seed = '', skew = 0.7, mix = false } = {}
     });
     return [...out];
 }
-const R = (...r) => s => r.includes(s.rarity);
-const KNIFE = s => s.rarity === 'gold' && s.type !== 'gloves';
-const GLOVE = s => s.type === 'gloves';
+const R = (...r) => s => !s.ex && r.includes(s.rarity);
+const KNIFE = s => !s.ex && s.rarity === 'gold' && s.type !== 'gloves';
+const GLOVE = s => !s.ex && s.type === 'gloves';
+const EX = s => !!s.ex;
 const RW = (mult = 1) => s => RAR[s.rarity].w * mult;
-const W = (...w) => s => w.includes(s.weapon);
+const W = (...w) => s => !s.ex && w.includes(s.weapon);
 
 // Skiny z obrazka „Smoczej Legendy” (prawdziwe modele).
 const LEGEND = ['awp-dragon-lore', 'ak-47-fire-serpent', 'm4a4-buzz-kill', 'ssg-08-dragonfire', 'p90-asiimov', 'm4a1-s-cyrex', 'ak-47-vulcan',
@@ -245,6 +272,8 @@ const CASES = [
         items: pool([[R('consumer'), 120], [R('covert'), 5], [R('gold'), 0.8]], { seed: 'zo' }) },
     { id: 'm-plecak', name: 'Ląduje w Plecaku', color: '#c026d3', sec: 'meme', badge: 'NEW', deco: 'photo', img: 'img/meme-plecak.webp',
         items: pool([[R('restricted'), 30], [R('classified'), 30], [R('covert'), 12], [KNIFE, 1.5], [GLOVE, 0.8]], { seed: 'pl' }) },
+    { id: 'm-szok', name: 'Pies w Szoku', color: '#b45309', sec: 'meme', badge: 'NEW', deco: 'photo', img: 'img/meme-szok.webp',
+        items: pool([[R('consumer', 'industrial'), RW()], [R('milspec'), RW(0.6)], [R('restricted'), RW(0.3)], [R('covert'), 0.8], [KNIFE, 0.15]], { seed: 'szok' }) },
     { id: 'm-goryl', name: 'Armia Goryli', color: '#16a34a', sec: 'meme', badge: 'MEME', deco: 'photo', img: 'img/meme-goryl.webp',
         items: pool([[R('classified'), 40], [R('covert'), 20], [R('gold'), 3]], { seed: 'gr' }) },
 
@@ -271,6 +300,14 @@ const CASES = [
         items: pool([[W(w), RW()], [KNIFE, 0.25, { per: 6 }]], { per: 0, seed: w, skew: 0.6 }),
     })),
 
+    // Skarbiec — najdroższe skrzynki z wymyślonymi skinami Rower4Skins Exclusive
+    { id: 'v-kolarz', name: 'Skarbiec Kolarza', color: '#eab308', sec: 'vault', badge: 'VAULT', deco: 'star', starPct: 3,
+        items: pool([[R('covert'), 62], [KNIFE, 22], [GLOVE, 12], [EX, 3]], { seed: 'vk', per: 12 }) },
+    { id: 'v-diament', name: 'Diamentowa Dętka', color: '#22d3ee', sec: 'vault', badge: 'VAULT', feature: 'ex-karambit-szafirowa-szprycha',
+        items: pool([[KNIFE, 62], [GLOVE, 30], [EX, 7]], { seed: 'vd', per: 14 }) },
+    { id: 'v-omega', name: 'Omega Vault', color: '#a3e635', sec: 'vault', badge: 'OMEGA', feature: 'ex-karambit-omega-max', starPct: 8,
+        items: pool([[EX, 100]], { per: 0, mix: true, skew: 1.2 }) },
+
     // Specjalne
     ...GEM_TIERS.map(gemTierCase),
     { id: 'daily', name: 'Codzienna Skrzynka', color: '#22c55e', currency: 'free', kind: 'daily', deco: 'gift',
@@ -291,17 +328,17 @@ for (const c of CASES) {
     c.currency = c.currency || 'usd';
     c.total = c.items.reduce((s, [, w]) => s + w, 0);
     c.ev = c.items.reduce((s, [id, w]) => s + SKIN[id].price * w / c.total, 0);
-    // Cena = średni drop / 0.9, czyli skrzynka oddaje średnio ok. 90% ceny.
-    if (c.currency === 'usd') c.price = Math.max(0.05, round2(c.ev / 0.9));
+    // Cena = średni drop / 0.85, czyli skrzynka oddaje średnio ok. 85% ceny (przewaga „kasyna” jak na g4skins).
+    if (c.currency === 'usd') c.price = Math.max(0.05, round2(c.ev / 0.85));
     if (!c.feature && !c.deco) c.feature = [...c.items].sort((a, b) => SKIN[b[0]].price - SKIN[a[0]].price)[0][0];
     rareOf(c);
 }
 
-// Gwiazdki: najrzadsze przedmioty skrzynki (łącznie ok. 1,5% szans, w skrzynce Special więcej).
+// Gwiazdki: najrzadsze przedmioty skrzynki (łącznie ok. 0,9% szans, w skrzynce Special więcej).
 // Na ruletce zamiast nich pojawia się złota gwiazdka „Rower4Skins Special”, a po niej druga ruletka tylko z rzadkich.
 function rareOf(c) {
     const sorted = [...c.items].sort((a, b) => a[1] - b[1] || SKIN[b[0]].price - SKIN[a[0]].price);
-    const lim = (c.starPct ?? 1.5) / 100 * c.total;
+    const lim = (c.starPct ?? 0.9) / 100 * c.total;
     const rare = [];
     let cum = 0;
     for (const [id, w] of sorted) { if (cum + w > lim) break; cum += w; rare.push([id, w]); }
@@ -316,6 +353,7 @@ const USD_CASES = CASES.filter(c => c.currency === 'usd');
 
 const SECTIONS = [
     { id: 'legend', title: 'Legendy', icon: 'crown' },
+    { id: 'vault', title: 'Skarbiec', icon: 'gem' },
     { id: 'creator', title: 'Skrzynki twórców', icon: 'user' },
     { id: 'meme', title: 'Skrzynki memów', icon: 'bolt' },
     { id: 'bday', title: 'Rowerowe Urodziny', icon: 'cake' },
@@ -323,17 +361,18 @@ const SECTIONS = [
     { id: 'wpn', title: 'Bronie', icon: 'target' },
 ];
 
-// [nazwa, wartość $, kolor, zdjęcie, minigra, trudność 1–5; 6 = HARDCORE, 7 = OMEGA]
+// [nazwa, wartość $, kolor, zdjęcie, minigra, trudność 1–5; 6 = HARDCORE, 7 = OMEGA, 8 = OMEGA MAX (najtrudniejsza)]
 const BIKES = [
-    ['Składak Wigry 3', 5, '#94a3b8', '', 'pump', 1], ['Ukraina z piwnicy', 8, '#a16207', '', 'timing', 1],
-    ['Romet Jubilat', 12, '#ef4444', '', 'memory', 2], ['Góral z marketu', 15, '#22c55e', '', 'gears', 2],
-    ['BMX sąsiada', 20, '#f59e0b', '', 'ride', 3], ['Szosówka Kross', 35, '#3b82f6', '', 'pump', 3],
-    ['Elektryk miejski', 60, '#14b8a6', '', 'timing', 4], ['Karbonowa kolarzówka', 120, '#a855f7', '', 'memory', 4],
-    ['ENGWE EP-2.0 Boost', 299, '#3b82f6', 'img/engwe-ep2-boost.png', 'gears', 5],
-    ['Ridingtimes GT73 Pro', 499, '#e5b98a', 'img/ridingtimes-gt73-pro.png', 'ride', 6],
-    ['Kukirin G2', 700, '#f97316', 'img/kukirin-g2.webp', 'slalom', 6],
-    ['Electrix KMA', 950, '#ef4444', 'img/electrix-kma.webp', 'climb', 6],
-    ['Stark Varg', 1500, '#e2e8f0', 'img/stark-varg.png', 'wheelie', 7],
+    ['Składak Wigry 3', 2, '#94a3b8', '', 'pump', 1], ['Ukraina z piwnicy', 3, '#a16207', '', 'timing', 1],
+    ['Romet Jubilat', 5, '#ef4444', '', 'memory', 2], ['Góral z marketu', 7, '#22c55e', '', 'gears', 2],
+    ['BMX sąsiada', 10, '#f59e0b', '', 'ride', 3], ['Szosówka Kross', 15, '#3b82f6', '', 'pump', 3],
+    ['Elektryk miejski', 25, '#14b8a6', '', 'timing', 4], ['Karbonowa kolarzówka', 45, '#a855f7', '', 'memory', 4],
+    ['ENGWE EP-2.0 Boost', 90, '#3b82f6', 'img/engwe-ep2-boost.png', 'gears', 5],
+    ['Ridingtimes GT73 Pro', 150, '#e5b98a', 'img/ridingtimes-gt73-pro.png', 'ride', 6],
+    ['Kukirin G2', 200, '#f97316', 'img/kukirin-g2.webp', 'slalom', 6],
+    ['Electrix KMA', 280, '#ef4444', 'img/electrix-kma.webp', 'climb', 6],
+    ['Stark Varg', 450, '#e2e8f0', 'img/stark-varg.png', 'wheelie', 7],
+    ['Altis Omega MX', 700, '#a3e635', 'img/altis-omega.webp', 'mx', 8],
 ];
 
 const IMG = {
@@ -346,6 +385,7 @@ const IMG = {
     engwe: 'img/engwe-ep2-boost.png',
     gt73: 'img/ridingtimes-gt73-pro.png',
     varg: 'img/stark-varg.png',
+    altis: 'img/altis-omega.webp',
     kma: 'img/electrix-kma.webp',
     g2: 'img/kukirin-g2.webp',
 };
@@ -493,15 +533,15 @@ function spend(dollars) {
     const before = level();
     state.stats.wagered = round2(state.stats.wagered + dollars);
     state.exp += Math.round(dollars * 100);
-    // 10 gemów za każdy wydany $1
-    state.gemAcc = (state.gemAcc || 0) + dollars * 10;
+    // 4 gemy za każdy wydany $1 (wcześniej 10 + duże nagrody za poziomy dawały ponad 100% zwrotu — nieskończone pieniądze)
+    state.gemAcc = (state.gemAcc || 0) + dollars * 4;
     const g = Math.floor(state.gemAcc);
     state.gemAcc -= g;
     state.gems += g;
     const after = level();
     for (let L = before + 1; L <= after; L++) {
-        state.gems += 100 * L;
-        note(`Awans na poziom ${L}! +${100 * L} gemów`);
+        state.gems += 25 * L;
+        note(`Awans na poziom ${L}! +${25 * L} gemów`);
         toast(`Awans na poziom ${L}!`, 'ok');
     }
     save();
@@ -846,7 +886,7 @@ const me = () => ({ you: true });
 // ============================================================
 
 function itemCard(s, { cls = '', attrs = '', top = '', bottom = '', wear = '' } = {}) {
-    return `<div class="icard ${cls}" style="--rc:${RAR[s.rarity].c}" ${attrs}>
+    return `<div class="icard ${cls} ${s.ex ? 'ex' : ''}" style="--rc:${RAR[s.rarity].c}" ${attrs}>
         ${top}${wear ? `<span class="wear" title="${WEAR_NAME[wear]}">${wear}</span>` : ''}
         <div class="iart">${art(s)}</div>
         <div class="iw" translate="no">${esc(s.weapon)}</div>
@@ -915,6 +955,22 @@ function confetti() {
     setTimeout(() => box.remove(), 3800);
 }
 
+// „Pies w szoku”: animowana reakcja na przegraną albo fatalny drop. Warczący demon wylatuje ze zdjęcia.
+function szok(text = 'SZOK!') {
+    document.querySelector('.szok')?.remove();
+    const el = document.createElement('div');
+    el.className = 'szok';
+    el.innerHTML = `<div class="szok-card"><img class="szok-bg" src="img/meme-szok.webp" alt=""><img class="szok-demon" src="img/meme-szok-demon.webp" alt=""><b class="szok-txt">${esc(text)}</b></div>`;
+    el.addEventListener('click', () => el.remove());
+    document.body.appendChild(el);
+    // warczenie: niskie piły z drżeniem + uderzenie
+    tone(95, 62, 0.9, 0.07, 'sawtooth', 0.25);
+    tone(142, 88, 0.8, 0.05, 'sawtooth', 0.28);
+    tone(60, 40, 0.5, 0.09, 'square', 0.25);
+    [0, 0.12].forEach(t => tone(220, 110, 0.18, 0.05, 'triangle', 0.9 + t));
+    setTimeout(() => el.remove(), 2600);
+}
+
 function showWin(ids, uids, title, reopen = false, star = false) {
     winUids = uids;
     const total = round2(ids.reduce((s, id) => s + SKIN[id].price, 0));
@@ -980,7 +1036,7 @@ function renderShell() {
         <button class="sublink" data-act="go" data-arg="#/free">${ic('star')}CODZIENNA SKRZYNKA</button>
         <button class="sublink g" data-act="go" data-arg="#/gems">${ic('gem')}SKRZYNKI ZA GEMY</button>
         <button class="sublink" data-act="go" data-arg="#/free">${ic('box')}SKRZYNKI EXP</button>
-        <button class="sublink hide-sm" data-act="go" data-arg="#/destiny">${ic('target')}PRZEZNACZENIE</button>
+        <button class="sublink hide-sm" data-act="go" data-arg="#/upgrader">${ic('bolt')}UPGRADER</button>
         <span class="sub-note">${ic('shield')}Symulator · wirtualne monety</span>
     </div>`;
 }
@@ -1159,7 +1215,8 @@ const PAGES = {
     battle: { r: renderBattleView, nav: 'battles', after: afterBattleView },
     contract: { r: renderContract, nav: 'contract' },
     exchanger: { r: renderExchanger, nav: 'exchanger' },
-    destiny: { r: renderDestiny, nav: '' },
+    upgrader: { r: renderUpgrader, nav: '' },
+    destiny: { r: () => { setTimeout(() => go('#/upgrader')); return ''; }, nav: '' },
     profile: { r: renderProfile, nav: '' },
     free: { r: renderFree, nav: 'home' },
     gems: { r: renderGems, nav: 'gems' },
@@ -1226,11 +1283,35 @@ function bannerHtml() {
     </div>`;
 }
 
+// Wielki baner na górze strony głównej: skaczący Altis, lecące skiny Exclusive.
+function heroHtml() {
+    const fly = ['ex-karambit-omega-max', 'ex-awp-dragon-lore-souvenir', 'ex-m4a4-zloty-wyjec', 'ex-sport-gloves-r4s-vice'].map((id, k) =>
+        `<div class="hero-fly f${k}" style="--rc:${RAR[SKIN[id].rarity].c}">${art(SKIN[id])}</div>`).join('');
+    return `<section class="hero">
+        <div class="hero-txt">
+            <span class="hero-kicker">${ic('star')}NOWOŚĆ · ALTIS OMEGA MX · 100 KM</span>
+            <h1 class="hero-title">ROWER<span>4</span>SKINS</h1>
+            <p>Otwieraj skrzynki, łap złote gwiazdki Rower4Skins Special, walcz z kolegami w 7 trybach bitew i zrób upgrade do skinów za $25 000.</p>
+            <div class="hero-cta">
+                <button class="btn btn-green btn-xl" data-act="go" data-arg="#/case/special">${ic('box')}OTWÓRZ SPECIAL</button>
+                <button class="btn btn-purple btn-xl" data-act="depositModal">${ic('bike')}WPŁAĆ ALTISA</button>
+            </div>
+        </div>
+        <div class="hero-art">
+            <div class="hero-glow"></div>${fly}
+            <div class="hero-ramp"></div>
+            <img class="hero-bike" src="${IMG.altis}" alt="Altis Omega MX">
+            <div class="hero-dust"><i></i><i></i><i></i><i></i></div>
+        </div>
+    </section>`;
+}
+
 function renderHome() {
     return `
+    ${heroHtml()}
     <div class="tiles3">
         ${featTile('SKRZYNKI ZA GEMY', 'go', '#/gems', caseArt(CASE['gt-ultimate']))}
-        ${featTile('PRZEZNACZENIE', 'go', '#/destiny', ORBS)}
+        ${featTile('UPGRADER', 'go', '#/upgrader', ORBS)}
         ${featTile('RANKING', 'ranking', '', TROPHY)}
     </div>
     ${bannerHtml()}
@@ -1377,6 +1458,9 @@ async function openCase(demo) {
         save();
         winners.forEach(w => pushDrop(w, state.name, true, c.id));
         showWin(winners, uids, starN ? '★ Rower4Skins Special!' : n > 1 ? 'Twoje dropy!' : 'Twój drop!', c.currency !== 'free', starN > 0);
+        // Pies w szoku przy bardzo słabym dropie (w skrzynce „Pies w Szoku” zawsze, gdy drop jest poniżej ceny).
+        const got = winners.reduce((a, w) => a + SKIN[w].price, 0), paid = (c.price || 0) * n;
+        if (c.currency === 'usd' && (c.id === 'm-szok' ? got < paid : got < paid * 0.2 && Math.random() < 0.4)) setTimeout(() => szok('SZOK!'), 350);
     }
     updateOpenBar();
     if (!demo && route.name === 'case' && c.currency === 'free') {
@@ -1391,7 +1475,7 @@ async function openCase(demo) {
 // Moja obecność w pokoju (presence) niesie: nick, kolor, poziom, bitwę, którą hostuję,
 // miejsce, które zajmuję w cudzej bitwie, i ostatnie dropy. Host jest źródłem prawdy o swojej bitwie;
 // wynik liczy każdy u siebie z tego samego ziarna (seed), więc wszyscy widzą to samo.
-const NET = { room: null, me: 'me', peers: [], connected: false };
+const NET = { room: null, me: 'me', peers: [], connected: false, denied: '' };
 let MYB = null;          // bitwa, którą hostuję
 let SEAT = null;         // { h: peer hosta, b: id bitwy, i: miejsce }
 const KNOWN = new Map(); // bid -> ostatnio widziana bitwa
@@ -1615,7 +1699,8 @@ async function animateRun(key) {
             const g = pick(SKINS.filter(sk => sk.rarity === 'consumer')).id;
             giveItems([g], 'Gwarantowany skin z bitwy');
             toast(`Przegrana. Gwarantowany skin: ${SKIN[g].weapon} | ${SKIN[g].name}`);
-        } else toast('Przegrałeś tę bitwę.', 'err');
+            szok('PRZEGRANA!');
+        } else { toast('Przegrałeś tę bitwę.', 'err'); szok('PRZEGRANA!'); }
         state.myBattles.unshift({ t: Date.now(), mode: b.mode, players: b.players, value: bValue(b), won, prize: won ? r.pot : 0 });
         state.myBattles.length = Math.min(state.myBattles.length, 50);
         save();
@@ -1639,7 +1724,14 @@ async function connectRoom() {
         const room = await window.claude?.use?.('room');
         if (!room) return;
         NET.room = room;
-        room.onConnection(ok => { NET.connected = ok; refreshOnline(); }, () => { NET.connected = false; refreshOnline(); });
+        // Błędy końcowe (np. strona otwarta z publicznego linku albo bez logowania) — przejdź w tryb lokalny
+        // i powiedz graczowi dlaczego, zamiast wiecznego „Łączenie…”.
+        const fail = e => {
+            if (!['not_granted', 'revoked', 'capability_disabled', 'capability_removed', 'transform_error'].includes(e?.code)) return;
+            NET.room = null; NET.connected = false; NET.denied = e.code; NET.peers = [];
+            refreshOnline(); refreshBattleList();
+        };
+        room.onConnection(ok => { NET.connected = ok; refreshOnline(); }, fail);
         room.onPeers(ch => {
             const mine = ch.peers.find(p => p.sameTab);
             if (mine && NET.me !== mine.peer) {
@@ -1648,7 +1740,7 @@ async function connectRoom() {
                 NET.me = mine.peer;
             }
             onRoom(ch);
-        });
+        }, fail);
         publish();
     } catch (e) { /* bez pokoju strona działa lokalnie */ }
 }
@@ -1716,10 +1808,13 @@ function battleListHtml() {
 }
 
 function onlineHtml() {
-    if (!NET.room) return `<div class="panel online-panel off">${ic('info')}<div><b>Tryb lokalny</b><span>Bitwy z kolegami działają, gdy strona jest otwarta przez link claude.ai, a koledzy są zaproszeni mailem. Teraz możesz grać z botami.</span></div></div>`;
+    if (!NET.room) return `<div class="panel online-panel off">${ic('info')}<div><b>${NET.denied ? 'Brak połączenia z serwerem bitew' : 'Tryb lokalny'}</b>
+        <span>Bitwy na żywo działają tylko dla osób zalogowanych na claude.ai i zaproszonych mailem (przycisk „Udostępnij” → wpisz mail kolegi). Otwarcie strony z publicznego linku nie łączy z serwerem. Teraz możesz grać z botami.</span></div></div>`;
     const players = NET.peers;
+    const alone = NET.connected && players.length <= 1;
     return `<div class="panel online-panel">
         <div class="op-head"><span class="live-dot ${NET.connected ? 'on' : ''}"></span><b>${NET.connected ? 'Serwer online' : 'Łączenie…'}</b><span>${players.length} ${players.length === 1 ? 'gracz' : 'graczy'} na stronie</span></div>
+        ${alone ? `<div class="op-hint">${ic('info')}Jesteś sam. Koledzy zobaczą Twoje bitwy, gdy otworzą tę stronę ze swojego konta claude.ai (zaproszenie mailem przez „Udostępnij”).</div>` : ''}
         <div class="op-list">${players.map(p => `<span class="op-chip ${p.isMe ? 'me' : ''}" translate="no">${avatar(p.isMe ? me() : { name: cleanNick(p.presence?.nick), color: cleanColor(p.presence?.color) }, 'xs')}${esc(p.isMe ? state.name : cleanNick(p.presence?.nick))}${p.isMe ? ' <em>(Ty)</em>' : ''}<small>poz. ${Number.isInteger(p.presence?.lvl) ? p.presence.lvl : '?'}</small></span>`).join('')}</div>
     </div>`;
 }
@@ -2055,47 +2150,77 @@ function renderExchanger() {
 }
 
 // ============================================================
-// Przeznaczenie
+// Upgrader (zamiast Przeznaczenia): stawiasz swoje skiny i/lub saldo, celujesz w droższy skin.
+// Szansa = wartość stawki / cena celu × 90% (maks. 80%).
 // ============================================================
 
-let destT = null, destPct = 30, destQ = '', destAngle = 0, destBusy = false;
+const up = { sel: [], bal: 0, t: null, q: '', angle: 0, busy: false, tab: 'inv' };
+const UP_EDGE = 0.9, UP_MAX = 80;
+const upStake = () => round2(state.inv.filter(i => up.sel.includes(i.uid)).reduce((a, i) => a + SKIN[i.id].price, 0) + up.bal);
+const upChance = () => {
+    const st = upStake();
+    if (!up.t || st <= 0) return 0;
+    return Math.min(UP_MAX, Math.max(0.01, st / SKIN[up.t].price * 100 * UP_EDGE));
+};
+const upMult = () => (up.t && upStake() > 0 ? SKIN[up.t].price / upStake() : 0);
 
-const destCost = () => (destT ? Math.max(0.01, round2(SKIN[destT].price * destPct / 100 * 1.08)) : 0);
-
-function destGridHtml() {
-    const q = destQ.trim().toLowerCase();
-    return [...SKINS].filter(s => !q || (s.weapon + ' ' + s.name).toLowerCase().includes(q)).sort((a, b) => b.price - a.price)
-        .map(s => itemCard(s, { cls: s.id === destT ? 'sel' : '', attrs: `data-act="dpick" data-arg="${s.id}"` })).join('');
+function upInvHtml() {
+    if (!state.inv.length) return `<div class="empty small">${ic('box')}<p>Nie masz skinów. Możesz postawić samo saldo.</p></div>`;
+    return [...state.inv].sort((a, b) => SKIN[b.id].price - SKIN[a.id].price).map(i => itemCard(SKIN[i.id], {
+        cls: up.sel.includes(i.uid) ? 'sel' : '', wear: i.w, attrs: `data-act="upSel" data-arg="${i.uid}"` })).join('');
 }
 
-function renderDestiny() {
+function upTargetsHtml() {
+    const st = upStake(), q = up.q.trim().toLowerCase();
+    return SKINS.filter(s => s.price > Math.max(0.1, st) * 1.2 && (!q || (s.weapon + ' ' + s.name).toLowerCase().includes(q)))
+        .sort((a, b) => a.price - b.price).slice(0, 180)
+        .map(s => itemCard(s, { cls: s.id === up.t ? 'sel' : '', attrs: `data-act="upPick" data-arg="${s.id}"`,
+            top: st > 0 ? `<span class="chance">x${(s.price / st).toFixed(s.price / st < 10 ? 2 : 0)}</span>` : '' })).join('');
+}
+
+function upStakeHtml() {
+    const items = state.inv.filter(i => up.sel.includes(i.uid));
+    return `${items.length ? `<div class="up-stack">${items.map(i => `<span class="up-chip" style="--rc:${RAR[SKIN[i.id].rarity].c}">${art(SKIN[i.id])}</span>`).join('')}</div>` : `<div class="up-ph">${ic('plus', 'big')}<span>Wybierz skiny z ekwipunku</span></div>`}
+        <label class="field-l" for="upBal">Dołóż saldo</label>
+        <div class="up-bal"><input id="upBal" type="number" min="0" step="0.01" value="${up.bal || ''}" placeholder="0.00" data-in="upbal"><button class="btn btn-dark" data-act="upBalMax">MAX</button></div>
+        <div class="c-stat"><small>Stawka</small><b class="money" id="upStakeV">${money(upStake())}</b></div>`;
+}
+
+function renderUpgrader() {
+    const ch = upChance();
     return `
-    <div class="page-head">${ic('target')}<div><h2>PRZEZNACZENIE</h2><small>WYBIERZ WYMARZONY SKIN I SWOJĄ SZANSĘ</small></div><span class="r18">18+</span></div>
-    <div class="destiny">
-        <div class="panel d-target">${destT ? itemCard(SKIN[destT], { cls: 'glow' }) : `<div class="empty small">${ic('target')}<p>Wybierz skin z listy poniżej.</p></div>`}</div>
-        <div class="d-wheel">
-            <div class="wheel" id="wheel" style="--pct:${destPct}"><div class="needle" id="needle" style="transform:rotate(${destAngle}deg)"></div>
-                <div class="wheel-c"><b id="dPctBig">${destPct}%</b><span>szansa</span></div></div>
+    <div class="page-head">${ic('bolt')}<div><h2>UPGRADER</h2><small>POSTAW SKINY I ZAMIEŃ JE NA DROŻSZY</small></div><span class="r18">18+</span></div>
+    <div class="upgrader">
+        <div class="panel up-side" id="upStake">${upStakeHtml()}</div>
+        <div class="up-mid">
+            <div class="wheel up-wheel ${up.busy ? 'spin' : ''}" id="upWheel" style="--pct:${ch.toFixed(2)}"><div class="needle" id="upNeedle" style="transform:rotate(${up.angle}deg)"></div>
+                <div class="wheel-c"><b id="upPct">${ch.toFixed(2)}%</b><span>szansa</span><em id="upX">${upMult() ? 'x' + upMult().toFixed(2) : ''}</em></div></div>
+            <div class="up-mults">${[1.5, 2, 3, 5, 10, 20].map(m => `<button class="chip" data-act="upX" data-arg="${m}">x${m}</button>`).join('')}</div>
+            <button class="btn btn-green btn-xl btn-block" id="upBtn" data-act="upSpin" ${up.t && upStake() > 0 && !up.busy ? '' : 'disabled'}>${ic('bolt')}UPGRADE</button>
+            <small class="muted center">Szansa = stawka ÷ cena celu × 90% (maks. ${UP_MAX}%).</small>
         </div>
-        <div class="panel d-ctrl">
-            <label for="dPct" class="field-l">Twoja szansa: <b id="dPctL">${destPct}%</b></label>
-            <input type="range" id="dPct" min="1" max="80" value="${destPct}" data-in="dpct">
-            <div class="c-stat"><small>Koszt próby</small><b class="money" id="dCost">${money(destCost())}</b></div>
-            <button class="btn btn-green btn-xl btn-block" id="dBtn" data-act="dspin" ${destT && !destBusy ? '' : 'disabled'}>SPRÓBUJ</button>
-        </div>
+        <div class="panel up-side up-target">${up.t ? itemCard(SKIN[up.t], { cls: 'glow' }) : `<div class="up-ph">${ic('target', 'big')}<span>Wybierz cel poniżej</span></div>`}</div>
     </div>
-    <div class="sec-title">${ic('star')}<span>Wybierz skin</span></div>
-    <label class="search wide">${ic('search')}<input id="dQ" data-in="dq" placeholder="Szukaj skina" value="${esc(destQ)}"></label>
-    <div class="igrid" id="dGrid">${destGridHtml()}</div>`;
+    <div class="panel bbar up-tabs">
+        <div class="seg big">
+            <button class="${up.tab === 'inv' ? 'on' : ''}" data-act="upTab" data-arg="inv">${ic('box')}TWÓJ EKWIPUNEK</button>
+            <button class="${up.tab === 'tgt' ? 'on' : ''}" data-act="upTab" data-arg="tgt">${ic('target')}WYBIERZ CEL</button>
+        </div>
+        ${up.tab === 'tgt' ? `<label class="search">${ic('search')}<input id="upQ" data-in="upq" placeholder="Szukaj skina" value="${esc(up.q)}"></label>` : ''}
+    </div>
+    <div class="igrid" id="upGrid">${up.tab === 'inv' ? upInvHtml() : upTargetsHtml()}</div>`;
 }
 
-function destUpdate() {
-    const w = $('#wheel');
-    if (!w) return;
-    w.style.setProperty('--pct', destPct);
-    $('#dPctBig').textContent = destPct + '%';
-    $('#dPctL').textContent = destPct + '%';
-    $('#dCost').textContent = money(destCost());
+function upRefresh() {
+    if (route.name !== 'upgrader') return;
+    const ch = upChance();
+    const w = $('#upWheel');
+    if (w) w.style.setProperty('--pct', ch.toFixed(2));
+    if ($('#upPct')) $('#upPct').textContent = ch.toFixed(2) + '%';
+    if ($('#upX')) $('#upX').textContent = upMult() ? 'x' + upMult().toFixed(2) : '';
+    if ($('#upStakeV')) $('#upStakeV').textContent = money(upStake());
+    const b = $('#upBtn');
+    if (b) b.disabled = !(up.t && upStake() > 0 && !up.busy);
 }
 
 // ============================================================
@@ -2197,7 +2322,7 @@ function renderGems() {
         <div class="gh-text">
             <span class="eyebrow">${ic('gem')}SKLEP GEMÓW</span>
             <h1>SKRZYNKI ZA GEMY</h1>
-            <p>Gemy zdobywasz za granie: 10 gemów za każdy wydany dolar, 100× poziom za każdy awans, gemy za wpłaty rowerów, misje i kody. Im wyższy poziom skrzynki, tym więcej Covert i noży.</p>
+            <p>Gemy zdobywasz za granie: 4 gemy za każdy wydany dolar, 25× poziom za każdy awans, gemy za wpłaty rowerów, misje i kody. Im wyższy poziom skrzynki, tym więcej Covert i noży.</p>
         </div>
         <div class="gh-bal"><small>TWOJE GEMY</small><b>${ic('gem')}${state.gems}</b><button class="btn btn-purple" data-act="go" data-arg="#/event">${ic('star')}Misje za gemy</button></div>
     </div>
@@ -2265,6 +2390,7 @@ const GAMES = {
     ride: { n: 'Zjazd z góry', icon: 'bike', d: 'Omijaj kamienie i dziury, zmieniając pas strzałkami albo przyciskami.' },
     slalom: { n: 'Slalom G2', icon: 'scooter', d: 'Przejedź G2 przez bramki z pachołków. Trzymaj ◀ / ▶ (albo A / D, strzałki) — hulajnoga ma bezwładność, więc skręcaj wcześniej. Niebieskie plamy to lód: tam prawie nie da się hamować.' },
     climb: { n: 'Podjazd e-MTB', icon: 'bolt', d: 'Pedałuj na zmianę LEWA / PRAWA (← / → albo A / D) w równym rytmie — kadencja musi być w zielonej strefie. Ta sama noga dwa razy = poślizg łańcucha. TURBO (↑ / W / spacja) mocno pomaga, ale bateria szybko się kończy, a na końcu czeka ściana 36%.' },
+    mx: { n: 'Omega MX Supercross', icon: 'skull', d: 'Tor motocrossowy z dołami. GAZ (↑ / W) — 100 KM od razu podrywa przód, więc przy gazowaniu pochylaj się do przodu. ◀ TYŁ / PRZÓD ▶ (A / D) to balans ciałem: w locie obraca motocykl. HAMULEC (↓ / S) zwalnia. Za wolno = wpadasz do dołu, za szybko = twarde lądowanie za rampą. Ląduj równolegle do zielonej rampy.' },
     wheelie: { n: 'Wheelie OMEGA', icon: 'skull', d: 'Trzymaj Varga na tylnym kole: GAZ (↑ / W / spacja) podnosi przód, HAMULEC (↓ / S) go opuszcza. Nie dotknij przodem ziemi i nie przewróć się do tyłu. Wiatr i nierówności będą Ci przeszkadzać coraz mocniej.' },
 };
 
@@ -2273,11 +2399,11 @@ function bikeInfo(i) {
     return { game: b[4], d: b[5] };
 }
 
-const stars = d => (d >= 7 ? `<span class="stars omega">OMEGA++++</span>` : d >= 6 ? `<span class="stars hc">★★★★★ HARDCORE</span>`
+const stars = d => (d >= 8 ? `<span class="stars omega max">☠ OMEGA MAX ☠</span>` : d >= 7 ? `<span class="stars omega">OMEGA++++</span>` : d >= 6 ? `<span class="stars hc">★★★★★ HARDCORE</span>`
     : `<span class="stars" title="Trudność ${d}/5">${'★'.repeat(d)}<i>${'★'.repeat(5 - d)}</i></span>`);
 const EXTREME = i => bikeInfo(i).d >= 6;
 // Gemy za wpłatę: rosną z trudnością, a dla HARDCORE/OMEGA także z wartością roweru.
-const bikeGems = i => { const { d } = bikeInfo(i), v = BIKES[i][1]; return d * 60 + (d >= 7 ? 2000 : d >= 6 ? Math.round(v * 1.2) : 0); };
+const bikeGems = i => { const { d } = bikeInfo(i), v = BIKES[i][1]; return d * 60 + (d >= 8 ? 4000 : d >= 7 ? 2000 : d >= 6 ? Math.round(v * 3) : 0); };
 
 function depositModal() {
     const card = (i, premium) => {
@@ -2307,6 +2433,7 @@ const HC = {
     ride: 'HARDCORE: aż 50 sekund zjazdu, gęsta mgła, dwa pasy zawsze zablokowane, a pełne tempo (prawie 2×) przychodzi już po pół minuty.',
     slalom: 'HARDCORE: 45 sekund, bramki coraz węższe i coraz dalej od siebie, lód od 12. sekundy. Wolno ominąć tylko jedną bramkę.',
     climb: 'HARDCORE: 560 m pod górę w 57 sekund. Bez oszczędzania baterii na końcową ścianę nie ma szans.',
+    mx: 'OMEGA MAX ☠: 7 skoków, whoopsy, podmuchy wiatru w locie i tylko 45 sekund. Kąt lądowania musi się zgadzać z rampą co do 10°. Jeden błąd = koniec. Najtrudniejsza minigra na stronie.',
     wheelie: 'OMEGA++++: 35 sekund, wąska strefa 22–38°, silnik reaguje z opóźnieniem, a trzeba spędzić w strefie co najmniej 75% czasu. Powodzenia.',
 };
 
@@ -2363,6 +2490,99 @@ function timerBar(ms, onEnd) {
     };
     raf = requestAnimationFrame(loop);
     return { stop: () => { dead = true; cancelAnimationFrame(raf); }, add: extra => { ms += extra; } };
+}
+
+
+// Altis Omega MX: fizyka toru (osobno od rysowania, żeby dało się ją testować).
+// Jednostki: metry, sekundy, stopnie dla pochylenia.
+function mxWorld() {
+    const G = 9.8, PIT = 7, TOL = 10, IMPACT = 9.5, LIMIT = 45;
+    const pts = [[-30, 0], [0, 0]], gaps = [], jumps = [];
+    let x = 0, y = 0;
+    const flat = L => { x += L; pts.push([x, y]); };
+    const jump = (kl, kh, gap, ll) => {
+        x += kl; y += kh; pts.push([x, y]);
+        const lip = x, a = Math.atan2(kh, kl) * 180 / Math.PI;
+        pts.push([x, y - PIT]); x += gap; pts.push([x, y - PIT]);
+        gaps.push([lip, x]);
+        pts.push([x, y]);
+        const ls = x;
+        x += ll; y -= kh; pts.push([x, y]);
+        jumps.push({ lip, a, ls, le: x, la: -Math.atan2(kh, ll) * 180 / Math.PI, gap, top: y + kh });
+    };
+    const wz = [];
+    const whoops = (n, h, w) => { wz.push([x, x + n * w]); for (let k = 0; k < n; k++) { x += w / 2; y += h; pts.push([x, y]); x += w / 2; y -= h; pts.push([x, y]); } };
+    flat(30); jump(5, 1.6, 7, 10);
+    flat(22); jump(6, 2.4, 11, 11);
+    flat(16); whoops(7, 0.35, 4.2);
+    flat(18); jump(6, 3, 15, 12);
+    flat(20); jump(5, 2.2, 9, 10); flat(4); jump(5, 2.2, 9, 10);
+    flat(26); jump(8, 4, 20, 15);
+    flat(14); whoops(6, 0.4, 4);
+    flat(18); jump(6, 2.6, 13, 12);
+    flat(12);
+    const finish = x;
+    flat(60);
+    const segAt = px => {
+        let lo = 0, hi = pts.length - 1;
+        while (hi - lo > 1) { const m = (lo + hi) >> 1; if (pts[m][0] <= px) lo = m; else hi = m; }
+        while (lo + 1 < pts.length && pts[lo + 1][0] === pts[lo][0]) lo++;
+        return lo;
+    };
+    const ground = px => {
+        const k = segAt(px), [x0, y0] = pts[k], [x1, y1] = pts[Math.min(k + 1, pts.length - 1)];
+        return x1 === x0 ? y0 : y0 + (y1 - y0) * (px - x0) / (x1 - x0);
+    };
+    const slope = px => {
+        const k = segAt(px), [x0, y0] = pts[k], [x1, y1] = pts[Math.min(k + 1, pts.length - 1)];
+        return x1 === x0 ? 0 : Math.atan2(y1 - y0, x1 - x0) * 180 / Math.PI;
+    };
+    const inPit = px => gaps.some(([a, b]) => px > a && px < b);
+    const st = { x: 2, y: 0, v: 0, vx: 0, vy: 0, th: 0, w: 0, phi: 0, air: false, airT: 0, t: 0, gust: 0, gustT: 0, jumps: 0, over: false, win: false, msg: '', land: null };
+    const crash = m => { st.over = true; st.msg = m; };
+    const R = Math.PI / 180;
+    function step(inp, dt) {
+        if (st.over) return;
+        st.t += dt;
+        if (st.air) {
+            st.airT += dt;
+            st.vy -= G * dt; st.x += st.vx * dt; st.y += st.vy * dt;
+            st.gustT -= dt;
+            if (st.gustT <= 0) { st.gust = (Math.random() - 0.5) * 120; st.gustT = 0.25 + Math.random() * 0.3; }
+            st.w += ((inp.lb - inp.lf) * 220 + (inp.thr - inp.brk) * 35 + st.gust - 1.8 * st.w) * dt;
+            st.th += st.w * dt;
+            const gy = ground(st.x);
+            if (st.y <= gy) {
+                if (inPit(st.x)) return crash('Za wolno! Wpadłeś do dołu.');
+                if (gy - st.y > 0.6) return crash('Uderzyłeś w krawędź rampy!');
+                const al = slope(st.x), diff = st.th - al;
+                const impact = -(-st.vx * Math.sin(al * R) + st.vy * Math.cos(al * R));
+                const tol = st.airT < 0.3 ? 28 : TOL;
+                if (Math.abs(diff) > tol) return crash(`Złe lądowanie: kąt ${diff > 0 ? '+' : ''}${Math.round(diff)}° względem rampy (max ±${tol}°).`);
+                if (impact > IMPACT) return crash('Za twarde lądowanie — przeleciałeś rampę!');
+                st.air = false; st.y = gy; st.v = Math.max(0, st.vx * Math.cos(al * R) + st.vy * Math.sin(al * R));
+                st.phi = Math.max(0, diff); st.w = 0;
+                if (st.airT > 0.5) { st.jumps++; st.land = { diff, impact, t: st.t }; }
+            }
+        } else {
+            const al = slope(st.x);
+            const acc = inp.thr * (st.phi > 45 ? 5 : 11) - (st.v > 0 ? inp.brk * 14 : 0) - 0.35 - 0.005 * st.v * st.v - G * Math.sin(al * R);
+            st.v = Math.max(0, st.v + acc * dt);
+            // 100 KM: sam gaz podrywa przód; pochylenie do przodu (▶) go dociska.
+            const tq = inp.thr * 300 + inp.lb * 150 - inp.lf * 260 - inp.brk * 200 - 190 - 4 * st.w;
+            if (st.phi <= 0 && tq < 0) { st.phi = 0; st.w = 0; } else { st.w += tq * dt; st.phi += st.w * dt; if (st.phi < 0) { st.phi = 0; st.w = 0; } }
+            if (st.phi > 78) return crash('Za dużo gazu! 100 KM przewróciło Cię do tyłu.');
+            const nx = st.x + st.v * Math.cos(al * R) * dt;
+            const vy = st.v * Math.sin(al * R), by = st.y + vy * dt - 0.5 * G * dt * dt, gy = ground(nx);
+            if (by > gy + 0.12) {
+                st.air = true; st.airT = 0; st.vx = st.v * Math.cos(al * R); st.vy = vy; st.x = nx; st.y = by;
+                st.th = al + st.phi;
+            } else { st.x = nx; st.y = gy; st.th = slope(st.x) + st.phi; }
+        }
+        if (st.x >= finish) { st.over = true; st.win = true; st.msg = `Meta! ${st.jumps} skoków w ${st.t.toFixed(1)} s.`; }
+        else if (st.t >= LIMIT) crash(`Minęło ${LIMIT} s — za wolno na Omegę.`);
+    }
+    return { st, step, ground, slope, inPit, pts, gaps, jumps, wz, finish, LIMIT, TOL };
 }
 
 const GAME_RUN = {
@@ -2479,13 +2699,17 @@ const GAME_RUN = {
         const survive = 35000, need = 0.75, LO = 22, HI = 38, FAIL_LO = 3, FAIL_HI = 62, LAG = 0.14;
         const img = new Image();
         img.src = IMG.varg;
+        // Punkty styku kół w obrazku (640×523): tylne (97,445), przednie (535,521). Obraz jest lekko z perspektywy,
+        // więc przy 0° trzeba go obrócić o BASE, żeby oba koła stały na ziemi.
+        const RX = 97 / 640, RY = 445 / 523, BASE = Math.atan2(521 - 445, 535 - 97);
         stage.innerHTML = `<div class="mg-time"><div id="mgTime" class="fill"></div></div>
             <div class="mg-info"><span>W strefie: <b id="wzPct">0%</b> (min. ${need * 100}%)</span><span>Kąt: <b id="wzAng">20°</b></span></div>
-            <canvas id="wCv" width="420" height="300" class="ride wheelie"></canvas>
+            <canvas id="wCv" width="480" height="330" class="ride wheelie"></canvas>
             <div class="garrows two"><button class="btn btn-red hold" data-hold="-1">▼ HAMULEC</button><button class="btn btn-green hold" data-hold="1">▲ GAZ</button></div>`;
         const cv = $('#wCv'), cx = cv.getContext('2d'), W = cv.width, H = cv.height;
         let a = 24, v = 0, input = 0, keys = new Set(), last = performance.now(), t0 = last, raf = 0, dead = false;
-        let inZone = 0, total = 0, gust = 0, nextGust = 1800, bumpT = 0, eng = 0, mudT = -3;
+        let inZone = 0, total = 0, gust = 0, nextGust = 1800, bumpT = 0, eng = 0, mudT = -3, turb = 0, turbT = 0, turbGoal = 0, dist = 0;
+        const dust = [];
         const holdBtns = $$('[data-hold]', stage);
         const setInput = () => {
             let u = 0;
@@ -2499,39 +2723,58 @@ const GAME_RUN = {
             const off = () => { keys.delete(k); setInput(); b.classList.remove('on'); };
             b.addEventListener('pointerdown', on); b.addEventListener('pointerup', off); b.addEventListener('pointerleave', off); b.addEventListener('pointercancel', off);
         });
+        const hills = (off, amp, base, col, step) => {
+            cx.fillStyle = col; cx.beginPath(); cx.moveTo(0, H);
+            for (let x = 0; x <= W + step; x += step) {
+                const k = (x + off) / step;
+                cx.lineTo(x, base - amp * (0.55 + 0.45 * Math.sin(k * 1.7) * Math.cos(k * 0.63)));
+            }
+            cx.lineTo(W, H); cx.closePath(); cx.fill();
+        };
         const draw = () => {
-            cx.fillStyle = '#141a28'; cx.fillRect(0, 0, W, H);
-            const gx = 90, gy = H - 50;
-            // zegar kąta w prawym górnym rogu
-            const kx = W - 70, ky = 100, R = 56;
-            cx.lineWidth = 12;
-            for (const [from, to, col] of [[0, LO, 'rgba(255,77,94,.5)'], [LO, HI, 'rgba(69,209,91,.8)'], [HI, 70, 'rgba(255,77,94,.5)']]) {
-                cx.strokeStyle = col; cx.beginPath(); cx.arc(kx, ky, R, -to * Math.PI / 180, -from * Math.PI / 180); cx.stroke();
+            const gx = 158, gy = H - 58;
+            // niebo i pagórki w paralaksie — motocykl jedzie w prawo
+            const sky = cx.createLinearGradient(0, 0, 0, gy);
+            sky.addColorStop(0, '#0b1020'); sky.addColorStop(1, '#27304a');
+            cx.fillStyle = sky; cx.fillRect(0, 0, W, H);
+            hills(dist * 4, 60, gy - 40, '#1d2539', 60);
+            hills(dist * 12, 34, gy - 6, '#232d45', 44);
+            // tor
+            cx.fillStyle = '#3a2f24'; cx.fillRect(0, gy, W, H - gy);
+            cx.fillStyle = mudT > 0 ? '#6b4a1f' : '#4a3b2c'; cx.fillRect(0, gy, W, 6);
+            const off = (dist * 40) % 48;
+            cx.fillStyle = 'rgba(255,255,255,.08)'; for (let x = -off; x < W; x += 48) cx.fillRect(x, gy + 18, 26, 4);
+            cx.fillStyle = '#e5e7eb'; for (let x = -((dist * 40) % 160); x < W; x += 160) { cx.fillRect(x, gy - 30, 4, 30); cx.fillStyle = '#ef4444'; cx.fillRect(x - 6, gy - 34, 16, 8); cx.fillStyle = '#e5e7eb'; }
+            // pył spod tylnego koła
+            for (const p of dust) { cx.fillStyle = `rgba(180,150,110,${p.l * 0.5})`; cx.beginPath(); cx.arc(p.x, p.y, 3 + (1 - p.l) * 9, 0, 7); cx.fill(); }
+            // łuk strefy wokół tylnego koła
+            const R = 190;
+            cx.lineWidth = 10; cx.lineCap = 'butt';
+            for (const [from, to, col] of [[0, LO, 'rgba(255,77,94,.28)'], [LO, HI, 'rgba(69,209,91,.55)'], [HI, 70, 'rgba(255,77,94,.28)']]) {
+                cx.strokeStyle = col; cx.beginPath(); cx.arc(gx, gy, R, -to * Math.PI / 180, -from * Math.PI / 180); cx.stroke();
             }
             const na = -Math.max(0, Math.min(70, a)) * Math.PI / 180;
-            cx.strokeStyle = '#ffc41f'; cx.lineWidth = 4; cx.lineCap = 'round';
-            cx.beginPath(); cx.moveTo(kx, ky); cx.lineTo(kx + Math.cos(na) * (R + 10), ky + Math.sin(na) * (R + 10)); cx.stroke();
-            cx.fillStyle = '#ffc41f'; cx.beginPath(); cx.arc(kx, ky, 5, 0, 7); cx.fill();
-            // ziemia z przesuwającym się wzorem
-            cx.fillStyle = '#0b0f19'; cx.fillRect(0, gy + 26, W, H);
-            const off = ((performance.now() - t0) / 3) % 40;
-            cx.fillStyle = '#263048'; for (let x = -off; x < W; x += 40) cx.fillRect(x, gy + 30, 20, 4);
-            // motocykl obrócony wokół tylnego koła
+            const ok = a >= LO && a <= HI;
+            cx.strokeStyle = ok ? '#45d15b' : '#ffc41f'; cx.lineWidth = 3; cx.setLineDash([6, 6]);
+            cx.beginPath(); cx.moveTo(gx, gy); cx.lineTo(gx + Math.cos(na) * (R + 8), gy + Math.sin(na) * (R + 8)); cx.stroke(); cx.setLineDash([]);
+            // motocykl obrócony wokół punktu styku tylnego koła
             if (img.complete && img.naturalWidth) {
-                // obrót wokół punktu styku tylnego koła z ziemią
-                const bw = 250, bh = bw * img.naturalHeight / img.naturalWidth;
-                cx.save(); cx.translate(gx, gy + 26); cx.rotate(-a * Math.PI / 180);
-                cx.drawImage(img, -bw * 0.17, -bh * 0.985, bw, bh); cx.restore();
+                const bw = 230, bh = bw * img.naturalHeight / img.naturalWidth;
+                cx.save(); cx.translate(gx, gy); cx.rotate(-(a * Math.PI / 180 + BASE));
+                cx.drawImage(img, -bw * RX, -bh * RY, bw, bh); cx.restore();
             }
+            cx.font = '900 22px Saira, sans-serif'; cx.fillStyle = ok ? '#45d15b' : '#ffc41f';
+            cx.fillText(Math.round(a) + '°', W - 70, 34);
             cx.font = '800 14px Saira, sans-serif';
-            if (Math.abs(gust) > 8) { cx.fillStyle = 'rgba(147,197,253,.8)'; cx.fillText(tr(gust > 0 ? 'PODMUCH ↑' : 'PODMUCH ↓'), W - 120, 24); }
-            if (mudT > 0) { cx.fillStyle = 'rgba(161,98,7,.9)'; cx.fillText(tr('BŁOTO — silnik muli!'), 12, 24); cx.fillStyle = 'rgba(120,72,20,.55)'; cx.fillRect(0, gy + 24, W, 12); }
+            if (Math.abs(gust) > 8) { cx.fillStyle = 'rgba(147,197,253,.9)'; cx.fillText(tr(gust > 0 ? 'PODMUCH ↑' : 'PODMUCH ↓'), 14, 52); }
+            if (mudT > 0) { cx.fillStyle = 'rgba(234,179,8,.95)'; cx.fillText(tr('BŁOTO — silnik muli!'), 14, 28); }
         };
         const loop = now => {
             if (dead) return;
             const dt = Math.min(0.033, (now - last) / 1000);
             last = now;
             const t = now - t0, p = Math.min(1, t / survive);
+            dist += dt * (6 + 3 * Math.max(0, eng));
             // Niestabilna równowaga wokół 30°: im dalej, tym mocniej ciągnie w tę stronę. Z czasem coraz silniej.
             const G = 3.0 + 3.6 * p;
             // Odcinki błota (od 12 s): silnik reaguje jeszcze wolniej.
@@ -2546,11 +2789,18 @@ const GAME_RUN = {
             bumpT -= dt;
             let bump = 0;
             if (bumpT <= 0) { bump = (Math.random() - 0.5) * (40 + 80 * p); bumpT = 0.35 + Math.random() * 0.5; }
-            const acc = G * (a - 30) + eng * (96 + 14 * p) + gust - 0.7 * v + bump + (Math.random() - 0.5) * 45;
+            // płynne drgania toru zamiast szarpania w każdej klatce
+            turbT -= dt;
+            if (turbT <= 0) { turbGoal = (Math.random() - 0.5) * 36; turbT = 0.12; }
+            turb += (turbGoal - turb) * Math.min(1, dt * 10);
+            const acc = G * (a - 30) + eng * (96 + 14 * p) + gust - 0.7 * v + bump + turb;
             v += acc * dt;
             a += v * dt;
             total += dt;
             if (a >= LO && a <= HI) inZone += dt;
+            if (eng > 0.2 && Math.random() < 0.6) dust.push({ x: 150, y: H - 60, vx: -60 - Math.random() * 80, vy: -20 - Math.random() * 40, l: 1 });
+            for (const q of dust) { q.x += q.vx * dt; q.y += q.vy * dt; q.l -= dt * 1.6; }
+            while (dust.length && dust[0].l <= 0) dust.shift();
             draw();
             $('#wzPct').textContent = Math.round(inZone / Math.max(0.001, total) * 100) + '%';
             $('#wzAng').textContent = Math.round(a) + '°';
@@ -2650,6 +2900,113 @@ const GAME_RUN = {
         const move = dir => { lane = Math.max(0, Math.min(2, lane + Number(dir))); };
         cv.addEventListener('pointerdown', e => { const r = cv.getBoundingClientRect(); move(e.clientX - r.left < r.width / 2 ? -1 : 1); });
         return { stop: () => { dead = true; cancelAnimationFrame(raf); }, lane: move, key: e => { if (e.key === 'ArrowLeft' || e.key === 'a') { e.preventDefault(); move(-1); } if (e.key === 'ArrowRight' || e.key === 'd') { e.preventDefault(); move(1); } } };
+    },
+
+    // Altis Omega MX — najtrudniejsza minigra: skoki nad dołami, lądowanie pod kątem rampy.
+    mx(i, d, stage) {
+        const w = mxWorld(), st = w.st, S = 16, W = 480, H = 320;
+        const img = new Image();
+        img.src = IMG.altis;
+        // Obraz odwrócony (przód w prawo): styk tylnego koła (127,404), przedniego (445,439) na 507×442.
+        const MIDX = 286 / 507, MIDY = 421 / 442, BASE = Math.atan2(439 - 404, 445 - 127);
+        stage.innerHTML = `<div class="mg-time"><div id="mgTime" class="fill"></div></div>
+            <div class="mg-info"><span>Prędkość: <b id="mxV">0 km/h</b></span><span>Skoki: <b id="mxJ">0</b> / ${w.jumps.length}</span><span>Czas: <b id="mxT">${w.LIMIT} s</b></span></div>
+            <canvas id="mxCv" width="${W}" height="${H}" class="ride mxcv"></canvas>
+            <div class="garrows four"><button class="btn btn-dark hold" data-k="lb">◀ TYŁ</button><button class="btn btn-red hold" data-k="brk">▼ HAM</button><button class="btn btn-green hold" data-k="thr">▲ GAZ</button><button class="btn btn-dark hold" data-k="lf">PRZÓD ▶</button></div>`;
+        const cv = $('#mxCv'), cx = cv.getContext('2d');
+        const inp = { thr: 0, brk: 0, lb: 0, lf: 0 };
+        let auto = null, last = performance.now(), raf = 0, dead = false, camX = 0, camY = 0, shake = 0;
+        $$('[data-k]', stage).forEach(b => {
+            const k = b.dataset.k;
+            const on = e => { e.preventDefault(); inp[k] = 1; b.classList.add('on'); };
+            const off = () => { inp[k] = 0; b.classList.remove('on'); };
+            b.addEventListener('pointerdown', on); b.addEventListener('pointerup', off); b.addEventListener('pointerleave', off); b.addEventListener('pointercancel', off);
+        });
+        const sx = X => (X - camX) * S + W * 0.34, sy = Y => H * 0.62 - (Y - camY) * S;
+        const nextJump = () => w.jumps.find(j => j.le > st.x);
+        const draw = () => {
+            const sky = cx.createLinearGradient(0, 0, 0, H);
+            sky.addColorStop(0, '#0a0f1e'); sky.addColorStop(1, '#1f2a44');
+            cx.fillStyle = sky; cx.fillRect(0, 0, W, H);
+            // tłum i reflektory w tle (paralaksa)
+            for (let k = 0; k < 14; k++) {
+                const bx = ((k * 97 - camX * 3) % (W + 120) + W + 120) % (W + 120) - 60;
+                cx.fillStyle = 'rgba(255,255,255,.05)'; cx.beginPath(); cx.moveTo(bx, 0); cx.lineTo(bx - 40, H * 0.6); cx.lineTo(bx + 40, H * 0.6); cx.fill();
+            }
+            cx.fillStyle = '#141b2d'; cx.fillRect(0, H * 0.28, W, 26);
+            cx.font = '900 13px Saira, sans-serif'; cx.fillStyle = 'rgba(163,230,53,.55)';
+            for (let bx = -((camX * 6) % 240); bx < W; bx += 240) cx.fillText('ROWER4SKINS SUPERCROSS', bx + 10, H * 0.28 + 18);
+            // podłoże
+            const x0 = camX - W * 0.34 / S - 2, x1 = x0 + W / S + 4;
+            cx.beginPath(); cx.moveTo(sx(x0), H + 10);
+            for (const [px, py] of w.pts) if (px >= x0 - 30 && px <= x1 + 30) cx.lineTo(sx(px), sy(py));
+            cx.lineTo(sx(x1), H + 10); cx.closePath();
+            const dirt = cx.createLinearGradient(0, H * 0.4, 0, H);
+            dirt.addColorStop(0, '#5a3f28'); dirt.addColorStop(1, '#2a1d12');
+            cx.fillStyle = dirt; cx.fill();
+            cx.strokeStyle = '#a0703e'; cx.lineWidth = 3; cx.stroke();
+            cx.fillStyle = 'rgba(0,0,0,.18)';
+            for (let k = Math.floor(x0 / 3); k < x1 / 3; k++) { const px = k * 3 + (hash('d' + k) % 30) / 10; cx.fillRect(sx(px), sy(w.ground(px)) + 6 + (hash('e' + k) % 18), 3, 2); }
+            // doły i strefy lądowania
+            for (const [a, b] of w.gaps) if (b > x0 && a < x1) { cx.fillStyle = '#07090f'; const j = w.jumps.find(q => q.lip === a); cx.fillRect(sx(a) + 1, sy(j.top) + 3, (b - a) * S - 2, H); }
+            for (const j of w.jumps) {
+                if (j.le < x0 || j.ls > x1) continue;
+                cx.strokeStyle = j.lip < st.x && j.le > st.x ? '#45d15b' : 'rgba(69,209,91,.55)'; cx.lineWidth = 5;
+                cx.beginPath(); cx.moveTo(sx(j.ls), sy(j.top)); cx.lineTo(sx(j.le), sy(j.top - (j.le - j.ls) * Math.tan(-j.la * Math.PI / 180))); cx.stroke();
+                cx.fillStyle = '#ffc41f'; cx.fillRect(sx(j.lip) - 2, sy(j.top) - 22, 3, 22); cx.fillRect(sx(j.lip) + 1, sy(j.top) - 22, 12, 7);
+            }
+            const fx = sx(w.finish);
+            if (fx < W + 20) { for (let k = 0; k < 8; k++) { cx.fillStyle = k % 2 ? '#fff' : '#111'; cx.fillRect(fx, sy(w.ground(w.finish)) - 60 + k * 7, 8, 7); } }
+            // motocykl
+            if (img.complete && img.naturalWidth) {
+                const bw = 104, bh = bw * img.naturalHeight / img.naturalWidth;
+                cx.save(); cx.translate(sx(st.x), sy(st.y)); cx.rotate(-(st.th * Math.PI / 180 + BASE));
+                cx.drawImage(img, -bw * MIDX, -bh * MIDY, bw, bh); cx.restore();
+            }
+            // pomoc w locie: kąt motocykla względem rampy lądowania
+            const j = nextJump();
+            if (st.air && j) {
+                const diff = st.th - j.la, ok = Math.abs(diff) <= w.TOL;
+                cx.font = '900 18px Saira, sans-serif'; cx.fillStyle = ok ? '#45d15b' : '#ff4d5e';
+                cx.fillText(`${diff > 0 ? '+' : ''}${Math.round(diff)}°`, sx(st.x) - 16, sy(st.y) - 62);
+            }
+            if (st.phi > 25 && !st.air) { cx.font = '800 14px Saira, sans-serif'; cx.fillStyle = '#ff4d5e'; cx.fillText(tr('PRZÓD W GÓRZE!'), 14, 26); }
+            if (st.air && Math.abs(st.gust) > 50) { cx.font = '800 14px Saira, sans-serif'; cx.fillStyle = 'rgba(147,197,253,.9)'; cx.fillText(tr('WIATR!'), 14, 26); }
+        };
+        const frame = dt => {
+            // fizyka w małych krokach — stała, niezależna od liczby klatek
+            for (let left = dt; left > 0 && !st.over; left -= 1 / 120) {
+                if (auto) Object.assign(inp, auto(w));
+                w.step(inp, Math.min(1 / 120, left));
+            }
+            camX += (st.x - camX) * Math.min(1, dt * 8);
+            camY += (st.y - camY) * Math.min(1, dt * 3);
+        };
+        const loop = now => {
+            if (dead) return;
+            const dt = Math.min(0.1, (now - last) / 1000);
+            last = now;
+            frame(dt);
+            draw();
+            $('#mxV').textContent = Math.round((st.air ? Math.hypot(st.vx, st.vy) : st.v) * 3.6) + ' km/h';
+            $('#mxJ').textContent = st.jumps;
+            $('#mxT').textContent = Math.max(0, Math.ceil(w.LIMIT - st.t)) + ' s';
+            const bar = $('#mgTime');
+            if (bar) bar.style.width = Math.min(100, st.x / w.finish * 100) + '%';
+            if (st.over) { dead = true; mgEnd(i, st.win, st.msg); return; }
+            raf = requestAnimationFrame(loop);
+        };
+        img.onload = draw;
+        raf = requestAnimationFrame(loop);
+        const map = { ArrowUp: 'thr', w: 'thr', W: 'thr', ArrowDown: 'brk', s: 'brk', S: 'brk', ArrowLeft: 'lb', a: 'lb', A: 'lb', ArrowRight: 'lf', d: 'lf', D: 'lf' };
+        return {
+            stop: () => { dead = true; cancelAnimationFrame(raf); },
+            key: e => { const k = map[e.key]; if (k) { e.preventDefault(); inp[k] = 1; } },
+            keyup: e => { const k = map[e.key]; if (k) inp[k] = 0; },
+            // do testów automatycznych: sterownik wywoływany w każdym kroku fizyki
+            setAuto: f => { auto = f; },
+            peek: () => ({ ...st }),
+        };
     },
 
     // Kukirin G2: slalom między pachołkami, sterowanie z bezwładnością.
@@ -2777,7 +3134,7 @@ const GAME_RUN = {
         img.src = IMG.kma;
         stage.innerHTML = `<div class="mg-time"><div id="mgTime" class="fill"></div></div>
             <div class="mg-info"><span>Dystans: <b id="clDist">0</b> / ${LEN} m</span><span>Nachylenie: <b id="clSlope">4%</b></span><span>Bateria: <b id="clBat">100%</b></span></div>
-            <canvas id="clCv" width="${W}" height="${H}" class="ride wheelie"></canvas>
+            <canvas id="clCv" width="${W}" height="${H}" class="ride climbcv"></canvas>
             <div class="garrows three"><button class="btn btn-dark" data-pedal="l">◀ LEWA</button><button class="btn btn-purple hold" data-turbo="1">⚡ TURBO</button><button class="btn btn-dark" data-pedal="r">PRAWA ▶</button></div>`;
         const cv = $('#clCv'), cx = cv.getContext('2d');
         let pos = 0, v = 0, rate = 0, lastTap = 0, lastSide = '', bat = 100, turbo = false, stall = 0, slip = 0;
@@ -3092,34 +3449,62 @@ const ACT = {
         showWin(ids, uids, 'Wymiana udana!');
     },
 
-    // przeznaczenie
-    dpick: id => { destT = id; renderPage(); },
-    dspin: () => {
-        if (!destT || destBusy) return;
-        const cost = destCost();
-        if (state.balance < cost) { toast('Za mało środków.', 'err'); return; }
-        wallet(-cost, `Przeznaczenie: ${SKIN[destT].name}`);
-        spend(cost);
-        destBusy = true;
-        $('#dBtn').disabled = true;
-        const r = Math.random() * 100, win = r < destPct, target = destT;
-        destAngle = destAngle - (destAngle % 360) + 360 * 6 + r * 3.6;
-        const nd = $('#needle');
-        nd.style.transition = 'transform 4.5s cubic-bezier(.1,.75,.12,1)';
-        nd.style.transform = `rotate(${destAngle}deg)`;
+    // upgrader
+    upTab: t => { up.tab = t; renderPage(); },
+    upSel: uid => {
+        if (up.busy) return;
+        const k = up.sel.indexOf(uid);
+        if (k >= 0) up.sel.splice(k, 1);
+        else if (up.sel.length >= 8) { toast('Maksymalnie 8 skinów naraz.', 'err'); return; }
+        else up.sel.push(uid);
+        if (up.t && SKIN[up.t].price <= upStake()) up.t = null;
+        renderPage();
+    },
+    upPick: id => { if (!up.busy) { up.t = id; renderPage(); } },
+    upX: m => {
+        const st = upStake();
+        if (st <= 0) { toast('Najpierw wybierz skiny albo wpisz saldo.', 'err'); return; }
+        const want = st * Number(m);
+        up.t = [...SKINS].sort((a, b) => Math.abs(a.price - want) - Math.abs(b.price - want))[0].id;
+        renderPage();
+    },
+    upBalMax: () => { up.bal = round2(state.balance); renderPage(); },
+    upSpin: () => {
+        if (up.busy || !up.t) return;
+        const stake = upStake(), ch = upChance(), bal = up.bal;
+        if (stake <= 0) return;
+        if (bal > state.balance) { toast('Za mało środków.', 'err'); return; }
+        const items = takeItems(up.sel, 'Upgrader (stawka)');
+        if (bal > 0) wallet(-bal, `Upgrader: ${SKIN[up.t].name}`);
+        spend(stake);
+        up.busy = true; up.sel = []; up.bal = 0;
+        const target = up.t, r = Math.random() * 100, win = r < ch;
+        // igła zatrzymuje się w zielonym polu (wygrana) albo poza nim
+        up.angle = up.angle - (up.angle % 360) + 360 * 6 + r * 3.6;
+        renderPage();
+        requestAnimationFrame(() => {
+            const nd = $('#upNeedle');
+            if (nd) { nd.style.transition = 'transform 4.2s cubic-bezier(.1,.75,.12,1)'; nd.style.transform = `rotate(${up.angle}deg)`; }
+            const w = $('#upWheel');
+            if (w) w.style.setProperty('--pct', ch.toFixed(2));
+            if ($('#upPct')) $('#upPct').textContent = ch.toFixed(2) + '%';
+        });
+        let ticks = 0;
+        const tick = setInterval(() => { if (++ticks > 26) clearInterval(tick); else beep(1400 - ticks * 30, 0.02, 0.02); }, 150);
         setTimeout(() => {
-            destBusy = false;
+            up.busy = false;
             if (win) {
-                const uids = giveItems([target], 'Przeznaczenie');
+                const uids = giveItems([target], 'Upgrader');
                 pushDrop(target, state.name, true);
-                showWin([target], uids, 'Przeznaczenie się spełniło!');
+                showWin([target], uids, `UPGRADE! x${(SKIN[target].price / stake).toFixed(2)}`);
             } else {
                 beep(180, 0.3, 0.05, 'sawtooth');
-                toast('Tym razem się nie udało.', 'err');
+                toast(`Upgrade nieudany (${items.length ? items.length + ' skin(y) przepadły' : 'saldo przepadło'}).`, 'err');
+                szok('PRZEPADŁO!');
             }
-            const b = $('#dBtn');
-            if (b) b.disabled = false;
-        }, 4600);
+            up.t = null;
+            if (route.name === 'upgrader') renderPage();
+        }, 4400);
     },
 
     // profil
@@ -3178,8 +3563,8 @@ const IN = {
     fmax: t => { filt.max = t.value; refreshSections(); },
     fq: t => { filt.q = t.value; refreshSections(); },
     exq: t => { exQ = t.value; $('#exMarket').innerHTML = exMarketHtml(); },
-    dq: t => { destQ = t.value; $('#dGrid').innerHTML = destGridHtml(); },
-    dpct: t => { destPct = Number(t.value); destUpdate(); },
+    upq: t => { up.q = t.value; $('#upGrid').innerHTML = upTargetsHtml(); },
+    upbal: t => { up.bal = Math.max(0, Math.min(state.balance, round2(Number(t.value) || 0))); upRefresh(); },
     pq: t => { pQ = t.value; $('#pGrid').innerHTML = profInvHtml(); },
 };
 
