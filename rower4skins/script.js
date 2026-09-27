@@ -380,13 +380,22 @@ const CASES = [
     ...GEM_TIERS.map(gemTierCase),
     { id: 'daily', name: 'Codzienna Skrzynka', color: '#22c55e', currency: 'free', kind: 'daily', deco: 'gift',
         items: pool([[R('consumer', 'industrial'), RW()], [R('milspec'), RW(0.5)], [R('restricted'), RW(0.2)], [R('covert'), 0.3]], { seed: 'dl' }) },
-    ...[5, 10, 20, 30, 50].map((lvl, i) => ({
-        id: 'exp' + lvl, name: 'Poziom ' + lvl, color: ['#38bdf8', '#34d399', '#a78bfa', '#f472b6', '#fbbf24'][i],
+    // Skrzynie levelu: co 10 poziomów, od 10 do 100 — coraz lepsze.
+    ...[10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((lvl, i) => ({
+        id: 'exp' + lvl, name: 'Poziom ' + lvl, color: ['#38bdf8', '#34d399', '#a3e635', '#facc15', '#fb923c', '#f87171', '#f472b6', '#c084fc', '#818cf8', '#fde047'][i],
         currency: 'free', kind: 'exp', lvl, deco: 'lvl',
         items: pool([
-            [[R('consumer', 'industrial'), R('industrial', 'milspec'), R('milspec', 'restricted'), R('restricted', 'classified'), R('classified', 'covert')][i], RW()],
-            [[R('milspec'), R('restricted'), R('classified'), R('covert'), R('gold')][i], RW(0.5)],
-        ], { seed: 'exp' + lvl }),
+            [[R('industrial', 'milspec'), RW()], [R('restricted'), 4]],
+            [[R('milspec', 'restricted'), RW()], [R('classified'), 3]],
+            [[R('restricted', 'classified'), RW()], [R('covert'), 2]],
+            [[R('classified'), RW()], [R('covert'), 3]],
+            [[R('classified', 'covert'), RW()], [KNIFE, 0.6]],
+            [[R('covert'), RW()], [KNIFE, 1.5]],
+            [[R('covert'), RW()], [KNIFE, 4], [GLOVE, 2]],
+            [[KNIFE, 60], [GLOVE, 40]],
+            [[KNIFE, 60], [GLOVE, 40], [EX, 0.4]],
+            [[KNIFE, 55], [GLOVE, 40], [EX, 1.5]],
+        ][i], { seed: 'exp' + lvl, per: 10 }),
     })),
     { id: 'hidden', name: 'Ukryta Skrzynka', color: '#fb923c', currency: 'free', kind: 'hidden', deco: 'hidden',
         items: pool([[R('restricted'), 50], [R('classified'), 30], [R('covert'), 10], [R('gold'), 1]], { seed: 'hd' }) },
@@ -465,9 +474,9 @@ const IMG = {
     g2: 'img/kukirin-g2.webp',
 };
 
-// Sekretne kody trzymamy jako skrót (hash), żeby nie było ich widać w kodzie strony.
-const SECRET_PROMOS = { 3500601047: { bal: 50000, gems: 1000000, secret: true } };
-const PROMOS = { PLACEKER: { bal: round2(1000 / CUR.pln.r) }, ROWER4SKINS: { bal: 1 }, URODZINY: { gems: 500 }, SZPRYCHA: { bal: 0.5 }, KM5: { bal: 5, gems: 500 }, VIT5: { bal: 5, gems: 500 } };
+// Sekretne kody (jako skrót/hash). Kod za $50k i 1M gemów został usunięty.
+const SECRET_PROMOS = {};
+const PROMOS = { PLACEKER: { bal: round2(1000 / CUR.pln.r) }, ROWER4SKINS: { bal: 1 }, URODZINY: { bal: 2 }, SZPRYCHA: { bal: 0.5 }, KM5: { bal: 15 }, VIT5: { bal: 15 } };
 
 const BOT_NAMES = [
     'Szprycha_Bez_Ham', 'DętkaZBiedronki', 'KołoFortuny', 'ZjazdNaTwarz', 'BMX_Babcia', 'TurboŁańcuch', 'Wigry3_Tuning',
@@ -589,8 +598,17 @@ let uidSeq = Date.now();
 const newUid = () => (uidSeq++).toString(36);
 
 // Poziom: łącznie 250 * (L-1)^2 EXP, 100 EXP za każdy wydany $1.
-const level = (exp = state.exp) => Math.floor(Math.sqrt(exp / 250)) + 1;
-const levelStart = L => 250 * (L - 1) * (L - 1);
+// Poziomy 1–100, bardzo powoli: z poziomu L na L+1 potrzeba 2400 × L EXP (100 EXP za każdy wydany $1).
+// Łącznie do poziomu 100 ≈ 11,9 mln EXP (ok. $119 000 wydanych).
+const MAX_LEVEL = 100;
+const levelNeed = L => 2400 * L;
+const levelStart = L => 1200 * L * (L - 1);
+function level(exp = state.exp) {
+    let L = Math.floor((1 + Math.sqrt(1 + Math.max(0, exp) / 300)) / 2);
+    while (L < MAX_LEVEL && levelStart(L + 1) <= exp) L++;
+    while (L > 1 && levelStart(L) > exp) L--;
+    return Math.max(1, Math.min(MAX_LEVEL, L));
+}
 
 function wallet(delta, reason) {
     state.balance = round2(state.balance + delta);
@@ -611,18 +629,12 @@ function spend(dollars) {
     const before = level();
     state.stats.wagered = round2(state.stats.wagered + dollars);
     state.exp += Math.round(dollars * 100);
-    // 4 gemy za każdy wydany $1 (wcześniej 10 + duże nagrody za poziomy dawały ponad 100% zwrotu — nieskończone pieniądze)
-    state.gemAcc = (state.gemAcc || 0) + dollars * 4;
-    const g = Math.floor(state.gemAcc);
-    state.gemAcc -= g;
-    state.gems += g;
+    // Gemy nie są już za wydawanie ani za poziomy — tylko za otwieranie skrzyń eventowych.
     const after = level();
     if (after > before) {
-        let g = 0;
-        for (let L = before + 1; L <= after; L++) g += 25 * L;
-        state.gems += g;
-        note(`Awans na poziom ${after}! +${g} gemów`);
+        note(`Awans na poziom ${after}!`);
         toast(`Awans na poziom ${after}!`, 'ok');
+        if (Math.floor(after / 10) > Math.floor(before / 10)) toast(`Nowa skrzynia levelu: Poziom ${Math.floor(after / 10) * 10}!`, 'ok');
     }
     save();
 }
@@ -1065,6 +1077,7 @@ function caseCard(c, extra = '') {
     return `<div class="ccard" data-act="go" data-arg="#/case/${c.id}" style="--cc:${c.color}">
         <button class="cfav ${fav ? 'on' : ''}" data-act="fav" data-arg="${c.id}" aria-label="Ulubione">${ic('heart')}</button>
         ${c.badge ? `<span class="cbadge">${c.badge}</span>` : ''}
+        ${c.sec === 'bday' ? `<span class="gem-tag">${ic('gem')}+${Math.max(1, Math.round(c.price * 10))}</span>` : ''}
         <div class="cart">${caseArt(c)}</div>
         <div class="cfoot"><span class="cname">${esc(c.name)}</span><span class="cprice">${priceLabel(c)}</span></div>
         ${extra}
@@ -1614,6 +1627,13 @@ async function openCase(demo) {
     } else {
         const uids = giveItems(winners, `Skrzynka ${c.name}`);
         state.stats.opened += n;
+        // Gemy dostajesz tylko za skrzynie eventowe: 10 gemów za każdy $1 ceny.
+        if (c.sec === 'bday') {
+            const g = Math.max(1, Math.round(c.price * n * 10));
+            state.gems += g;
+            renderTop();
+            setTimeout(() => toast(`+${g} gemów za skrzynię eventową`, 'ok'), 300);
+        }
         state.stats.stars += starN;
         save();
         winners.forEach(w => pushDrop(w, state.name, true, c.id));
@@ -2400,8 +2420,8 @@ function profInvHtml() {
 
 function renderProfile() {
     const tab = route.arg || 'inv';
-    const L = level(), a = levelStart(L), b = levelStart(L + 1);
-    const pct = (state.exp - a) / (b - a) * 100;
+    const L = level(), max = L >= MAX_LEVEL, a = levelStart(L), b = max ? a : levelStart(L + 1);
+    const pct = max ? 100 : (state.exp - a) / (b - a) * 100;
     let body = '';
     if (tab === 'inv') {
         body = `<div class="page-head sm">${ic('box')}<div><h2>EKWIPUNEK (${state.inv.length})</h2><small>WARTOŚĆ: <b class="money">${money(invValue())}</b></small></div></div>
@@ -2452,12 +2472,12 @@ function renderProfile() {
             </div>
         </div>
         <div class="panel lvl-card">
-            <div class="lvl-head"><h3>Twój poziom</h3><span class="link" title="Za każdy wydany $1 dostajesz 100 EXP. Awans daje gemy.">Jak działają poziomy? ${ic('info')}</span></div>
+            <div class="lvl-head"><h3>Twój poziom</h3><span class="link" title="Za każdy wydany $1 dostajesz 100 EXP. Każdy kolejny poziom wymaga więcej EXP. Co 10 poziomów odblokowujesz skrzynię levelu. Maksymalny poziom: 100.">Jak działają poziomy? ${ic('info')}</span></div>
             <div class="lvl-row">
                 <div class="hex">${L}</div>
                 <div class="lvl-bar-wrap">
-                    <div class="lvl-labels"><b>Poziom ${L}</b><b>Poziom ${L + 1}</b></div>
-                    <div class="lvl-bar"><div style="width:${pct.toFixed(2)}%"></div><span>${state.exp - a}/${b - a} EXP</span><em>${pct.toFixed(2)}%</em></div>
+                    <div class="lvl-labels"><b>Poziom ${L}</b><b>${max ? 'MAX' : `Poziom ${L + 1}`}</b></div>
+                    <div class="lvl-bar"><div style="width:${pct.toFixed(2)}%"></div><span>${max ? 'MAX' : `${state.exp - a}/${b - a} EXP`}</span><em>${pct.toFixed(2)}%</em></div>
                 </div>
             </div>
         </div>
@@ -2482,7 +2502,7 @@ function renderGems() {
         <div class="gh-text">
             <span class="eyebrow">${ic('gem')}SKLEP GEMÓW</span>
             <h1>SKRZYNKI ZA GEMY</h1>
-            <p>Gemy zdobywasz za granie: 4 gemy za każdy wydany dolar, 25× poziom za każdy awans, gemy za wpłaty rowerów, misje i kody. Im wyższy poziom skrzynki, tym więcej Covert i noży.</p>
+            <p>Gemy zdobywasz tylko otwierając skrzynie eventowe (Rowerowe Urodziny): 10 gemów za każdy $1 ceny skrzyni. Im wyższy poziom skrzynki za gemy, tym więcej Covert i noży.</p>
         </div>
         <div class="gh-bal"><small>TWOJE GEMY</small><b>${ic('gem')}${fmtGems(state.gems)}</b><button class="btn btn-purple" data-act="go" data-arg="#/event">${ic('star')}Misje za gemy</button></div>
     </div>
@@ -2511,7 +2531,7 @@ function renderFree() {
             <div><h3>Codzienna skrzynka</h3><p>Otwieraj ją za darmo raz na 24 godziny.</p>
             ${dl ? `<div class="lock-note">${ic('clock')}<span>${dl}</span></div>` : `<button class="btn btn-green btn-xl" data-act="go" data-arg="#/case/daily">${ic('gift')}OTWÓRZ ZA DARMO</button>`}</div>
         </div>
-        <div class="panel free-lvl"><div class="hex">${level()}</div><div><h3>Twój poziom: ${level()}</h3><p>Zdobywasz 100 EXP za każdy wydany $1. Skrzynki poziomowe otwierasz raz na 24 h.</p></div></div>
+        <div class="panel free-lvl"><div class="hex">${level()}</div><div><h3>Twój poziom: ${level()}</h3><p>Zdobywasz 100 EXP za każdy wydany $1, a każdy poziom wymaga więcej. Co 10 poziomów nowa skrzynia levelu (maks. poziom 100). Otwierasz je raz na 24 h.</p></div></div>
     </div>
     <div class="sec-title">${ic('star')}<span>Skrzynki EXP</span></div>
     <div class="cgrid">${exp.map(c => caseCard(c, lockedTag(c))).join('')}</div>`;
@@ -2519,14 +2539,14 @@ function renderFree() {
 
 function renderEvent() {
     return `${bossBanner()}${bannerHtml()}
-    <div class="page-head">${ic('star')}<div><h2>MISJE EVENTU</h2><small>WYKONUJ ZADANIA I ZBIERAJ GEMY</small></div></div>
+    <div class="page-head">${ic('star')}<div><h2>MISJE EVENTU</h2><small>WYKONUJ ZADANIA I ZBIERAJ NAGRODY</small></div></div>
     <div class="missions">${MISSIONS.map(m => {
         const v = Math.min(m.goal, m.v());
         const done = v >= m.goal, claimed = state.claimed.includes(m.id);
         return `<div class="panel mission ${claimed ? 'claimed' : ''}">
             <div class="m-ico">${ic(done ? 'check' : 'star')}</div>
             <div class="m-body"><b>${m.t}</b><div class="m-bar"><div style="width:${(v / m.goal * 100).toFixed(1)}%"></div></div><small>${Number.isInteger(v) ? v : v.toFixed(2)} / ${m.goal}</small></div>
-            <span class="pill gem-pill">${ic('gem')}${m.gems}</span>
+            <span class="pill money-pill">${ic('wallet')}${money(m.gems / 100)}</span>
             <button class="btn ${done && !claimed ? 'btn-green' : 'btn-dark'}" data-act="claim" data-arg="${m.id}" ${done && !claimed ? '' : 'disabled'}>${claimed ? 'ODEBRANO' : 'ODBIERZ'}</button>
         </div>`;
     }).join('')}</div>
@@ -2573,7 +2593,7 @@ function depositModal() {
         const { game, d } = bikeInfo(i);
         return `<button class="bike ${premium ? 'premium' : ''}" data-act="mgIntro" data-arg="${i}" style="--bc:${c}">
             ${premium ? '<span class="bike-tag">PREMIUM</span>' : ''}${img ? `<img src="${img}" alt="${esc(n)}">` : bikeArt(c)}
-            <b>${esc(n)}</b><span class="money">${money(v)}</span><small class="pos">+${money(round2(v * 0.1))} bonus · +${bikeGems(i)} gemów</small>
+            <b>${esc(n)}</b><span class="money">${money(v)}</span><small class="pos">+${money(round2(v * 0.1))} bonus</small>
             <span class="bike-game">${ic(GAMES[game].icon)}${GAMES[game].n} ${stars(d)}</span></button>`;
     };
     const idx = BIKES.map((b, i) => i);
@@ -2620,15 +2640,14 @@ function mgEnd(i, won, msg) {
     const stage = $('#mgStage');
     if (!stage) return;
     if (won) {
-        const total = round2(v * 1.1), gems = bikeGems(i);
+        const total = round2(v * 1.1);
         wallet(total, `Wpłata: ${n}`);
-        state.gems += gems;
         save();
         renderTop();
-        note(`Wpłacono „${n}”: +${money(total)} i ${gems} gemów`);
+        note(`Wpłacono „${n}”: +${money(total)}`);
         winSound(d >= 4);
         if (d >= 4) confetti();
-        stage.innerHTML = `<div class="mg-result ok">${ic('check', 'big')}<h3>Udało się!</h3><p>${msg}</p><p>Na konto wpada <b class="pos">${money(total)}</b> i <b class="gemtxt">${gems} gemów</b>.</p>
+        stage.innerHTML = `<div class="mg-result ok">${ic('check', 'big')}<h3>Udało się!</h3><p>${msg}</p><p>Na konto wpada <b class="pos">${money(total)}</b>.</p>
             <div class="mrow"><button class="btn btn-green" data-act="modalclose">Super</button><button class="btn btn-dark" data-act="depositModal">Wpłać kolejny</button></div></div>`;
         if (route.name === 'profile') renderPage();
         if (route.name === 'home' && filt.afford) refreshSections();
@@ -3633,14 +3652,14 @@ function mgStart(i) {
 // BOSS EVENT: Wściekły Pies — walka o $500
 // ============================================================
 
-const BOSS = { reward: 500, gems: 2000, cdWin: 30 * 60e3, cdLose: 2 * 60e3 };
+const BOSS = { reward: 500, cdWin: 30 * 60e3, cdLose: 2 * 60e3 };
 const bossWait = () => Math.max(0, (state.boss?.next || 0) - Date.now());
 
 function bossBanner() {
     const wait = bossWait();
     return `<button class="boss-bar" data-act="bossIntro">
         <img src="${IMG.boss}" alt="Wściekły Pies">
-        <div class="bb-txt"><small>${ic('skull')}BOSS EVENT</small><b>Wściekły Pies</b><span>Pokonaj bossa i zgarnij ${money(BOSS.reward)} + ${BOSS.gems} gemów</span></div>
+        <div class="bb-txt"><small>${ic('skull')}BOSS EVENT</small><b>Wściekły Pies</b><span>Pokonaj bossa i zgarnij ${money(BOSS.reward)}</span></div>
         <span class="bb-cta">${wait ? `${ic('clock')}<span data-cool="boss">${fmtDur(wait)}</span>` : `WALCZ ${ic('swords')}`}</span>
     </button>`;
 }
@@ -3649,7 +3668,7 @@ function bossIntro() {
     stopGame();
     const wait = bossWait();
     modal(`<div class="mg boss-mg">
-        <div class="mg-head"><img class="boss-ava" src="${IMG.boss}" alt=""><div><small>BOSS EVENT · NAGRODA ${money(BOSS.reward)} + ${BOSS.gems} GEMÓW</small><h2>Wściekły Pies</h2></div><span class="stars hc">BOSS</span></div>
+        <div class="mg-head"><img class="boss-ava" src="${IMG.boss}" alt=""><div><small>BOSS EVENT · NAGRODA ${money(BOSS.reward)}</small><h2>Wściekły Pies</h2></div><span class="stars hc">BOSS</span></div>
         <p class="mg-rules">Jeździsz na dole areny i sam strzelasz dętkami w górę — stań pod psem, żeby go trafiać. ◀ / ▶ (A / D) jazda, ▲ (W / spacja) skok. Uważaj na ślinę (lecące kulki), kłapnięcie (czerwona kolumna — uciekaj z niej) i w drugiej fazie ryk (fale po ziemi — przeskocz). Masz 5 serc i 100 sekund.</p>
         <p class="muted small">Wejście jest darmowe. Po przegranej kolejna próba za 2 minuty, po wygranej za 30 minut.</p>
         <div class="mg-stage" id="mgStage">${wait ? `<div class="mg-result">${ic('clock', 'big')}<h3>Pies odpoczywa</h3><p>Następna walka za <b data-cool="boss">${fmtDur(wait)}</b>.</p></div>` : `<button class="btn btn-green btn-xl" data-act="bossStart">${ic('swords')}WALCZ</button>`}</div>
@@ -3664,10 +3683,9 @@ function bossEnd(won, msg) {
     if (won) {
         state.boss.wins = (state.boss.wins || 0) + 1;
         wallet(BOSS.reward, 'Boss: Wściekły Pies');
-        state.gems += BOSS.gems;
-        note(`Pokonałeś Wściekłego Psa: +${money(BOSS.reward)} i ${BOSS.gems} gemów`);
+        note(`Pokonałeś Wściekłego Psa: +${money(BOSS.reward)}`);
         save(); renderTop(); winSound(true); confetti();
-        if (stage) stage.innerHTML = `<div class="mg-result ok">${ic('trophy', 'big')}<h3>Boss pokonany!</h3><p>${msg}</p><p>Na konto wpada <b class="pos">${money(BOSS.reward)}</b> i <b class="gemtxt">${BOSS.gems} gemów</b>.</p>
+        if (stage) stage.innerHTML = `<div class="mg-result ok">${ic('trophy', 'big')}<h3>Boss pokonany!</h3><p>${msg}</p><p>Na konto wpada <b class="pos">${money(BOSS.reward)}</b>.</p>
             <div class="mrow"><button class="btn btn-green" data-act="modalclose">Super</button></div></div>`;
     } else {
         save();
@@ -3938,8 +3956,9 @@ const ACT = {
         const m = MISSIONS.find(x => x.id === id);
         if (!m || state.claimed.includes(id) || m.v() < m.goal) return;
         state.claimed.push(id);
-        addGems(m.gems, `Misja „${m.t}”`);
-        toast(`Odebrano ${m.gems} gemów!`, 'ok');
+        wallet(m.gems / 100, `Misja „${m.t}”`);
+        note(`Misja „${m.t}”: +${money(m.gems / 100)}`);
+        toast(`Odebrano ${money(m.gems / 100)}!`, 'ok');
         renderPage();
     },
 

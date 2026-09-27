@@ -3005,3 +3005,14 @@ canvas.brakecv { max-width: 480px; aspect-ratio: 480 / 260; }
 canvas.bosscv { max-width: 480px; aspect-ratio: 480 / 340; }
 
 @media (max-width: 640px) { .bb-txt b { font-size: 18px; } .bb-txt span { font-size: 12px; } .boss-bar img { width: 58px; height: 58px; } .bb-cta { padding: 8px 10px; font-size: 12px; } }
+
+.ccard .gem-tag { position: absolute; top: 10px; right: 44px; z-index: 2; display: inline-flex; align-items: center; gap: 3px; padding: 3px 7px; border-radius: 6px; font-size: 11px; font-weight: 900; color: #f5d0fe; background: rgba(88, 28, 135, .85); border: 1px solid rgba(216, 180, 254, .5); }
+
+.ccard .gem-tag .ic { width: 12px; height: 12px; }
+
+/* karta poziomu jak na obrazku: ścięty koniec paska, heksagon */
+.lvl-bar { height: 28px; border-radius: 6px; background: #151a26; border: 1px solid var(--line); }
+
+.lvl-bar > div { background: linear-gradient(90deg, #3f4760, #58627f); clip-path: polygon(0 0, 100% 0, calc(100% - 12px) 100%, 0 100%); }
+
+.lvl-labels b { font-size: 15px; }
