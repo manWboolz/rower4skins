@@ -105,59 +105,83 @@ const RAR = {
     gold: { n: '★ Rare Special', c: '#e4ae39', w: 1 },
 };
 
-const WTYPE = {
-    'Glock-18': 'pistol', 'USP-S': 'pistol', 'P250': 'pistol', 'CZ75': 'pistol', 'Desert Eagle': 'pistol', 'Five-SeveN': 'pistol',
-    'MP9': 'smg', 'MAC-10': 'smg', 'MP7': 'smg', 'P90': 'smg', 'UMP-45': 'smg',
-    'Galil AR': 'rifle', 'FAMAS': 'rifle', 'M4A4': 'rifle', 'M4A1-S': 'rifle', 'AK-47': 'rifle', 'AUG': 'rifle', 'SG 553': 'rifle',
-    'SSG 08': 'sniper', 'AWP': 'sniper',
+// Filtry kolorów nakładane na zdjęcie broni — z jednego modelu powstaje kilka skinów.
+const TINT = {
+    none: '',
+    h90: 'hue-rotate(90deg) saturate(1.6)',
+    h140: 'hue-rotate(140deg) saturate(3) brightness(1.1)',
+    h180: 'hue-rotate(180deg) saturate(1.8)',
+    h270: 'hue-rotate(270deg) saturate(2)',
+    gold: 'sepia(1) saturate(3) hue-rotate(-10deg) brightness(1.05)',
+    pink: 'sepia(1) saturate(4) hue-rotate(300deg)',
+    ice: 'sepia(1) saturate(4) hue-rotate(170deg) brightness(1.05)',
+    black: 'grayscale(1) contrast(1.3) brightness(.9)',
 };
 
-// [id, broń, nazwa, rzadkość, cena, kolor1, kolor2, wzór: g=gradient s=paski c=kamuflaż f=fade]
+const WIMG = {
+    'AK-47': 'img/w-ak47.png', 'AWP': 'img/w-awp.png', 'M4A1-S': 'img/w-m4a1s.png', 'M4A4': 'img/w-m4a4.png',
+    'Galil AR': 'img/w-galil.png', 'USP-S': 'img/w-usps.png', 'SSG 08': 'img/w-ssg08.png', 'Glock-18': 'img/w-glock.png',
+};
+
+// [id, broń, nazwa, rzadkość, cena, filtr]  — broń ze zdjęciem
+const GUNS = [
+    ['ak_0', 'AK-47', 'Buntownik Pustkowi', 'covert', 62, 'none'],
+    ['ak_2', 'AK-47', 'Złoty Spray', 'covert', 48, 'gold'],
+    ['ak_1', 'AK-47', 'Neonowe Graffiti', 'classified', 17, 'h180'],
+    ['ak_3', 'AK-47', 'Czerwony Alarm', 'restricted', 5.8, 'pink'],
+    ['ak_4', 'AK-47', 'Nocny Tag', 'milspec', 1.3, 'black'],
+    ['awp_0', 'AWP', 'Neonowy Sen', 'covert', 145, 'none'],
+    ['awp_2', 'AWP', 'Złoty Celownik', 'covert', 95, 'gold'],
+    ['awp_1', 'AWP', 'Toksyczna Fala', 'classified', 22, 'h90'],
+    ['awp_3', 'AWP', 'Różowy Horyzont', 'restricted', 7.5, 'pink'],
+    ['awp_4', 'AWP', 'Cień Snajpera', 'milspec', 1.6, 'black'],
+    ['m41_3', 'M4A1-S', 'Złota Cisza', 'covert', 54, 'gold'],
+    ['m41_0', 'M4A1-S', 'Cichy Protest', 'classified', 19, 'none'],
+    ['m41_2', 'M4A1-S', 'Lazurowy Szept', 'restricted', 5.1, 'h180'],
+    ['m41_1', 'M4A1-S', 'Leśne Szepty', 'restricted', 4.4, 'h90'],
+    ['m41_4', 'M4A1-S', 'Grafitowy Tłumik', 'industrial', 0.32, 'black'],
+    ['m4_1', 'M4A4', 'Złota Legenda', 'covert', 71, 'gold'],
+    ['m4_0', 'M4A4', 'Chromowy Duch', 'classified', 14, 'none'],
+    ['m4_2', 'M4A4', 'Krwawa Meta', 'restricted', 6.2, 'pink'],
+    ['m4_3', 'M4A4', 'Lodowa Stal', 'milspec', 1.1, 'ice'],
+    ['m4_4', 'M4A4', 'Czarna Owca', 'industrial', 0.4, 'black'],
+    ['gal_0', 'Galil AR', 'Tygrysi Pazur', 'classified', 8.9, 'none'],
+    ['gal_3', 'Galil AR', 'Różowa Pantera', 'restricted', 4.1, 'h270'],
+    ['gal_1', 'Galil AR', 'Kwasowy Tygrys', 'restricted', 3.4, 'h90'],
+    ['gal_2', 'Galil AR', 'Błękitny Łowca', 'milspec', 0.95, 'h180'],
+    ['gal_4', 'Galil AR', 'Szary Tygrys', 'consumer', 0.12, 'black'],
+    ['usp_4', 'USP-S', 'Ognisty Strzał', 'classified', 11, 'h140'],
+    ['usp_1', 'USP-S', 'Purpurowy Szept', 'restricted', 3.2, 'h90'],
+    ['usp_0', 'USP-S', 'Głębia Oceanu', 'milspec', 0.88, 'none'],
+    ['usp_3', 'USP-S', 'Szmaragd', 'industrial', 0.33, 'h270'],
+    ['usp_2', 'USP-S', 'Rdzawy Tłumik', 'consumer', 0.07, 'h180'],
+    ['ssg_4', 'SSG 08', 'Różowy Wystrzał', 'classified', 7.2, 'h270'],
+    ['ssg_0', 'SSG 08', 'Pomarańczowy Tygrys', 'restricted', 3.9, 'none'],
+    ['ssg_3', 'SSG 08', 'Błękitny Pazur', 'milspec', 1.05, 'h180'],
+    ['ssg_1', 'SSG 08', 'Jadowity', 'industrial', 0.29, 'h90'],
+    ['ssg_2', 'SSG 08', 'Nocny Łowca', 'consumer', 0.06, 'black'],
+    ['glk_0', 'Glock-18', 'Neonowe Miasto', 'classified', 9.6, 'none'],
+    ['glk_1', 'Glock-18', 'Zachód Słońca', 'restricted', 3.0, 'h90'],
+    ['glk_2', 'Glock-18', 'Kwaśne Miasto', 'milspec', 0.8, 'h180'],
+    ['glk_3', 'Glock-18', 'Błękitna Noc', 'industrial', 0.26, 'h270'],
+    ['glk_4', 'Glock-18', 'Miejski Duch', 'consumer', 0.05, 'black'],
+];
+
+// [id, broń, nazwa, cena, kształt, kolor1, kolor2, wzór]  — noże i rękawice (rysowane)
+const SPECIALS = [
+    ['kn1', '★ Bagnet', 'Stalowa Szprycha', 180, 'bayonet', '#9ca3af', '#f3f4f6', 'f'],
+    ['gl2', '★ Rękawice Kierowcy', 'Kamuflaż MTB', 190, 'gloves', '#3f6212', '#d9f99d', 'c'],
+    ['gl1', '★ Rękawice Sportowe', 'Żółta Koszulka', 260, 'gloves', '#ca8a04', '#fef08a', 's'],
+    ['kn2', '★ Nóż Motylkowy', 'Zanikanie', 320, 'butterfly', '#f472b6', '#fde047', 'f'],
+    ['kn4', '★ Bagnet M9', 'Nocna Jazda', 410, 'm9', '#1e1b4b', '#818cf8', 'f'],
+    ['kn3', '★ Karambit', 'Tęczowa Szprycha', 540, 'karambit', '#22d3ee', '#e879f9', 'f'],
+    ['kn5', '★ Talon', 'Złoty Pazur', 760, 'talon', '#a16207', '#fde047', 's'],
+];
+
 const SKINS = [
-    ['glk1', 'Glock-18', 'Dętka', 'consumer', 0.06, '#5b6474', '#9aa3b2', 'g'],
-    ['p250', 'P250', 'Asfalt', 'consumer', 0.05, '#3f4654', '#6b7280', 'c'],
-    ['mp9a', 'MP9', 'Błotnik', 'consumer', 0.08, '#6b5b3e', '#a18a5f', 'c'],
-    ['gal1', 'Galil AR', 'Rdza', 'consumer', 0.10, '#7c3f1d', '#b7793f', 'c'],
-    ['usp1', 'USP-S', 'Szprycha', 'industrial', 0.30, '#475569', '#94a3b8', 's'],
-    ['ump1', 'UMP-45', 'Rdzawy Łańcuch', 'industrial', 0.25, '#78350f', '#d97706', 's'],
-    ['fam1', 'FAMAS', 'Kask', 'industrial', 0.35, '#1e3a8a', '#93c5fd', 'g'],
-    ['sg1', 'SG 553', 'Trasa', 'industrial', 0.28, '#365314', '#a3a3a3', 'c'],
-    ['ssg1', 'SSG 08', 'Pedał', 'industrial', 0.30, '#334155', '#e2e8f0', 's'],
-    ['glk2', 'Glock-18', 'Neonowa Lampka', 'milspec', 0.85, '#22d3ee', '#6366f1', 's'],
-    ['fs1', 'Five-SeveN', 'Odblask', 'milspec', 0.70, '#facc15', '#f97316', 's'],
-    ['mac1', 'MAC-10', 'Dzwonek', 'milspec', 0.90, '#0ea5e9', '#f0abfc', 'g'],
-    ['m4a4a', 'M4A4', 'Asfalt Nocą', 'milspec', 1.20, '#1e293b', '#3b82f6', 'c'],
-    ['aug1', 'AUG', 'Kolarski Błękit', 'milspec', 0.95, '#0284c7', '#bae6fd', 'f'],
-    ['usp2', 'USP-S', 'Dżungla', 'restricted', 3.10, '#15803d', '#a3e635', 'c'],
-    ['de1', 'Desert Eagle', 'Kaseta', 'restricted', 4.20, '#6d28d9', '#c4b5fd', 's'],
-    ['mp7a', 'MP7', 'Graffiti BMX', 'restricted', 2.60, '#06b6d4', '#facc15', 'c'],
-    ['fam2', 'FAMAS', 'Czerwona Lampka', 'restricted', 3.80, '#991b1b', '#f87171', 'f'],
-    ['ak1', 'AK-47', 'Łańcuch', 'restricted', 6.50, '#374151', '#a78bfa', 's'],
-    ['awp1', 'AWP', 'Szosa', 'restricted', 7.80, '#1f2937', '#60a5fa', 'g'],
-    ['cz1', 'CZ75', 'Zielony Wentyl', 'classified', 7.90, '#16a34a', '#bbf7d0', 'f'],
-    ['gal2', 'Galil AR', 'Krokodyl', 'classified', 6.80, '#65a30d', '#facc15', 'c'],
-    ['p90a', 'P90', 'Tour de Pologne', 'classified', 9.50, '#be123c', '#111827', 's'],
-    ['ak2', 'AK-47', 'Pustynny Rajd', 'classified', 14.00, '#a16207', '#fde68a', 'c'],
-    ['m41a', 'M4A1-S', 'Peleton', 'classified', 18.00, '#7e22ce', '#f472b6', 'f'],
-    ['awp2', 'AWP', 'Różowa Szprycha', 'classified', 21.00, '#db2777', '#f9a8d4', 's'],
-    ['glk3', 'Glock-18', 'Rowerowy Smok', 'covert', 24.00, '#ef4444', '#f59e0b', 'f'],
-    ['usp3', 'USP-S', 'Meta Etapu', 'covert', 32.00, '#0f172a', '#f43f5e', 's'],
-    ['de2', 'Desert Eagle', 'Złota Przerzutka', 'covert', 38.00, '#b45309', '#fde047', 'f'],
-    ['m4a4b', 'M4A4', 'Kosmiczny Peleton', 'covert', 45.00, '#4c1d95', '#60a5fa', 'f'],
-    ['m41b', 'M4A1-S', 'Wąż Górski', 'covert', 52.00, '#c2410c', '#fbbf24', 'c'],
-    ['ak3', 'AK-47', 'Ognista Opona', 'covert', 65.00, '#dc2626', '#fb923c', 'f'],
-    ['awp3', 'AWP', 'Smok z Karbonu', 'covert', 140.00, '#166534', '#fbbf24', 'c'],
-    ['kn1', '★ Bagnet', 'Stal Rowerowa', 'gold', 180.00, '#9ca3af', '#f3f4f6', 'f'],
-    ['gl2', '★ Rękawice Kierowcy', 'Kamuflaż MTB', 'gold', 190.00, '#3f6212', '#d9f99d', 'c'],
-    ['gl1', '★ Rękawice Sportowe', 'Żółta Koszulka', 'gold', 260.00, '#ca8a04', '#fef08a', 's'],
-    ['kn2', '★ Nóż Motylkowy', 'Fade', 'gold', 320.00, '#f472b6', '#fde047', 'f'],
-    ['kn4', '★ Bagnet M9', 'Nocna Jazda', 'gold', 410.00, '#1e1b4b', '#818cf8', 'f'],
-    ['kn3', '★ Karambit', 'Tęcza Szprych', 'gold', 540.00, '#22d3ee', '#e879f9', 'f'],
-    ['kn5', '★ Talon', 'Złota Szprycha', 'gold', 760.00, '#a16207', '#fde047', 's'],
-].map(([id, weapon, name, rarity, price, c1, c2, pat]) => ({
-    id, weapon, name, rarity, price, c1, c2, pat,
-    type: weapon.includes('Rękawice') ? 'gloves' : weapon.startsWith('★') ? 'knife' : WTYPE[weapon],
-}));
+    ...GUNS.map(([id, weapon, name, rarity, price, tint]) => ({ id, weapon, name, rarity, price, img: WIMG[weapon], f: TINT[tint], type: 'gun' })),
+    ...SPECIALS.map(([id, weapon, name, price, type, c1, c2, pat]) => ({ id, weapon, name, rarity: 'gold', price, type, c1, c2, pat })),
+];
 
 const SKIN = Object.fromEntries(SKINS.map(s => [s.id, s]));
 
@@ -174,6 +198,7 @@ function pool(spec) {
     return [...m];
 }
 const R = (...r) => s => r.includes(s.rarity);
+const KNIFE = s => s.rarity === 'gold' && s.type !== 'gloves';
 const RW = (mult = 1) => s => RAR[s.rarity].w * mult;
 
 const CASES = [
@@ -185,13 +210,13 @@ const CASES = [
 
     // Skrzynki memów
     { id: 'm-zlodziej', name: 'Złodziej Rowerów', color: '#65a30d', sec: 'meme', badge: 'MEME', deco: 'photo', img: 'img/meme-zlodziej.webp',
-        items: pool([[s => ['pistol', 'smg'].includes(s.type), RW()], [R('covert'), 2], [s => s.id === 'kn1', 0.4]]) },
+        items: pool([[s => ['USP-S', 'Glock-18'].includes(s.weapon), RW()], [R('covert'), 2], [s => s.id === 'kn1', 0.4]]) },
     { id: 'm-golab', name: 'Gołąb z KFC', color: '#f59e0b', sec: 'meme', badge: 'MEME', deco: 'photo', img: 'img/meme-golab.webp',
         items: pool([[R('consumer', 'industrial'), RW()], [R('milspec'), RW(0.5)], [R('restricted'), RW(0.3)], [s => s.id === 'kn2', 0.08]]) },
     { id: 'm-pies', name: 'Pies Sąsiada', color: '#d4a373', sec: 'meme', badge: 'MEME', deco: 'photo', img: 'img/meme-pies.webp',
         items: pool([[R('industrial', 'milspec', 'restricted'), RW()], [R('classified'), RW()], [R('covert'), RW(0.6)]]) },
     { id: 'm-mis', name: 'Miś Miodek', color: '#facc15', sec: 'meme', badge: 'MEME', deco: 'photo', img: 'img/meme-mis.webp',
-        items: pool([[R('milspec', 'restricted'), RW()], [s => ['de2', 'glk3', 'gl1'].includes(s.id), 3], [R('classified'), RW()]]) },
+        items: pool([[R('milspec', 'restricted'), RW()], [s => ['ak_2', 'm4_1', 'gl1'].includes(s.id), 3], [R('classified'), RW()]]) },
     { id: 'm-cyborg', name: 'Mięsny Cyborg', color: '#ef4444', sec: 'meme', badge: 'MEME', deco: 'photo', img: 'img/meme-cyborg.webp',
         items: pool([[R('restricted'), 40], [R('classified'), 40], [R('covert'), 16], [R('gold'), 2]]) },
 
@@ -202,28 +227,28 @@ const CASES = [
         items: pool([[R('consumer', 'industrial'), RW()], [R('milspec'), RW(0.6)], [R('restricted'), RW(0.3)], [s => s.id === 'kn1', 0.25]]) },
     { id: 'swieczka', name: 'Świeczka', color: '#f59e0b', sec: 'bday', badge: 'NEW', feature: 'kn2',
         items: pool([[R('industrial'), 80], [R('classified'), 10], [R('covert'), 3], [s => s.id === 'kn2', 0.4]]) },
-    { id: 'konfetti', name: 'Konfetti', color: '#8b5cf6', sec: 'bday', badge: 'NEW', feature: 'm41a',
+    { id: 'konfetti', name: 'Konfetti', color: '#8b5cf6', sec: 'bday', badge: 'NEW', feature: 'm41_0',
         items: pool([[R('milspec', 'restricted', 'classified', 'covert'), RW()], [R('gold'), 0.5]]) },
     { id: 'prezent', name: 'Wielki Prezent', color: '#ef4444', sec: 'bday', badge: 'NEW', feature: 'kn3',
         items: pool([[R('classified'), 60], [R('covert'), 20], [R('gold'), 3]]) },
 
     // Rzadkości
-    { id: 'r-mil', name: 'Mil-Spec', color: '#4b69ff', sec: 'rar', tag: 'Mil-Spec', feature: 'm4a4a',
+    { id: 'r-mil', name: 'Mil-Spec', color: '#4b69ff', sec: 'rar', tag: 'Mil-Spec', feature: 'm4_3',
         items: pool([[R('consumer', 'industrial'), 40], [R('milspec'), 60], [R('restricted'), 6], [R('classified'), 1]]) },
-    { id: 'r-res', name: 'Restricted', color: '#8847ff', sec: 'rar', tag: 'Restricted', feature: 'ak1',
+    { id: 'r-res', name: 'Restricted', color: '#8847ff', sec: 'rar', tag: 'Restricted', feature: 'ak_3',
         items: pool([[R('industrial'), 30], [R('milspec'), 40], [R('restricted'), 60], [R('classified'), 5], [R('covert'), 1]]) },
-    { id: 'r-cla', name: 'Classified', color: '#d32ce6', sec: 'rar', tag: 'Classified', feature: 'awp2',
+    { id: 'r-cla', name: 'Classified', color: '#d32ce6', sec: 'rar', tag: 'Classified', feature: 'awp_1',
         items: pool([[R('milspec'), 30], [R('restricted'), 50], [R('classified'), 60], [R('covert'), 5], [R('gold'), 0.4]]) },
-    { id: 'r-cov', name: 'Covert', color: '#eb4b4b', sec: 'rar', tag: 'Covert', feature: 'ak3',
+    { id: 'r-cov', name: 'Covert', color: '#eb4b4b', sec: 'rar', tag: 'Covert', feature: 'ak_0',
         items: pool([[R('restricted'), 40], [R('classified'), 60], [R('covert'), 50], [R('gold'), 2]]) },
     { id: 'r-kni', name: 'Noże', color: '#e4ae39', sec: 'rar', tag: 'Noże', feature: 'kn2',
-        items: pool([[R('covert'), 60], [s => s.type === 'knife', 12]]) },
+        items: pool([[R('covert'), 60], [KNIFE, 12]]) },
     { id: 'r-glk', name: 'GLOCK-18', color: '#f59e0b', sec: 'rar', tag: 'Glock-18',
         items: pool([[s => s.weapon === 'Glock-18', RW(2)], [R('consumer', 'industrial'), RW(0.5)]]) },
 
     // Bronie
-    ...[['M4A4', '#6366f1'], ['USP-S', '#65a30d'], ['M4A1-S', '#ea580c'], ['AK-47', '#a16207'], ['AWP', '#db2777'],
-        ['FAMAS', '#dc2626'], ['MP7', '#06b6d4'], ['P90', '#9f1239'], ['Galil AR', '#84cc16'], ['CZ75', '#22c55e']]
+    ...[['AK-47', '#a16207'], ['AWP', '#db2777'], ['M4A1-S', '#65a30d'], ['M4A4', '#64748b'],
+        ['Galil AR', '#eab308'], ['USP-S', '#2563eb'], ['SSG 08', '#ea580c']]
         .map(([w, color]) => ({
             id: 'w-' + w.toLowerCase().replace(/[^a-z0-9]/g, ''), name: w, color, sec: 'wpn', tag: w,
             feature: SKINS.filter(s => s.weapon === w).sort((a, b) => b.price - a.price)[0].id,
@@ -232,10 +257,16 @@ const CASES = [
     { id: 'w-glv', name: 'Rękawice', color: '#d97706', sec: 'wpn', tag: 'Rękawice', feature: 'gl1',
         items: pool([[s => s.type === 'gloves', 10], [R('covert'), 20], [R('classified'), 60], [R('restricted'), 100]]) },
     { id: 'w-lux', name: 'Luksusowy Nóż', color: '#eab308', sec: 'wpn', tag: 'Luksus', feature: 'kn5',
-        items: pool([[s => s.type === 'knife', 10], [R('covert'), 30], [R('classified'), 60]]) },
+        items: pool([[KNIFE, 10], [R('covert'), 30], [R('classified'), 60]]) },
 
     // Specjalne
-    { id: 'gems', name: 'Skrzynka Gemów', color: '#a855f7', currency: 'gems', gems: 250, deco: 'gems',
+    { id: 'g-garsc', name: 'Garść Gemów', color: '#c084fc', sec: 'gems', currency: 'gems', gems: 100, deco: 'gems',
+        items: pool([[R('consumer', 'industrial', 'milspec'), RW()], [R('restricted'), RW(0.6)], [R('classified'), RW(0.3)]]) },
+    { id: 'g-krysztal', name: 'Kryształowa', color: '#8b5cf6', sec: 'gems', currency: 'gems', gems: 600, feature: 'awp_1', tag: 'Gemy',
+        items: pool([[R('restricted', 'classified'), RW()], [R('covert'), RW()], [R('gold'), 0.4]]) },
+    { id: 'g-legenda', name: 'Legenda Gemów', color: '#e879f9', sec: 'gems', currency: 'gems', gems: 1500, feature: 'kn3', tag: 'Legenda',
+        items: pool([[R('classified'), 40], [R('covert'), 25], [R('gold'), 4]]) },
+    { id: 'gems', name: 'Skrzynka Gemów', color: '#a855f7', sec: 'gems', currency: 'gems', gems: 250, deco: 'gems',
         items: pool([[R('consumer', 'industrial', 'milspec', 'restricted', 'classified'), RW()], [R('covert'), RW(0.5)]]) },
     { id: 'daily', name: 'Codzienna Skrzynka', color: '#22c55e', currency: 'free', kind: 'daily', deco: 'gift',
         items: pool([[R('consumer', 'industrial'), RW()], [R('milspec'), RW(0.5)], [R('restricted'), RW(0.2)], [R('covert'), 0.3]]) },
@@ -266,6 +297,7 @@ const USD_CASES = CASES.filter(c => c.currency === 'usd');
 const SECTIONS = [
     { id: 'creator', title: 'Skrzynki twórców', icon: 'user' },
     { id: 'meme', title: 'Skrzynki memów', icon: 'bolt' },
+    { id: 'gems', title: 'Skrzynki za gemy', icon: 'gem' },
     { id: 'bday', title: 'Rowerowe Urodziny', icon: 'cake' },
     { id: 'rar', title: 'Rzadkości', icon: 'star' },
     { id: 'wpn', title: 'Bronie', icon: 'target' },
@@ -336,7 +368,15 @@ function load() {
         const raw = localStorage.getItem(KEY);
         if (raw) {
             const s = JSON.parse(raw);
-            return { ...base, ...s, stats: { ...base.stats, ...s.stats }, settings: { ...base.settings, ...s.settings } };
+            const out = { ...base, ...s, stats: { ...base.stats, ...s.stats }, settings: { ...base.settings, ...s.settings } };
+            // Katalog skinów się zmienił — stare skiny zamieniamy na $ po ostatniej cenie, żeby nic nie przepadło.
+            const lost = out.inv.filter(i => !SKIN[i.id]);
+            if (lost.length) {
+                out.balance = round2(out.balance + lost.length * 0.5);
+                out.inv = out.inv.filter(i => SKIN[i.id]);
+            }
+            out.itemLog = out.itemLog.filter(r => SKIN[r.id]);
+            return out;
         }
     } catch (e) { /* brak localStorage */ }
     return base;
@@ -374,6 +414,11 @@ function spend(dollars) {
     const before = level();
     state.stats.wagered = round2(state.stats.wagered + dollars);
     state.exp += Math.round(dollars * 100);
+    // 1 gem za każdy wydany $1
+    state.gemAcc = (state.gemAcc || 0) + dollars;
+    const g = Math.floor(state.gemAcc);
+    state.gemAcc -= g;
+    state.gems += g;
     const after = level();
     for (let L = before + 1; L <= after; L++) {
         state.gems += 10 * L;
@@ -383,12 +428,22 @@ function spend(dollars) {
     save();
 }
 
-function giveItems(ids, source) {
+// Stan zużycia — tylko wygląd, nie zmienia ceny.
+const WEARS = [['FN', 12], ['MW', 25], ['FT', 38], ['WW', 13], ['BS', 12]];
+const WEAR_NAME = { FN: 'Factory New', MW: 'Minimal Wear', FT: 'Field-Tested', WW: 'Well-Worn', BS: 'Battle-Scarred' };
+
+function rollWear() {
+    let r = Math.random() * 100;
+    for (const [w, p] of WEARS) { r -= p; if (r < 0) return w; }
+    return 'FT';
+}
+
+function giveItems(ids, source, wears = []) {
     const uids = [];
-    for (const id of ids) {
+    for (const [k, id] of ids.entries()) {
         const uid = newUid();
         uids.push(uid);
-        state.inv.unshift({ uid, id, t: Date.now() });
+        state.inv.unshift({ uid, id, t: Date.now(), w: wears[k] || rollWear() });
         state.itemLog.unshift({ t: Date.now(), id, a: source });
         state.stats.best = Math.max(state.stats.best, SKIN[id].price);
     }
@@ -476,15 +531,17 @@ function winSound(big) {
 let SID = 0;
 
 const SHAPES = {
-    rifle: '<path d="M2 16 L12 14 H24 L26 12 H62 L63 10 H70 V12 H97 V15.5 H72 L70 18 H58 L55 31 H47 L50 18 H40 L36 27 H29 L31 18 H25 L12 23 H2 Z"/>',
-    sniper: '<path d="M1 18 L13 16 H27 L29 14.5 H68 V16.5 H99 V18.5 H68 L64 21 H44 L40 30 H33 L35.5 21 H27 L13 25 H1 Z"/><path d="M33 8 H62 V13 H33 Z"/><path d="M40 13 H44 V14.5 H40 Z M52 13 H56 V14.5 H52 Z"/>',
-    smg: '<path d="M8 13 H72 V18.5 H63 L61 21 H51 L49 33 H42 L44 21 H36 L33 29 H26 L28.5 21 H20 L14 25 H8 Z"/><path d="M72 14.5 H86 V17 H72 Z"/>',
-    pistol: '<path d="M18 9 H80 V18 H57 L55 21.5 H47 L43 36 H30 L34.5 18 H18 Z"/>',
-    knife: '<path d="M40 16 L88 7 Q97 6 94 12 Q82 25 48 25 H40 Z"/><path d="M38 12 H43 V29 H38 Z"/><path d="M38 17 H14 Q7 17 7 21 Q7 25 14 25 H38 Z"/>',
+    bayonet: '<path d="M34 16.5 L90 15 Q98 16.5 91 19.5 L62 24.5 L34 24.5 Z"/><path d="M29 11 H35 V30 H29 Z"/><path d="M29 16 H9 Q4 16 4 20.5 Q4 25 9 25 H29 Z"/>',
+    m9: '<path d="M34 15 L58 15 L61 13 L64 15 L67 13 L70 15 L73 13 L76 15 L90 16 Q98 18 90 21.5 L34 25 Z"/><path d="M29 11 H35 V30 H29 Z"/><path d="M29 16 H9 Q4 16 4 20.5 Q4 25 9 25 H29 Z"/>',
+    karambit: '<path d="M44 19 Q64 9 90 3 Q84 16 62 24 Q52 27 44 26 Z"/><path d="M45 17 L18 25 Q12 27 13 31 L16 33 L46 26 Z"/><path d="M13 30 a5 5 0 1 0 0.1 0 Z M13 33 a2 2 0 1 1 -0.1 0 Z" fill-rule="evenodd"/>',
+    butterfly: '<path d="M44 17.5 L90 17 Q98 19.5 90 22.5 L44 22.5 Z"/><path d="M44 13 H9 Q4 13 4 16 L4 17 H44 Z"/><path d="M44 23 H9 Q4 23 4 26 L4 27 H44 Z"/>',
+    talon: '<path d="M40 21 Q62 21 80 11 Q92 4 96 6 Q90 22 60 27.5 L40 27.5 Z"/><path d="M35 15 H41 V32 H35 Z"/><path d="M35 20 H12 Q6 20 6 24 Q6 28 12 28 H35 Z"/>',
     gloves: '<path d="M22 37 L20 21 Q20 18 23 18 L24 9 Q25 6 27 9 L28 17 L29 6 Q30 3 32 6 L33 17 L34.5 7 Q36 4 37.5 7 L37.5 18 L40 13 Q42 11 43 14 L40 28 L38 37 Z"/><path d="M56 37 L54 21 Q54 18 57 18 L58 9 Q59 6 61 9 L62 17 L63 6 Q64 3 66 6 L67 17 L68.5 7 Q70 4 71.5 7 L71.5 18 L74 13 Q76 11 77 14 L74 28 L72 37 Z"/>',
 };
 
+// Obrazek skina: zdjęcie broni z filtrem koloru albo rysowany nóż/rękawice.
 function art(s, size = '') {
+    if (s.img) return `<img class="wart wimg" src="${s.img}" alt="" draggable="false" ${s.f ? `style="filter:${s.f}"` : ''}>`;
     const id = 'w' + (++SID);
     const sh = SHAPES[s.type];
     let defs = `<linearGradient id="${id}g" x1="0" y1="0" x2="1" y2="${s.pat === 'f' ? 0 : 1}"><stop offset="0" stop-color="${s.c1}"/><stop offset="1" stop-color="${s.c2}"/></linearGradient><clipPath id="${id}c">${sh}</clipPath>`;
@@ -497,10 +554,18 @@ function art(s, size = '') {
         over = Array.from({ length: 14 }, () =>
             `<ellipse cx="${(r() * 100).toFixed(1)}" cy="${(r() * 40).toFixed(1)}" rx="${(3 + r() * 7).toFixed(1)}" ry="${(2 + r() * 4).toFixed(1)}" fill="${r() < 0.5 ? s.c2 : '#111'}" opacity="${(0.35 + r() * 0.4).toFixed(2)}"/>`).join('');
     } else if (s.pat === 'f') {
-        defs += `<linearGradient id="${id}h" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".3"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".35"/></linearGradient>`;
+        defs += `<linearGradient id="${id}h" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".45"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".4"/></linearGradient>`;
         over = `<rect width="100" height="40" fill="url(#${id}h)"/>`;
     }
-    return `<svg class="wart" viewBox="0 0 100 40" ${size}><defs>${defs}</defs><g clip-path="url(#${id}c)"><rect width="100" height="40" fill="url(#${id}g)"/>${over}<rect width="100" height="14" fill="#fff" opacity=".13"/></g><g fill="none" stroke="rgba(0,0,0,.6)" stroke-width=".7" stroke-linejoin="round">${sh}</g></svg>`;
+    // metalowe ostrze: jasny grzbiet
+    const edge = s.type === 'gloves' ? '' : `<rect width="100" height="18" fill="#fff" opacity=".16"/>`;
+    return `<svg class="wart" viewBox="0 0 100 40" ${size}><defs>${defs}</defs><g clip-path="url(#${id}c)"><rect width="100" height="40" fill="url(#${id}g)"/>${over}${edge}</g><g fill="none" stroke="rgba(0,0,0,.65)" stroke-width=".7" stroke-linejoin="round">${sh}</g></svg>`;
+}
+
+// Ta sama grafika, ale jako element wewnątrz większego SVG (np. na skrzyni).
+function artInSvg(s, w, h) {
+    if (s.img) return `<image href="${s.img}" width="${w}" height="${h}" preserveAspectRatio="xMidYMid meet" ${s.f ? `style="filter:${s.f}"` : ''}/>`;
+    return art(s, `width="${w}" height="${h}"`);
 }
 
 function sparkles(seed, n, x0, x1, y0, y1) {
@@ -517,8 +582,8 @@ function caseArt(c) {
 
     if (c.feature) {
         const f = SKIN[c.feature];
-        const rot = f.type === 'gloves' ? -8 : f.type === 'knife' ? -34 : -26;
-        behind = `<g transform="translate(120 66) rotate(${rot}) translate(-88 -35)">${art(f, 'width="176" height="70"')}</g>`;
+        const rot = f.type === 'gloves' ? -8 : f.type === 'gun' ? -24 : -34;
+        behind = `<g transform="translate(120 66) rotate(${rot}) translate(-92 -36)">${artInSvg(f, 184, 72)}</g>`;
     }
     if (c.deco === 'gems') {
         const r = srand(hash(c.id));
@@ -597,9 +662,9 @@ const me = () => ({ you: true });
 // Karty
 // ============================================================
 
-function itemCard(s, { cls = '', attrs = '', top = '', bottom = '' } = {}) {
+function itemCard(s, { cls = '', attrs = '', top = '', bottom = '', wear = '' } = {}) {
     return `<div class="icard ${cls}" style="--rc:${RAR[s.rarity].c}" ${attrs}>
-        ${top}
+        ${top}${wear ? `<span class="wear" title="${WEAR_NAME[wear]}">${wear}</span>` : ''}
         <div class="iart">${art(s)}</div>
         <div class="iw">${esc(s.weapon)}</div>
         <div class="in">${esc(s.name)}</div>
@@ -638,15 +703,19 @@ function toast(msg, kind = '') {
 }
 
 function modal(html, cls = '') {
+    stopGame();
     $('#modalBox').className = 'modal ' + cls;
     $('#modalBox').innerHTML = `<button class="mclose" data-act="modalclose" aria-label="Zamknij">${ic('x')}</button>` + html;
     $('#modal').hidden = false;
 }
 
-function closeModal() { $('#modal').hidden = true; }
+function closeModal() { stopGame(); $('#modal').hidden = true; }
 
 $('#modal').addEventListener('click', e => { if (e.target.id === 'modal') closeModal(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); $('#drawer').hidden = true; } });
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { closeModal(); $('#drawer').hidden = true; return; }
+    if (MG?.key && !$('#modal').hidden) MG.key(e);
+});
 
 let winUids = [];
 
@@ -944,11 +1013,16 @@ function renderHome() {
 function sectionsHtml() {
     const min = parseFloat(filt.min.replace(',', '.')), max = parseFloat(filt.max.replace(',', '.'));
     const q = filt.q.trim().toLowerCase();
-    const ok = c => (!filt.fav || state.favs.includes(c.id)) && (isNaN(min) || c.price >= min) && (isNaN(max) || c.price <= max)
-        && (!q || c.name.toLowerCase().includes(q)) && (!filt.afford || c.price <= state.balance);
-    const sorters = { pa: (a, b) => a.price - b.price, pd: (a, b) => b.price - a.price, az: (a, b) => a.name.localeCompare(b.name, 'pl') };
+    const gem = c => c.currency === 'gems';
+    // Skrzynki za gemy nie mają ceny w $, więc filtry kwot ich nie dotyczą.
+    const ok = c => (!filt.fav || state.favs.includes(c.id)) && (!q || c.name.toLowerCase().includes(q))
+        && (gem(c) || ((isNaN(min) || c.price >= min) && (isNaN(max) || c.price <= max)))
+        && (!filt.afford || (gem(c) ? c.gems <= state.gems : c.price <= state.balance));
+    const cost = c => (gem(c) ? c.gems / 100 : c.price);
+    const sorters = { pa: (a, b) => cost(a) - cost(b), pd: (a, b) => cost(b) - cost(a), az: (a, b) => a.name.localeCompare(b.name, 'pl') };
     const html = SECTIONS.map(sec => {
-        let list = USD_CASES.filter(c => c.sec === sec.id && ok(c));
+        let list = CASES.filter(c => c.sec === sec.id && ok(c));
+        if (sec.id === 'gems') list.sort((a, b) => a.gems - b.gems);
         if (sorters[filt.sort]) list = [...list].sort(sorters[filt.sort]);
         if (!list.length) return '';
         return `<div class="sec-title">${ic(sec.icon)}<span>${sec.title}</span></div><div class="cgrid">${list.map(c => caseCard(c)).join('')}</div>`;
@@ -1093,7 +1167,15 @@ function newBotBattle() {
 }
 
 function battleTick() {
-    const idle = BATTLES.filter(b => b.status === 'waiting' && !b.running && !b.watched);
+    // Do bitew, w których czekasz, czasem dosiada się ktoś sam z siebie.
+    for (const b of BATTLES.filter(x => x.status === 'waiting' && !x.running && isIn(x) && x.slots.includes(null))) {
+        if (Math.random() < 0.22) {
+            b.slots[b.slots.indexOf(null)] = { name: pick(BOT_NAMES) };
+            if (bvOpen(b)) renderPage();
+            startIfFull(b);
+        }
+    }
+    const idle = BATTLES.filter(b => b.status === 'waiting' && !b.running && !b.watched && !isIn(b));
     if (idle.length < 6 || Math.random() < 0.3) BATTLES.unshift(newBotBattle());
     else {
         const b = pick(idle);
@@ -1257,50 +1339,113 @@ function startBattle(b) {
     if (state.balance < cost) { toast('Za mało środków na tę bitwę.', 'err'); return; }
     wallet(-cost, `Bitwa #${b.id}`);
     spend(cost);
+    b.phase = 'wait';
     BATTLES.unshift(b);
     go('#/battle/' + b.id);
-    runBattle(b);
+}
+
+// Bitwa rusza sama, gdy wszystkie miejsca są zajęte.
+function startIfFull(b) {
+    if (!b.slots.includes(null) && !b.running && b.status === 'waiting') runBattle(b);
 }
 
 // ----- widok bitwy -----
 
-const dropChips = ids => ids.map(id => `<span class="mini" style="--rc:${RAR[SKIN[id].rarity].c}">${esc(SKIN[id].name)} · ${money(SKIN[id].price)}</span>`).join('');
+const TAUNTS = ['Haha, Ezz!', 'GG, za łatwo!', 'Kto następny?', 'Skrzynki mnie lubią!'];
+const isIn = b => b.slots.some(s => s?.you);
+const playerName = s => (s ? (s.you ? state.name : s.name) : 'Wolne miejsce');
+const playerSub = s => (!s ? 'CZEKA NA GRACZA' : s.you ? 'TWÓJ PROFIL' : s.bot ? 'BOT' : 'PROFIL ROWER4SKINS');
 
-function bvPlayer(b, s, i) {
-    const r = b.res?.[i];
-    const cls = b.status === 'done' ? (i === b.winner ? 'win' : 'lose') : '';
-    const canTake = !s && b.status === 'waiting' && !b.running;
-    return `<div class="bv-p ${cls}">
-        <div class="bv-ph">${avatar(s, 'sm')}<span class="bv-name">${s ? esc(s.you ? state.name : s.name) : 'Wolne miejsce'}${s?.you ? ' <em>(Ty)</em>' : ''}</span><b class="bv-total money">${money(r ? r.total : 0)}</b></div>
-        ${canTake ? `<div class="bv-free"><button class="btn btn-blue" data-act="join" data-arg="${b.id}">DOŁĄCZ ZA ${money(bValue(b))}</button></div>` : reelHtml(true, 'bv-reel')}
-        <div class="bv-drops">${r ? dropChips(r.drops) : ''}</div>
-    </div>`;
+function bvLeader(b) {
+    if (!b.res || !b.res.some(r => r.drops.length)) return -1;
+    const sc = b.res.map(r => (b.mode === 'terminal' ? (r.drops.length ? SKIN[r.drops[r.drops.length - 1]].price : 0) : r.total));
+    const best = b.mode === 'underdog' ? Math.min(...sc) : Math.max(...sc);
+    return sc.indexOf(best);
 }
 
-function bvResult(b) {
+function bvStage(b, i) {
+    const s = b.slots[i], r = b.res?.[i];
+    if (!s) {
+        const act = isIn(b)
+            ? `<button class="btn btn-purple" data-act="summon" data-arg="${b.id}:${i}">${ic('bolt')}Przywołaj bota</button>`
+            : `<button class="btn btn-blue" data-act="join" data-arg="${b.id}">${ic('plus')}Dołącz za ${money(bValue(b))}</button>`;
+        return `<div class="st-wait"><span class="st-ring">${ic('user')}</span><b>Czekamy na gracza…</b>${b.status === 'waiting' && !b.running ? act : ''}</div>`;
+    }
+    if (b.phase === 'count') return `<div class="st-count">${b.count}</div>`;
+    if (b.phase === 'spin') return reelHtml(true, 'bv-reel');
+    if (b.phase === 'show' && r?.drops.length) {
+        const k = r.drops.length - 1, sk = SKIN[r.drops[k]];
+        return `<div class="st-drop" style="--rc:${RAR[sk.rarity].c}"><div class="st-art">${art(sk)}</div><div class="st-txt"><b>${esc(sk.weapon)}</b><span>${esc(sk.name)}</span><small>${WEAR_NAME[r.wears[k]]}</small></div><em class="money">${money(sk.price)}</em></div>`;
+    }
+    if (b.phase === 'done' && r) {
+        if (i === b.winner) return `<div class="st-win">${ic('trophy', 'big')}<small>wartość skinów ${money(b.pot)}</small><b>${b.slots[i].you ? 'Wygrałeś!' : pick(TAUNTS)}</b></div>`;
+        const k = r.drops.length - 1, sk = SKIN[r.drops[k]];
+        return `<div class="st-drop lose" style="--rc:${RAR[sk.rarity].c}"><div class="st-art">${art(sk)}</div><div class="st-txt"><b>${esc(sk.weapon)}</b><span>${esc(sk.name)}</span><small>${WEAR_NAME[r.wears[k]]}</small></div><em class="neg">${money(r.total)}</em></div>`;
+    }
+    return `<div class="st-ready">${avatar(s, 'xl')}<b>${esc(playerName(s))}</b><span class="pos">${ic('check')}Gotowy</span></div>`;
+}
+
+function bvGrid(b, i) {
+    const r = b.res?.[i];
+    return b.cases.map((cid, k) => {
+        const id = r?.drops[k];
+        if (!id) return `<div class="bv-cell ghost">${ic('box')}</div>`;
+        const sk = SKIN[id];
+        return itemCard(sk, { cls: 'bv-cell', wear: r.wears[k] });
+    }).join('');
+}
+
+function bvSum(b, i) {
+    const r = b.res?.[i];
+    const lead = bvLeader(b);
+    const up = lead === i;
+    return `<span class="bv-sum ${lead < 0 ? '' : up ? 'up' : 'down'}">${lead < 0 ? '' : ic('chev', up ? 'flip' : '')}${money(r ? r.total : 0)}</span>`;
+}
+
+function bvMsg(b) {
     if (b.status === 'done') {
         const w = b.slots[b.winner];
-        return w.you ? `<span class="pos">Wygrałeś ${money(b.pot)}!</span>` : `<span class="neg">Wygrywa ${esc(w.name)}: ${money(b.pot)}</span>`;
+        return w.you ? `<span class="pos">Wygrałeś ${money(b.pot)}!</span>` : `<span class="neg">Wygrywa ${esc(w.name)} — ${money(b.pot)}</span>`;
     }
-    if (b.running) return b.round >= 0 ? `Runda ${b.round + 1} / ${b.cases.length}` : 'Czekamy na graczy…';
-    return 'Czeka na graczy';
+    if (b.phase === 'count') return 'Start za chwilę…';
+    if (b.running) return `Runda ${b.round + 1} z ${b.cases.length}`;
+    const free = b.slots.filter(x => !x).length;
+    return isIn(b) ? `Brakuje ${free} ${free === 1 ? 'gracza' : 'graczy'}. Poczekaj albo przywołaj boty.` : 'Bitwa czeka na graczy.';
 }
 
 function renderBattleView() {
     const b = BATTLES.find(x => String(x.id) === route.arg);
     if (!b) return `<button class="back" data-act="go" data-arg="#/battles">${ic('back')}Bitwy</button><div class="empty">${ic('swords')}<p>Ta bitwa już się zakończyła.</p></div>`;
     const m = MODES[b.mode];
-    const spectator = !b.slots.some(s => s?.you) && !b.running && b.status === 'waiting';
+    b.phase = b.phase || (b.status === 'done' ? 'done' : 'wait');
+    b.res = b.res || b.slots.map(() => ({ total: 0, drops: [], wears: [] }));
+    const cells = [...b.cases.map((id, i) => `<div class="bv-case ${i === b.round && b.status !== 'done' ? 'cur' : ''} ${i < b.round || b.status === 'done' ? 'done' : ''}">${caseArt(CASE[id])}<span>${esc(CASE[id].name)}</span></div>`),
+        ...Array.from({ length: Math.max(0, 8 - b.cases.length) }, () => '<div class="bv-case ghost"></div>')].join('');
+    const waiting = b.status === 'waiting' && !b.running;
     return `<div class="bv" id="bv-${b.id}" style="--mc:${m.col}">
-        <div class="bv-head">
-            <button class="back" data-act="go" data-arg="#/battles">${ic('back')}Bitwy</button>
-            <span class="mode-chip">${ic(m.icon)}${m.n}</span>
-            <div class="bv-val"><small>WARTOŚĆ BITWY</small><b class="money">${money(bValue(b))}</b></div>
-            <div class="bv-round" id="bvRound">${bvResult(b)}</div>
-            ${spectator ? `<button class="btn btn-dark" data-act="bots" data-arg="${b.id}">${ic('bolt')}Uruchom z botami</button>` : ''}
+        <div class="bv-top">
+            <div class="bv-status"><span class="bv-sico">${ic(m.icon)}<b>${b.players}</b></span><span id="bvState">${waiting ? 'CZEKA' : b.status === 'done' ? 'KONIEC' : 'AKTYWNA'}</span></div>
+            <div class="bv-stats">
+                <div class="bv-st blue"><small>RUNDY</small><b>${ic('box')}<span id="bvRounds">${b.status === 'done' ? b.cases.length : Math.max(0, (b.round ?? -1) + 1)}/${b.cases.length}</span></b></div>
+                <div class="bv-st green"><small>WARTOŚĆ BITWY</small><b>${ic('wallet')}${money(bValue(b))}</b></div>
+            </div>
+            <div class="bv-strip">${cells}</div>
         </div>
-        <div class="bv-cases">${b.cases.map((id, i) => `<div class="bv-case ${i === b.round && b.status !== 'done' ? 'cur' : ''} ${i < b.round || b.status === 'done' ? 'done' : ''}">${caseArt(CASE[id])}</div>`).join('')}</div>
-        <div class="bv-players" style="--n:${b.players}">${b.slots.map((s, i) => bvPlayer(b, s, i)).join('')}</div>
+        <div class="bv-tools">
+            <button class="sq" data-act="go" data-arg="#/battles" aria-label="Wróć do bitew">${ic('back')}</button>
+            <span class="mode-chip">${ic(m.icon)}${m.n}</span>
+            <span class="bv-msg" id="bvMsg">${bvMsg(b)}</span>
+            ${waiting && b.slots.includes(null) ? `<button class="btn btn-purple" data-act="bots" data-arg="${b.id}">${ic('bolt')}${isIn(b) ? 'Przywołaj wszystkie boty' : 'Uruchom z botami'}</button>` : ''}
+            <button class="sq" data-act="toggleSound" aria-label="Dźwięk">${ic(state.settings.sound ? 'sound' : 'x')}</button>
+        </div>
+        <div class="bv-arena" style="--n:${b.players}">${b.slots.map((sl, i) => `
+            <div class="bv-col ${b.status === 'done' ? (i === b.winner ? 'win' : 'lose') : ''}">
+                <div class="bv-stage" data-i="${i}">${bvStage(b, i)}</div>
+                <div class="bv-bar">${avatar(sl, 'sm')}<div class="bv-who"><b>${sl && !sl.you && sl.bot ? 'BOT | ' : ''}${esc(playerName(sl))}</b><small>${playerSub(sl)}</small></div><span class="bv-sumw">${bvSum(b, i)}</span></div>
+                <div class="bv-grid">${bvGrid(b, i)}</div>
+            </div>`).join('')}
+        </div>
+        <p class="muted small center">Przeciwnicy w bitwach to boty — to symulator.</p>
     </div>`;
 }
 
@@ -1309,27 +1454,23 @@ function afterBattleView() {
     if (!b) return;
     const c = CASE[b.cases[Math.max(0, Math.min(b.round ?? 0, b.cases.length - 1))]];
     $$('.bv-reel').forEach(r => idleReel(r, c));
-    if (b.status === 'done') {
-        $$('.bv-p').forEach((el, i) => {
-            const last = b.res[i].drops[b.res[i].drops.length - 1];
-            const reel = $('.bv-reel', el);
-            if (reel && last) reel.outerHTML = `<div class="reel-final">${itemCard(SKIN[last], { cls: 'glow' })}</div>`;
-        });
-    }
 }
 
-function bvPatch(b) {
+// Aktualizuje widok bez przebudowy całej strony (nie przerywa animacji).
+function bvPatch(b, stages = true) {
     const root = $('#bv-' + b.id);
     if (!root) return;
-    $('#bvRound', root).innerHTML = bvResult(b);
+    $('#bvMsg', root).innerHTML = bvMsg(b);
+    $('#bvState', root).textContent = b.status === 'done' ? 'KONIEC' : b.running ? 'AKTYWNA' : 'CZEKA';
+    $('#bvRounds', root).textContent = `${b.status === 'done' ? b.cases.length : Math.max(0, b.round + 1)}/${b.cases.length}`;
     $$('.bv-case', root).forEach((el, i) => {
         el.classList.toggle('cur', i === b.round && b.status !== 'done');
         el.classList.toggle('done', i < b.round || b.status === 'done');
     });
-    $$('.bv-p', root).forEach((el, i) => {
-        const r = b.res[i];
-        $('.bv-total', el).textContent = money(r.total);
-        $('.bv-drops', el).innerHTML = dropChips(r.drops);
+    $$('.bv-col', root).forEach((el, i) => {
+        if (stages) $('.bv-stage', el).innerHTML = bvStage(b, i);
+        $('.bv-sumw', el).innerHTML = bvSum(b, i);
+        $('.bv-grid', el).innerHTML = bvGrid(b, i);
         if (b.status === 'done') el.classList.add(i === b.winner ? 'win' : 'lose');
     });
 }
@@ -1340,52 +1481,54 @@ async function runBattle(b) {
     if (b.running) return;
     b.running = true;
     b.round = -1;
-    b.res = b.slots.map(() => ({ total: 0, drops: [] }));
-    if (bvOpen(b)) renderPage();
-
-    for (let i = 0; i < b.players; i++) {
-        if (b.slots[i]) continue;
-        await sleep(650);
-        b.slots[i] = botPlayer();
-        if (bvOpen(b)) renderPage();
-    }
+    b.res = b.slots.map(() => ({ total: 0, drops: [], wears: [] }));
     b.status = 'running';
     refreshBattleList();
     if (bvOpen(b)) renderPage();
-    await sleep(500);
+
+    for (let n = 3; n >= 1; n--) {
+        b.phase = 'count';
+        b.count = n;
+        bvPatch(b);
+        beep(520, 0.08, 0.04, 'triangle');
+        await sleep(650);
+    }
 
     const dur = state.settings.fast ? 1400 : 3000;
     for (let r = 0; r < b.cases.length; r++) {
         b.round = r;
+        b.phase = 'spin';
         const c = CASE[b.cases[r]];
         bvPatch(b);
         const wins = b.slots.map(() => roll(c));
         const reels = bvOpen(b) ? $$('#bv-' + b.id + ' .bv-reel') : [];
         await Promise.all(wins.map((w, i) => spinReel(reels[i], c, w, dur, i === 0)));
-        wins.forEach((w, i) => { b.res[i].total = round2(b.res[i].total + SKIN[w].price); b.res[i].drops.push(w); });
+        wins.forEach((w, i) => { const x = b.res[i]; x.total = round2(x.total + SKIN[w].price); x.drops.push(w); x.wears.push(rollWear()); });
+        b.phase = 'show';
         bvPatch(b);
-        await sleep(450);
+        await sleep(state.settings.fast ? 700 : 1300);
     }
 
     const scores = b.res.map(r => (b.mode === 'terminal' ? SKIN[r.drops[r.drops.length - 1]].price : r.total));
     const best = b.mode === 'underdog' ? Math.min(...scores) : Math.max(...scores);
-    b.winner = pick(scores.map((s, i) => (s === best ? i : -1)).filter(i => i >= 0));
-    b.pot = round2(b.res.reduce((s, r) => s + r.total, 0));
+    b.winner = pick(scores.map((sc, i) => (sc === best ? i : -1)).filter(i => i >= 0));
+    b.pot = round2(b.res.reduce((sum, r) => sum + r.total, 0));
     b.status = 'done';
+    b.phase = 'done';
     b.running = false;
 
-    const you = b.slots.findIndex(s => s?.you);
+    const you = b.slots.findIndex(sl => sl?.you);
     if (you >= 0) {
         state.stats.battles++;
         const won = b.winner === you;
         if (won) {
             state.stats.battlesWon++;
-            const all = b.res.flatMap(r => r.drops);
-            const uids = giveItems(all, `Wygrana bitwa #${b.id}`);
-            all.forEach(id => pushDrop(id, state.name, true));
+            const all = b.res.flatMap(r => r.drops), wears = b.res.flatMap(r => r.wears);
+            const uids = giveItems(all, `Wygrana bitwa #${b.id}`, wears);
+            all.forEach(id => pushDrop(id, state.name, true, b.cases[0]));
             showWin(all, uids, 'Wygrałeś bitwę!');
         } else if (b.mode === 'normal') {
-            const g = pick(SKINS.filter(s => s.rarity === 'consumer')).id;
+            const g = pick(SKINS.filter(sk => sk.rarity === 'consumer')).id;
             giveItems([g], `Gwarantowany skin, bitwa #${b.id}`);
             toast(`Przegrana. Gwarantowany skin: ${SKIN[g].weapon} | ${SKIN[g].name}`);
         } else {
@@ -1397,7 +1540,7 @@ async function runBattle(b) {
     }
     bvPatch(b);
     refreshBattleList();
-    setTimeout(() => { BATTLES = BATTLES.filter(x => x !== b); refreshBattleList(); }, 30000);
+    setTimeout(() => { if (!bvOpen(b)) { BATTLES = BATTLES.filter(x => x !== b); refreshBattleList(); } }, 60000);
 }
 
 // ============================================================
@@ -1439,7 +1582,7 @@ function renderContract() {
         </div>
     </div>
     <div class="sec-title">${ic('box')}<span>Twoje przedmioty</span></div>
-    ${state.inv.length ? `<div class="igrid">${state.inv.map(i => itemCard(SKIN[i.id], { cls: conSel.includes(i.uid) ? 'sel' : '', attrs: `data-act="csel" data-arg="${i.uid}"` })).join('')}</div>`
+    ${state.inv.length ? `<div class="igrid">${state.inv.map(i => itemCard(SKIN[i.id], { wear: i.w, cls: conSel.includes(i.uid) ? 'sel' : '', attrs: `data-act="csel" data-arg="${i.uid}"` })).join('')}</div>`
         : `<div class="empty">${ic('box')}<p>Nie masz skinów. Otwórz kilka skrzynek.</p><button class="btn btn-green" data-act="go" data-arg="#/">Do skrzynek</button></div>`}`;
 }
 
@@ -1478,7 +1621,7 @@ function renderExchanger() {
     <div class="ex-cols">
         <div class="panel">
             <h3 class="ph">${ic('user')}Twoje przedmioty</h3>
-            ${state.inv.length ? `<div class="igrid sm">${state.inv.map(i => itemCard(SKIN[i.id], { cls: exSel.includes(i.uid) ? 'sel' : '', attrs: `data-act="exsel" data-arg="${i.uid}"` })).join('')}</div>` : `<div class="empty small">Brak przedmiotów.</div>`}
+            ${state.inv.length ? `<div class="igrid sm">${state.inv.map(i => itemCard(SKIN[i.id], { wear: i.w, cls: exSel.includes(i.uid) ? 'sel' : '', attrs: `data-act="exsel" data-arg="${i.uid}"` })).join('')}</div>` : `<div class="empty small">Brak przedmiotów.</div>`}
         </div>
         <div class="panel">
             <h3 class="ph">${ic('box')}Sklep</h3>
@@ -1544,7 +1687,7 @@ function profInvHtml() {
     const s = { old: (a, b) => a.t - b.t, pd: (a, b) => SKIN[b.id].price - SKIN[a.id].price, pa: (a, b) => SKIN[a.id].price - SKIN[b.id].price }[pSort];
     if (s) list = [...list].sort(s);
     if (!list.length) return state.inv.length ? `<div class="empty">${ic('search')}<p>Nic nie pasuje do wyszukiwania.</p></div>` : emptyInv();
-    return `<div class="igrid">${list.map(i => itemCard(SKIN[i.id], { bottom: `<button class="sell-btn" data-act="sell" data-arg="${i.uid}">${ic('wallet')}Sprzedaj</button>` })).join('')}</div>`;
+    return `<div class="igrid">${list.map(i => itemCard(SKIN[i.id], { wear: i.w, bottom: `<button class="sell-btn" data-act="sell" data-arg="${i.uid}">${ic('wallet')}Sprzedaj</button>` })).join('')}</div>`;
 }
 
 function renderProfile() {
@@ -1661,14 +1804,277 @@ function renderEvent() {
 // Modale: wpłata, kod, ranking, powiadomienia, szuflada
 // ============================================================
 
+// ============================================================
+// Wpłata roweru = minigra (im droższy rower, tym trudniej)
+// ============================================================
+
+const GAMES = {
+    pump: { n: 'Napompuj oponę', icon: 'bolt', d: 'Klikaj „POMPUJ” (albo spację) tak szybko, jak umiesz, zanim skończy się czas.' },
+    timing: { n: 'Trafienie w punkt', icon: 'target', d: 'Zatrzymaj wskaźnik w zielonej strefie. Każde trafienie przesuwa strefę.' },
+    memory: { n: 'Szyfr kłódki', icon: 'lock', d: 'Zapamiętaj kolejność zapalających się pól i powtórz ją bez błędu.' },
+    gears: { n: 'Zmiana biegów', icon: 'swap', d: 'Wciskaj strzałki w podanej kolejności. Pomyłka zabiera czas.' },
+    ride: { n: 'Zjazd z góry', icon: 'bike', d: 'Omijaj kamienie i dziury, zmieniając pas strzałkami albo przyciskami.' },
+};
+const GAME_ORDER = ['pump', 'timing', 'memory', 'gears', 'ride'];
+
+// Każdy rower ma swoją grę; trudność 1–5 rośnie z wartością roweru.
+function bikeInfo(i) {
+    const order = BIKES.map((b, k) => k).sort((a, b) => BIKES[a][1] - BIKES[b][1]);
+    const rank = order.indexOf(i);
+    return { game: GAME_ORDER[rank % GAME_ORDER.length], d: 1 + Math.round(rank * 4 / (BIKES.length - 1)) };
+}
+
+const stars = d => `<span class="stars" title="Trudność ${d}/5">${'★'.repeat(d)}<i>${'★'.repeat(5 - d)}</i></span>`;
+
 function depositModal() {
+    const card = (i, premium) => {
+        const [n, v, c, img] = BIKES[i];
+        const { game, d } = bikeInfo(i);
+        return `<button class="bike ${premium ? 'premium' : ''}" data-act="mgIntro" data-arg="${i}" style="--bc:${c}">
+            ${premium ? '<span class="bike-tag">PREMIUM</span>' : ''}${img ? `<img src="${img}" alt="${esc(n)}">` : bikeArt(c)}
+            <b>${esc(n)}</b><span class="money">${money(v)}</span><small class="pos">+${money(round2(v * 0.1))} bonus · +${d * 10} gemów</small>
+            <span class="bike-game">${ic(GAMES[game].icon)}${GAMES[game].n} ${stars(d)}</span></button>`;
+    };
+    const idx = BIKES.map((b, i) => i);
     modal(`<h2 class="mtitle">${ic('bike')}Wpłać rower</h2>
-        <p class="muted center">Zamień rower na wirtualne dolary. Teraz <b class="pos">+10% bonusu</b> do każdej wpłaty!</p>
-        <div class="bikes-premium">${BIKES.map((b, i) => [b, i]).filter(([b]) => b[3]).map(([[n, v, c, img], i]) => `<button class="bike premium" data-act="deposit" data-arg="${i}" style="--bc:${c}">
-            <span class="bike-tag">PREMIUM</span><img src="${img}" alt="${esc(n)}"><b>${esc(n)}</b><span class="money">${money(v)}</span><small class="pos">+${money(round2(v * 0.1))} bonus</small></button>`).join('')}</div>
-        <div class="bikes">${BIKES.map((b, i) => [b, i]).filter(([b]) => !b[3]).map(([[n, v, c], i]) => `<button class="bike" data-act="deposit" data-arg="${i}" style="--bc:${c}">
-            ${bikeArt(c)}<b>${n}</b><span class="money">${money(v)}</span><small class="pos">+${money(round2(v * 0.1))} bonus</small></button>`).join('')}</div>
+        <p class="muted center">Żeby wpłacić rower, musisz wygrać minigrę. Im droższy rower, tym trudniejsza gra. Nagroda: wartość roweru <b class="pos">+10%</b> i gemy.</p>
+        <div class="bikes-premium">${idx.filter(i => BIKES[i][3]).map(i => card(i, true)).join('')}</div>
+        <div class="bikes">${idx.filter(i => !BIKES[i][3]).map(i => card(i, false)).join('')}</div>
         <p class="muted center small">To symulator: rowery i dolary są wirtualne, nic nie jest pobierane.</p>`, 'wide');
+}
+
+let MG = null; // aktywna minigra: { stop, key }
+
+function stopGame() {
+    if (MG) { MG.stop(); MG = null; }
+}
+
+function mgIntro(i) {
+    stopGame();
+    const [n, v] = BIKES[i];
+    const { game, d } = bikeInfo(i);
+    const g = GAMES[game];
+    modal(`<div class="mg">
+        <div class="mg-head">${ic(g.icon, 'big')}<div><small>WPŁATA: ${esc(n)} · ${money(round2(v * 1.1))}</small><h2>${g.n}</h2></div>${stars(d)}</div>
+        <p class="mg-rules">${g.d}</p>
+        <div class="mg-stage" id="mgStage"><button class="btn btn-green btn-xl" data-act="mgStart" data-arg="${i}">${ic('bolt')}START</button></div>
+        <div class="mrow"><button class="btn btn-dark" data-act="depositModal">${ic('back')}Inny rower</button></div>
+    </div>`, 'wide game');
+}
+
+function mgEnd(i, won, msg) {
+    stopGame();
+    const [n, v] = BIKES[i];
+    const { d } = bikeInfo(i);
+    const stage = $('#mgStage');
+    if (!stage) return;
+    if (won) {
+        const total = round2(v * 1.1), gems = d * 10;
+        wallet(total, `Wpłata: ${n}`);
+        state.gems += gems;
+        save();
+        renderTop();
+        note(`Wpłacono „${n}”: +${money(total)} i ${gems} gemów`);
+        winSound(d >= 4);
+        if (d >= 4) confetti();
+        stage.innerHTML = `<div class="mg-result ok">${ic('check', 'big')}<h3>Udało się!</h3><p>${msg}</p><p>Na konto wpada <b class="pos">${money(total)}</b> i <b class="gemtxt">${gems} gemów</b>.</p>
+            <div class="mrow"><button class="btn btn-green" data-act="modalclose">Super</button><button class="btn btn-dark" data-act="depositModal">Wpłać kolejny</button></div></div>`;
+        if (route.name === 'profile') renderPage();
+        if (route.name === 'home' && filt.afford) refreshSections();
+    } else {
+        beep(160, 0.35, 0.05, 'sawtooth');
+        stage.innerHTML = `<div class="mg-result bad">${ic('x', 'big')}<h3>Nie tym razem</h3><p>${msg}</p>
+            <div class="mrow"><button class="btn btn-green" data-act="mgStart" data-arg="${i}">${ic('refresh')}Spróbuj ponownie</button><button class="btn btn-dark" data-act="depositModal">Inny rower</button></div></div>`;
+    }
+}
+
+// Pasek czasu wspólny dla gier.
+function timerBar(ms, onEnd) {
+    const bar = $('#mgTime');
+    const t0 = performance.now();
+    let raf = 0, dead = false;
+    const loop = () => {
+        if (dead) return;
+        const left = Math.max(0, ms - (performance.now() - t0));
+        if (bar) bar.style.width = (left / ms * 100) + '%';
+        if (left <= 0) { dead = true; onEnd(); return; }
+        raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return { stop: () => { dead = true; cancelAnimationFrame(raf); }, add: extra => { ms += extra; } };
+}
+
+const GAME_RUN = {
+    pump(i, d, stage) {
+        const need = 14 + d * 7, time = 6000;
+        let n = 0;
+        stage.innerHTML = `<div class="mg-time"><div id="mgTime"></div></div>
+            <div class="pump"><svg viewBox="0 0 120 120" class="tyre" id="tyre"><circle cx="60" cy="60" r="44" fill="none" stroke="#1f2937" stroke-width="22"/><circle cx="60" cy="60" r="44" fill="none" stroke="#45d15b" stroke-width="22" stroke-dasharray="276.5" stroke-dashoffset="276.5" id="tyreFill" transform="rotate(-90 60 60)"/><circle cx="60" cy="60" r="14" fill="#374151"/><text x="60" y="66" text-anchor="middle" fill="#fff" font-size="16" font-weight="800" id="pumpN">0/${need}</text></svg>
+            <button class="btn btn-green btn-xl pump-btn" data-act="mgTap">${ic('bolt')}POMPUJ!</button></div>`;
+        const timer = timerBar(time, () => mgEnd(i, false, `Napompowano ${n} z ${need}. Za wolno!`));
+        const tap = () => {
+            n++;
+            beep(300 + n * 12, 0.03, 0.03);
+            $('#pumpN').textContent = `${n}/${need}`;
+            $('#tyreFill').setAttribute('stroke-dashoffset', 276.5 * (1 - Math.min(1, n / need)));
+            $('#tyre').style.transform = `scale(${1 + Math.min(1, n / need) * 0.12})`;
+            if (n >= need) { timer.stop(); mgEnd(i, true, `Opona napompowana: ${need} kliknięć na czas.`); }
+        };
+        return { stop: () => timer.stop(), tap, key: e => { if (e.code === 'Space' || e.key === 'Enter') { e.preventDefault(); tap(); } } };
+    },
+
+    timing(i, d, stage) {
+        const need = 2 + Math.ceil(d / 2), width = 28 - d * 4, period = 1500 - d * 200;
+        let lives = d <= 2 ? 2 : 1, hits = 0, zone = 0, raf = 0, dead = false, pos = 0;
+        stage.innerHTML = `<div class="mg-info"><span>Trafienia: <b id="tHits">0/${need}</b></span><span>Życia: <b id="tLives">${'❤'.repeat(lives)}</b></span></div>
+            <div class="tbar"><div class="tzone" id="tZone"></div><div class="tmark" id="tMark"></div></div>
+            <button class="btn btn-green btn-xl" data-act="mgTap">${ic('target')}STOP!</button>`;
+        const newZone = () => { zone = 5 + Math.random() * (90 - width); const z = $('#tZone'); z.style.left = zone + '%'; z.style.width = width + '%'; };
+        newZone();
+        const t0 = performance.now();
+        const loop = () => {
+            if (dead) return;
+            const t = ((performance.now() - t0) % period) / period;
+            pos = t < 0.5 ? t * 2 * 100 : (1 - t) * 2 * 100;
+            $('#tMark').style.left = pos + '%';
+            raf = requestAnimationFrame(loop);
+        };
+        raf = requestAnimationFrame(loop);
+        const tap = () => {
+            if (pos >= zone && pos <= zone + width) {
+                hits++;
+                beep(900, 0.08, 0.05, 'triangle');
+                $('#tHits').textContent = `${hits}/${need}`;
+                if (hits >= need) { dead = true; mgEnd(i, true, `Wszystkie ${need} trafienia w punkt.`); return; }
+                newZone();
+            } else {
+                lives--;
+                beep(200, 0.15, 0.05, 'sawtooth');
+                $('#tLives').textContent = '❤'.repeat(lives) || '—';
+                if (lives <= 0) { dead = true; mgEnd(i, false, `Pudło! Trafiłeś ${hits} z ${need}.`); }
+            }
+        };
+        return { stop: () => { dead = true; cancelAnimationFrame(raf); }, tap, key: e => { if (e.code === 'Space' || e.key === 'Enter') { e.preventDefault(); tap(); } } };
+    },
+
+    memory(i, d, stage) {
+        const len = 3 + d, flash = 650 - d * 60;
+        const cols = ['#ef4444', '#22c55e', '#3b82f6', '#eab308'];
+        const tones = [330, 440, 550, 660];
+        const seq = Array.from({ length: len }, () => Math.floor(Math.random() * 4));
+        let step = 0, input = false, dead = false;
+        stage.innerHTML = `<div class="mg-info"><span id="mMsg">Patrz uważnie…</span><span>Długość szyfru: <b>${len}</b></span></div>
+            <div class="pads">${cols.map((c, k) => `<button class="pad" style="--pc:${c}" data-act="mgPad" data-arg="${k}" disabled></button>`).join('')}</div>`;
+        const pads = $$('.pad', stage);
+        const lit = (k, ms) => { pads[k].classList.add('lit'); beep(tones[k], ms / 1000, 0.05, 'triangle'); setTimeout(() => pads[k]?.classList.remove('lit'), ms); };
+        (async () => {
+            await sleep(700);
+            for (const k of seq) { if (dead) return; lit(k, flash); await sleep(flash + 180); }
+            if (dead) return;
+            input = true;
+            pads.forEach(p => { p.disabled = false; });
+            $('#mMsg').textContent = 'Twoja kolej! Powtórz szyfr.';
+        })();
+        const pad = k => {
+            if (!input || dead) return;
+            lit(Number(k), 200);
+            if (Number(k) !== seq[step]) { dead = true; mgEnd(i, false, `Zły kolor na pozycji ${step + 1}. Kłódka zablokowana.`); return; }
+            step++;
+            $('#mMsg').textContent = `Dobrze! ${step}/${len}`;
+            if (step >= len) { dead = true; setTimeout(() => mgEnd(i, true, `Szyfr ${len} kolorów złamany.`), 250); }
+        };
+        return { stop: () => { dead = true; }, pad, key: e => { const k = { 1: 0, 2: 1, 3: 2, 4: 3 }[e.key]; if (k !== undefined) pad(k); } };
+    },
+
+    gears(i, d, stage) {
+        const count = 5 + d * 2, time = 9000 - d * 700;
+        const A = ['←', '↑', '→', '↓'], K = { ArrowLeft: 0, ArrowUp: 1, ArrowRight: 2, ArrowDown: 3 };
+        const seq = Array.from({ length: count }, () => Math.floor(Math.random() * 4));
+        let at = 0, dead = false;
+        stage.innerHTML = `<div class="mg-time"><div id="mgTime"></div></div>
+            <div class="gseq" id="gSeq">${seq.map((k, n) => `<span class="${n === 0 ? 'cur' : ''}">${A[k]}</span>`).join('')}</div>
+            <div class="garrows">${[1, 0, 3, 2].map(k => `<button class="btn btn-dark ga${k}" data-act="mgArrow" data-arg="${k}">${A[k]}</button>`).join('')}</div>`;
+        const timer = timerBar(time, () => { dead = true; mgEnd(i, false, `Zdążyłeś zmienić ${at} z ${count} biegów.`); });
+        const press = k => {
+            if (dead) return;
+            const spans = $$('#gSeq span');
+            if (Number(k) === seq[at]) {
+                beep(500 + at * 30, 0.05, 0.04);
+                spans[at].className = 'ok';
+                at++;
+                if (at >= count) { dead = true; timer.stop(); mgEnd(i, true, `Wszystkie ${count} biegów zmienione na czas.`); return; }
+                spans[at].className = 'cur';
+            } else {
+                beep(180, 0.12, 0.05, 'sawtooth');
+                timer.add(-800);
+                spans[at].classList.add('bad');
+                setTimeout(() => spans[at]?.classList.remove('bad'), 250);
+            }
+        };
+        return { stop: () => { dead = true; timer.stop(); }, arrow: press, key: e => { if (e.key in K) { e.preventDefault(); press(K[e.key]); } } };
+    },
+
+    ride(i, d, stage) {
+        const survive = (8 + d * 2) * 1000, speed = 220 + d * 55, spawn = 900 - d * 110;
+        stage.innerHTML = `<div class="mg-time"><div id="mgTime" class="fill"></div></div>
+            <canvas id="rideCv" width="360" height="420" class="ride"></canvas>
+            <div class="garrows two"><button class="btn btn-dark" data-act="mgLane" data-arg="-1">◀</button><button class="btn btn-dark" data-act="mgLane" data-arg="1">▶</button></div>`;
+        const cv = $('#rideCv'), cx = cv.getContext('2d');
+        const W = cv.width, H = cv.height, LW = W / 3;
+        let lane = 1, px = LW * 1.5, obs = [], last = performance.now(), t0 = last, nextSpawn = 400, raf = 0, dead = false;
+        const draw = () => {
+            cx.fillStyle = '#1b2233'; cx.fillRect(0, 0, W, H);
+            cx.strokeStyle = 'rgba(255,255,255,.25)'; cx.setLineDash([18, 16]); cx.lineWidth = 3;
+            const off = ((performance.now() - t0) / 1000 * speed) % 34;
+            for (const x of [LW, LW * 2]) { cx.lineDashOffset = -off; cx.beginPath(); cx.moveTo(x, 0); cx.lineTo(x, H); cx.stroke(); }
+            cx.setLineDash([]);
+            for (const o of obs) {
+                if (o.kind === 0) { cx.fillStyle = '#6b7280'; cx.beginPath(); cx.ellipse(o.x, o.y, 26, 20, 0, 0, 7); cx.fill(); cx.fillStyle = '#9ca3af'; cx.beginPath(); cx.ellipse(o.x - 6, o.y - 6, 9, 6, 0, 0, 7); cx.fill(); }
+                else { cx.fillStyle = '#05070b'; cx.beginPath(); cx.ellipse(o.x, o.y, 32, 16, 0, 0, 7); cx.fill(); cx.strokeStyle = '#3f2a14'; cx.lineWidth = 4; cx.stroke(); }
+            }
+            // rowerzysta
+            const y = H - 70;
+            cx.strokeStyle = '#ffc41f'; cx.lineWidth = 5; cx.lineCap = 'round';
+            cx.beginPath(); cx.arc(px, y + 34, 13, 0, 7); cx.stroke();
+            cx.beginPath(); cx.arc(px, y - 10, 13, 0, 7); cx.stroke();
+            cx.beginPath(); cx.moveTo(px, y - 10); cx.lineTo(px, y + 34); cx.stroke();
+            cx.strokeStyle = '#a54ef2'; cx.beginPath(); cx.moveTo(px - 16, y - 18); cx.lineTo(px + 16, y - 18); cx.stroke();
+        };
+        const loop = now => {
+            if (dead) return;
+            const dt = Math.min(0.05, (now - last) / 1000);
+            last = now;
+            px += (LW * (lane + 0.5) - px) * Math.min(1, dt * 14);
+            nextSpawn -= dt * 1000;
+            if (nextSpawn <= 0) {
+                const free = Math.floor(Math.random() * 3);
+                const lanes = [0, 1, 2].filter(l => l !== free && Math.random() < 0.55);
+                (lanes.length ? lanes : [(free + 1) % 3]).forEach(l => obs.push({ x: LW * (l + 0.5), y: -30, kind: Math.random() < 0.5 ? 0 : 1 }));
+                nextSpawn = spawn * (0.8 + Math.random() * 0.5);
+            }
+            for (const o of obs) o.y += speed * dt;
+            obs = obs.filter(o => o.y < H + 40);
+            const by = H - 70;
+            if (obs.some(o => Math.abs(o.x - px) < 34 && o.y > by - 36 && o.y < by + 50)) { dead = true; draw(); mgEnd(i, false, 'Wywrotka! Przeszkoda na trasie.'); return; }
+            draw();
+            const left = survive - (now - t0);
+            const bar = $('#mgTime');
+            if (bar) bar.style.width = (100 - Math.max(0, left) / survive * 100) + '%';
+            if (left <= 0) { dead = true; mgEnd(i, true, `Zjazd ukończony bez wywrotki (${survive / 1000} s).`); return; }
+            raf = requestAnimationFrame(loop);
+        };
+        raf = requestAnimationFrame(loop);
+        const move = dir => { lane = Math.max(0, Math.min(2, lane + Number(dir))); };
+        cv.addEventListener('pointerdown', e => { const r = cv.getBoundingClientRect(); move(e.clientX - r.left < r.width / 2 ? -1 : 1); });
+        return { stop: () => { dead = true; cancelAnimationFrame(raf); }, lane: move, key: e => { if (e.key === 'ArrowLeft' || e.key === 'a') { e.preventDefault(); move(-1); } if (e.key === 'ArrowRight' || e.key === 'd') { e.preventDefault(); move(1); } } };
+    },
+};
+
+function mgStart(i) {
+    stopGame();
+    if (!$('#mgStage')) mgIntro(i);
+    const { game, d } = bikeInfo(i);
+    MG = GAME_RUN[game](i, d, $('#mgStage'));
 }
 
 function promoModal() {
@@ -1712,7 +2118,7 @@ function renderDrawer() {
     $('#drawer').innerHTML = `<div class="drawer-head"><h3>${ic('box')}Twoje przedmioty (${state.inv.length})</h3><span class="money">${money(invValue())}</span>
         <button class="btn btn-green" data-act="sellAll" ${state.inv.length ? '' : 'disabled'}>Sprzedaj wszystko</button>
         <button class="sq" data-act="drawer" aria-label="Zamknij">${ic('x')}</button></div>
-        ${state.inv.length ? `<div class="igrid sm">${state.inv.slice(0, 60).map(i => itemCard(SKIN[i.id], { bottom: `<button class="sell-btn" data-act="sell" data-arg="${i.uid}">${ic('wallet')}Sprzedaj</button>` })).join('')}</div>`
+        ${state.inv.length ? `<div class="igrid sm">${state.inv.slice(0, 60).map(i => itemCard(SKIN[i.id], { wear: i.w, bottom: `<button class="sell-btn" data-act="sell" data-arg="${i.uid}">${ic('wallet')}Sprzedaj</button>` })).join('')}</div>`
             : emptyInv()}`;
 }
 
@@ -1726,7 +2132,7 @@ function refreshAfterInv() {
 }
 
 // Akcje, po których okno modalne ma zostać otwarte (np. kolejne dodawanie skrzynek).
-const KEEP_MODAL = ['modalclose', 'winsell', 'crAdd'];
+const KEEP_MODAL = ['modalclose', 'winsell', 'crAdd', 'mgIntro', 'mgStart', 'mgTap', 'mgPad', 'mgArrow', 'mgLane', 'depositModal'];
 
 const ACT = {
     go: arg => go(arg),
@@ -1745,15 +2151,12 @@ const ACT = {
     demo: () => openCase(true),
     winsell: () => { sellUids(winUids); closeModal(); refreshAfterInv(); },
     depositModal: () => depositModal(),
-    deposit: i => {
-        const [n, v] = BIKES[Number(i)];
-        const total = round2(v * 1.1);
-        wallet(total, `Wpłata: ${n}`);
-        note(`Wpłacono „${n}”: +${money(total)}`);
-        toast(`Wpłacono „${n}” — +${money(total)}`, 'ok');
-        if (route.name === 'profile') renderPage();
-        if (route.name === 'home' && filt.afford) refreshSections();
-    },
+    mgIntro: i => mgIntro(Number(i)),
+    mgStart: i => mgStart(Number(i)),
+    mgTap: () => MG?.tap?.(),
+    mgPad: k => MG?.pad?.(k),
+    mgArrow: k => MG?.arrow?.(k),
+    mgLane: d => MG?.lane?.(d),
     promoModal: () => promoModal(),
     notes: () => notesModal(),
     ranking: () => rankingModal(),
@@ -1787,20 +2190,36 @@ const ACT = {
         const cost = bValue(b);
         if (state.balance < cost) { toast('Za mało środków na tę bitwę.', 'err'); return; }
         b.slots[b.slots.indexOf(null)] = me();
+        b.phase = 'wait';
         wallet(-cost, `Bitwa #${b.id}`);
         spend(cost);
         go('#/battle/' + b.id);
-        runBattle(b);
+        startIfFull(b);
     },
+    summon: arg => {
+        const [id, i] = arg.split(':');
+        const b = BATTLES.find(x => String(x.id) === id);
+        if (!b || b.running || b.slots[i]) return;
+        b.slots[i] = botPlayer();
+        beep(700, 0.06, 0.04, 'triangle');
+        if (bvOpen(b)) renderPage();
+        startIfFull(b);
+    },
+    toggleSound: () => { state.settings.sound = !state.settings.sound; save(); if (route.name === 'battle') renderPage(); toast(state.settings.sound ? 'Dźwięk włączony' : 'Dźwięk wyłączony'); },
     watch: id => {
         const b = BATTLES.find(x => String(x.id) === id);
         if (!b) return;
         b.watched = true;
         go('#/battle/' + id);
+        // Bitwa botów „w toku” w tle — odtwórz ją naprawdę, żeby było co oglądać.
+        if (!b.running && b.status === 'running' && !b.slots.includes(null)) { b.status = 'waiting'; runBattle(b); }
     },
     bots: id => {
         const b = BATTLES.find(x => String(x.id) === id);
-        if (b && b.status === 'waiting' && !b.running) runBattle(b);
+        if (!b || b.status !== 'waiting' || b.running) return;
+        b.slots = b.slots.map(sl => sl || botPlayer());
+        if (bvOpen(b)) renderPage();
+        startIfFull(b);
     },
     tpl: i => {
         const t = templates()[Number(i)];
