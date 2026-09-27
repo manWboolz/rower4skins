@@ -3027,3 +3027,191 @@ canvas.bosscv { max-width: 480px; aspect-ratio: 480 / 340; }
 .gseq.arrows-seq span.cur { transform: scale(1.18); }
 
 .stars.sweat { color: #38bdf8; font-weight: 900; letter-spacing: .04em; text-shadow: 0 0 12px rgba(56, 189, 248, .6); }
+
+/* ============================================================
+   GRY: stawka, Towers, Blackjack, Koło Szprychy
+   ============================================================ */
+.bet-ctl { display: grid; gap: 6px; }
+
+.bet-row { display: flex; gap: 6px; align-items: stretch; }
+
+.bet-row .bet-cur { display: grid; place-items: center; padding: 0 10px; border-radius: 8px; background: var(--green-bg); color: var(--green); }
+
+.bet-row .bet-cur .ic { width: 16px; height: 16px; }
+
+.bet-row input { flex: 1; min-width: 0; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel2); color: var(--text); font: inherit; font-weight: 800; }
+
+.bet-row button { padding: 0 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel3); font-weight: 900; color: var(--text); }
+
+.bet-row button:disabled, .bet-row input:disabled { opacity: .5; }
+
+/* Towers */
+.tw-wrap { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 16px; align-items: start; }
+
+.tw-ctl { display: grid; gap: 10px; padding: 18px; }
+
+.tw-diff { display: grid; grid-template-columns: repeat(2, 1fr); }
+
+.tw-end { font-weight: 900; text-align: center; font-size: 16px; }
+
+.tw-tower { padding: 14px; display: grid; gap: 8px; background: linear-gradient(180deg, rgba(34, 197, 94, .08), rgba(15, 20, 30, .6)); }
+
+.tw-tower.shake { animation: szokShake .1s linear 5; }
+
+.tw-row { display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 10px; align-items: center; opacity: .75; }
+
+.tw-row.live { opacity: 1; }
+
+.tw-row.done { opacity: .95; }
+
+.tw-mult { font-weight: 900; color: var(--yellow); font-variant-numeric: tabular-nums; text-align: right; }
+
+.tw-row.live .tw-mult { color: #fff; text-shadow: 0 0 12px var(--green); }
+
+.tw-tiles { display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: 8px; }
+
+.tw-tile { height: 48px; border-radius: 10px; border: 1px solid var(--line); background: linear-gradient(180deg, #232a3d, #171c2b); display: grid; place-items: center; font-weight: 900; color: var(--muted); font-size: 18px; }
+
+.tw-tile.live { cursor: pointer; border-color: rgba(69, 209, 91, .6); background: linear-gradient(180deg, #1f3a2b, #16261d); color: #bbf7d0; box-shadow: 0 0 18px -6px var(--green); animation: twPulse 1.4s ease-in-out infinite; }
+
+.tw-tile.live:hover { transform: translateY(-2px); filter: brightness(1.2); }
+
+@keyframes twPulse { 50% { box-shadow: 0 0 26px -4px var(--green); } }
+
+.tw-tile.safe { background: linear-gradient(180deg, #1c4a2e, #123321); border-color: var(--green); }
+
+.tw-tile.boom { background: linear-gradient(180deg, #5b1111, #3a0b0b); border-color: var(--red); animation: twBoom .5s ease-out; }
+
+@keyframes twBoom { 0% { transform: scale(1.3); } 100% { transform: scale(1); } }
+
+.tw-tile.ghost { opacity: .45; }
+
+.tw-ico { width: 30px; height: 30px; }
+
+/* Blackjack */
+.bj-table { position: relative; display: grid; gap: 14px; padding: 26px 20px 22px; border-radius: 22px 22px 180px 180px / 22px 22px 60px 60px; min-height: 430px;
+    background: radial-gradient(ellipse at 50% 35%, #1f5c45 0%, #123a2c 55%, #0b2019 100%); border: 10px solid #3b2413; box-shadow: inset 0 0 60px rgba(0, 0, 0, .6), 0 20px 60px -30px #000; }
+
+.bj-arc { text-align: center; font-size: 12px; font-weight: 900; letter-spacing: .14em; color: rgba(250, 204, 21, .75); }
+
+.bj-side { display: grid; justify-items: center; gap: 8px; }
+
+.bj-side small { font-weight: 900; letter-spacing: .14em; color: rgba(255, 255, 255, .55); }
+
+.bj-cards { display: flex; justify-content: center; min-height: 112px; }
+
+.bj-cards .pcard + .pcard { margin-left: -26px; }
+
+.pcard { position: relative; width: 78px; height: 110px; border-radius: 9px; background: linear-gradient(160deg, #fff, #e9e4f5); color: #111827; box-shadow: 0 6px 14px rgba(0, 0, 0, .45); border: 1px solid rgba(0, 0, 0, .2); font-weight: 900; }
+
+.pcard.red { color: #dc2626; }
+
+.pcard.new { animation: dealIn .35s ease-out; }
+
+@keyframes dealIn { from { transform: translate(40px, -60px) rotate(12deg); opacity: 0; } }
+
+.pc-tl, .pc-br { position: absolute; display: grid; line-height: 1; font-size: 17px; text-align: center; }
+
+.pc-tl { top: 6px; left: 7px; }
+
+.pc-br { bottom: 6px; right: 7px; transform: rotate(180deg); }
+
+.pc-tl i, .pc-br i { font-style: normal; font-size: 14px; }
+
+.pc-mid { position: absolute; inset: 0; display: grid; place-items: center; font-size: 40px; }
+
+.pcard.back { background: repeating-linear-gradient(45deg, #6d28d9 0 8px, #7c3aed 8px 16px); border: 3px solid #fff; }
+
+.pback { position: absolute; inset: 6px; border-radius: 5px; border: 2px solid rgba(255, 255, 255, .5); display: grid; place-items: center; align-content: center; color: #fff; }
+
+.pback .ic { width: 30px; height: 30px; }
+
+.pback b { font-size: 13px; letter-spacing: .1em; }
+
+.pcard.slot { background: transparent; border: 2px dashed rgba(255, 255, 255, .2); box-shadow: none; }
+
+.bj-total { padding: 4px 12px; border-radius: 999px; background: rgba(0, 0, 0, .45); font-weight: 900; font-variant-numeric: tabular-nums; }
+
+.bj-logo { display: grid; justify-items: center; opacity: .35; font-size: 28px; font-weight: 900; font-style: italic; letter-spacing: .06em; color: #d9f99d; }
+
+.bj-logo b { color: #fff; }
+
+.bj-logo em .ic { width: 26px; height: 26px; }
+
+.bj-hands { display: flex; flex-wrap: wrap; justify-content: center; gap: 22px; }
+
+.bj-hand { display: grid; justify-items: center; gap: 6px; padding: 8px; border-radius: 14px; border: 2px solid transparent; }
+
+.bj-hand.act { border-color: rgba(250, 204, 21, .8); box-shadow: 0 0 24px -8px #facc15; }
+
+.bj-hand.r-win, .bj-hand.r-bj { border-color: rgba(69, 209, 91, .8); }
+
+.bj-hand.r-lose { opacity: .7; }
+
+.bj-bet { font-size: 12px; font-weight: 900; color: #fde68a; }
+
+.bj-msg { text-align: center; font-size: 22px; font-weight: 900; text-shadow: 0 2px 8px #000; }
+
+.bj-ctl { display: grid; grid-template-columns: minmax(0, 320px) minmax(0, 1fr); gap: 16px; align-items: end; margin-top: 14px; padding: 16px; }
+
+.bj-btns { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+
+.bj-btns kbd { font: inherit; font-size: 10px; opacity: .6; margin-left: 4px; padding: 1px 5px; border: 1px solid currentColor; border-radius: 4px; }
+
+/* Koło Szprychy i strona GRY */
+.games-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 16px; }
+
+.game-boss { grid-column: 1 / -1; }
+
+.game-boss .boss-bar { margin: 0; }
+
+.game-tile { display: grid; gap: 6px; text-align: left; padding: 20px; border-radius: 16px; cursor: pointer; color: var(--text); font: inherit;
+    border: 1px solid color-mix(in srgb, var(--gc) 45%, transparent); background: radial-gradient(260px 140px at 100% 0%, color-mix(in srgb, var(--gc) 30%, transparent), transparent 70%), linear-gradient(180deg, #1a2030, #121622); }
+
+.game-tile:hover { transform: translateY(-3px); box-shadow: 0 14px 34px -16px var(--gc); }
+
+.gt-ico { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 12px; background: var(--gc); color: #0b0e16; }
+
+.gt-ico .ic { width: 26px; height: 26px; }
+
+.game-tile b { font-size: 22px; font-weight: 900; }
+
+.game-tile span:last-child { color: var(--muted); }
+
+.wheel-box { display: grid; justify-items: center; gap: 12px; padding: 20px; max-width: 520px; margin: 0 auto; }
+
+.wb-head { text-align: center; }
+
+.wb-head h3 { display: inline-flex; align-items: center; gap: 8px; margin: 0; font-size: 22px; }
+
+.wb-wheel { position: relative; width: min(320px, 80vw); aspect-ratio: 1; }
+
+.wheel-svg { width: 100%; height: 100%; filter: drop-shadow(0 12px 30px rgba(0, 0, 0, .6)); }
+
+.wb-pointer { position: absolute; top: -6px; left: 50%; z-index: 2; width: 0; height: 0; margin-left: -14px; border: 14px solid transparent; border-top: 26px solid #facc15; filter: drop-shadow(0 2px 4px #000); }
+
+.wb-odds { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 12px; font-size: 13px; color: var(--muted); }
+
+.wb-odds b { color: var(--text); }
+
+@media (max-width: 900px) {
+    .tw-wrap, .bj-ctl { grid-template-columns: minmax(0, 1fr); }
+    .games-grid { grid-template-columns: minmax(0, 1fr); }
+    .bj-btns { justify-content: stretch; }
+    .bj-btns .btn { flex: 1 1 40%; }
+    .pcard { width: 62px; height: 88px; }
+    .pc-mid { font-size: 30px; }
+    .bj-cards .pcard + .pcard { margin-left: -20px; }
+}
+
+.tw-ctl { grid-template-columns: minmax(0, 1fr); }
+
+.tw-ctl > *, .bj-ctl > * { min-width: 0; }
+
+.tw-diff button { min-width: 0; }
+
+.wb-head { display: grid; gap: 4px; justify-items: center; }
+
+.bet-row input { width: 0; flex: 1 1 0; }
+
+.bet-row button { flex: 0 0 auto; padding: 0 10px; }

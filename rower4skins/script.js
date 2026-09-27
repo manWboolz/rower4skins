@@ -459,8 +459,8 @@ const BIKES = [
     ['BMX sąsiada', 10, '#f59e0b', '', 'ride', 3], ['Szosówka Kross', 15, '#3b82f6', '', 'pump', 3],
     ['Elektryk miejski', 25, '#14b8a6', '', 'timing', 4], ['Karbonowa kolarzówka', 45, '#a855f7', '', 'memory', 4],
     ['ENGWE EP-2.0 Boost', 90, '#3b82f6', 'img/engwe-ep2-boost.png', 'gears', 5],
-    // wypłata za wygraną (wartość +10%) = 990 zł
-    ['Bananoviec 3.0', round2(990 / CUR.pln.r / 1.1), '#facc15', 'img/bananoviec.webp', 'arrows', 6.5],
+    // wypłata za wygraną (wartość +10%) = $400
+    ['Bananoviec 3.0', round2(400 / 1.1), '#facc15', 'img/bananoviec.webp', 'arrows', 6.5],
     ['Wspomagaczerex', 120, '#38bdf8', 'img/wspomagaczerex.webp', 'rhythm', 5],
     ['Ridingtimes GT73 Pro', 150, '#e5b98a', 'img/ridingtimes-gt73-pro.png', 'ride', 6],
     ['Kukirin G2', 260, '#f97316', 'img/kukirin-g2.webp', 'slalom', 6],
@@ -1182,6 +1182,7 @@ const NAV = [
     ['home', '#/', 'box', 'Skrzynki'],
     ['gems', '#/gems', 'gem', 'Gemy'],
     ['battles', '#/battles', 'swords', 'Bitwy'],
+    ['games', '#/games', 'grid', 'Gry'],
     ['contract', '#/contract', 'doc', 'Kontrakt'],
     ['exchanger', '#/exchanger', 'swap', 'Wymiennik'],
 ];
@@ -1401,7 +1402,10 @@ const PAGES = {
     battle: { r: renderBattleView, nav: 'battles', after: afterBattleView },
     contract: { r: renderContract, nav: 'contract' },
     exchanger: { r: renderExchanger, nav: 'exchanger' },
-    upgrader: { r: renderUpgrader, nav: '' },
+    upgrader: { r: renderUpgrader, nav: 'games' },
+    games: { r: renderGamesHub, nav: 'games' },
+    towers: { r: renderTowers, nav: 'games' },
+    blackjack: { r: renderBlackjack, nav: 'games' },
     destiny: { r: () => { setTimeout(() => go('#/upgrader')); return ''; }, nav: '' },
     profile: { r: renderProfile, nav: '' },
     free: { r: renderFree, nav: 'home' },
@@ -2418,6 +2422,354 @@ function upRefresh() {
 }
 
 // ============================================================
+// GRY: Towers (Wieża Dętek), Blackjack, Koło Szprychy
+// ============================================================
+
+// Wspólne pole stawki: ½, 2×, MAX.
+function betCtl(id, val, key, disabled) {
+    return `<div class="bet-ctl"><label class="field-l" for="${id}">Stawka</label>
+        <div class="bet-row"><span class="bet-cur">${ic('wallet')}</span><input id="${id}" type="number" min="0.1" step="0.1" value="${val}" data-in="${key}" ${disabled ? 'disabled' : ''}>
+        <button data-act="betMod" data-arg="${key}:half" ${disabled ? 'disabled' : ''}>½</button><button data-act="betMod" data-arg="${key}:dbl" ${disabled ? 'disabled' : ''}>2×</button><button data-act="betMod" data-arg="${key}:max" ${disabled ? 'disabled' : ''}>MAX</button></div></div>`;
+}
+const okBet = v => { if (!(v >= 0.1)) { toast('Minimalna stawka to ' + money(0.1) + '.', 'err'); return false; } if (v > state.balance) { toast('Za mało środków.', 'err'); return false; } return true; };
+
+// ---------- Towers ----------
+const TW_DIFF = {
+    easy: { n: 'Łatwy', cols: 4, bombs: 1 }, med: { n: 'Średni', cols: 3, bombs: 1 },
+    hard: { n: 'Trudny', cols: 2, bombs: 1 }, ext: { n: 'Ekstremalny', cols: 3, bombs: 2 },
+};
+const TW_FLOORS = 8, TW_EDGE = 0.97;
+const tw = { bet: 1, diff: 'med', active: false, rows: null, cur: 0, picks: [], end: null };
+// Mnożnik po k przejechanych piętrach: 97% × (pola / bezpieczne)^k, zaokrąglony w dół.
+const twMult = (k, diff = tw.diff) => { const d = TW_DIFF[diff]; return k ? Math.floor(TW_EDGE * Math.pow(d.cols / (d.cols - d.bombs), k) * 100) / 100 : 0; };
+
+const TIRE = `<svg viewBox="0 0 40 40" class="tw-ico"><circle cx="20" cy="20" r="15" fill="none" stroke="#111" stroke-width="7"/><circle cx="20" cy="20" r="15" fill="none" stroke="#45d15b" stroke-width="2"/>${Array.from({ length: 8 }, (_, k) => { const a = k * Math.PI / 4; return `<path d="M20 20L${(20 + Math.cos(a) * 12).toFixed(1)} ${(20 + Math.sin(a) * 12).toFixed(1)}" stroke="#cbd5e1" stroke-width="1.2"/>`; }).join('')}<circle cx="20" cy="20" r="3" fill="#cbd5e1"/></svg>`;
+const NAIL = `<svg viewBox="0 0 40 40" class="tw-ico"><path d="M12 8h16v4H22l-1 22-1 3-1-3-1-22h-6z" fill="#e5e7eb" stroke="#7f1d1d" stroke-width="1.5"/><circle cx="20" cy="32" r="10" fill="none" stroke="#ff4d5e" stroke-width="2" opacity=".7"/></svg>`;
+
+function renderTowers() {
+    const d = TW_DIFF[tw.diff], rev = !tw.active && tw.rows;
+    const rows = Array.from({ length: TW_FLOORS }, (_, k) => TW_FLOORS - 1 - k).map(r => {
+        const live = tw.active && r === tw.cur;
+        const tiles = Array.from({ length: d.cols }, (_, c) => {
+            const picked = tw.picks[r] === c, bomb = tw.rows?.[r]?.[c];
+            let cls = 'tw-tile', inner = '';
+            if (picked) { cls += bomb ? ' boom' : ' safe'; inner = bomb ? NAIL : TIRE; }
+            else if (rev) { cls += ' ghost'; inner = bomb ? NAIL : TIRE; }
+            if (live) cls += ' live';
+            return `<button class="${cls}" ${live ? `data-act="twPick" data-arg="${c}"` : 'disabled'}>${inner || (live ? '?' : '')}</button>`;
+        }).join('');
+        return `<div class="tw-row ${r < tw.cur ? 'done' : ''} ${live ? 'live' : ''}"><span class="tw-mult">x${twMult(r + 1).toFixed(2)}</span><div class="tw-tiles" style="--cols:${d.cols}">${tiles}</div></div>`;
+    }).join('');
+    const win = round2(tw.bet * twMult(tw.cur));
+    return `
+    <div class="page-head">${ic('grid')}<div><h2>WIEŻA DĘTEK</h2><small>TOWERS · WSPINAJ SIĘ PO PIĘTRACH I WYPŁAĆ, ZANIM TRAFISZ GWÓŹDŹ</small></div><span class="r18">18+</span></div>
+    <div class="tw-wrap">
+        <div class="panel tw-ctl">
+            ${betCtl('twBet', tw.bet, 'twbet', tw.active)}
+            <label class="field-l">Trudność</label>
+            <div class="seg tw-diff">${Object.entries(TW_DIFF).map(([k, v]) => `<button class="${tw.diff === k ? 'on' : ''}" data-act="twDiff" data-arg="${k}" ${tw.active ? 'disabled' : ''}>${v.n}</button>`).join('')}</div>
+            <p class="muted small">${d.cols} ${d.cols === 2 ? 'pola' : 'pola'} na piętrze, ${d.bombs === 1 ? '1 gwóźdź' : d.bombs + ' gwoździe'}. Na samej górze: <b>x${twMult(TW_FLOORS).toFixed(2)}</b>.</p>
+            ${tw.active ? `
+                <button class="btn btn-green btn-xl btn-block" data-act="twCash" ${tw.cur ? '' : 'disabled'}>${ic('wallet')}WYPŁAĆ ${money(win)}</button>
+                <button class="btn btn-dark btn-block" data-act="twRand">${ic('refresh')}Losowe pole</button>
+                <div class="c-stat"><small>Następne piętro</small><b>x${twMult(tw.cur + 1).toFixed(2)} · ${money(round2(tw.bet * twMult(tw.cur + 1)))}</b></div>`
+            : `<button class="btn btn-purple btn-xl btn-block" data-act="twStart">${ic('bolt')}GRAJ</button>`}
+            ${tw.end ? `<div class="tw-end ${tw.end.win ? 'pos' : 'neg'}">${tw.end.win ? `Wypłacono ${money(tw.end.amt)} (x${tw.end.m.toFixed(2)})` : 'Gwóźdź! Dętka przebita.'}</div>` : ''}
+        </div>
+        <div class="tw-tower panel">${rows}</div>
+    </div>`;
+}
+
+const TW_ACT = {
+    twDiff: k => { if (!tw.active && TW_DIFF[k]) { tw.diff = k; tw.end = null; tw.rows = null; tw.picks = []; renderPage(); } },
+    twStart: () => {
+        if (tw.active) return;
+        const bet = round2(tw.bet);
+        if (!okBet(bet)) return;
+        wallet(-bet, `Wieża Dętek (${TW_DIFF[tw.diff].n})`);
+        spend(bet);
+        const d = TW_DIFF[tw.diff];
+        tw.rows = Array.from({ length: TW_FLOORS }, () => {
+            const row = Array(d.cols).fill(false);
+            let n = 0;
+            while (n < d.bombs) { const c = Math.floor(Math.random() * d.cols); if (!row[c]) { row[c] = true; n++; } }
+            return row;
+        });
+        tw.active = true; tw.cur = 0; tw.picks = []; tw.end = null;
+        beep(600, 0.06, 0.04, 'triangle');
+        renderPage();
+    },
+    twPick: c => {
+        if (!tw.active) return;
+        c = Number(c);
+        const r = tw.cur;
+        tw.picks[r] = c;
+        if (tw.rows[r][c]) {
+            tw.active = false; tw.end = { win: false };
+            tone(300, 60, 0.4, 0.06, 'sawtooth');
+            renderPage();
+            $('.tw-tower')?.classList.add('shake');
+            return;
+        }
+        tw.cur++;
+        tone(500 + tw.cur * 70, 700 + tw.cur * 70, 0.12, 0.04, 'triangle');
+        if (tw.cur >= TW_FLOORS) { TW_ACT.twCash(); return; }
+        renderPage();
+    },
+    twRand: () => TW_ACT.twPick(Math.floor(Math.random() * TW_DIFF[tw.diff].cols)),
+    twCash: () => {
+        if (!tw.active || !tw.cur) return;
+        const m = twMult(tw.cur), amt = round2(tw.bet * m);
+        wallet(amt, `Wieża Dętek: wypłata x${m.toFixed(2)}`);
+        tw.active = false; tw.end = { win: true, amt, m };
+        winSound(m >= 5);
+        if (m >= 10) confetti();
+        renderPage();
+    },
+};
+
+// ---------- Blackjack ----------
+const BJ_SUITS = ['♠', '♥', '♦', '♣'], BJ_RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+const bj = { bet: 1, shoe: [], cut: 0, dealer: [], hands: [], cur: 0, phase: 'bet', msg: '', busy: false, n: 0, hole: true };
+
+function bjNewShoe() {
+    const s = [];
+    for (let d = 0; d < 6; d++) for (const su of BJ_SUITS) for (const r of BJ_RANKS) s.push({ r, s: su });
+    for (let k = s.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [s[k], s[j]] = [s[j], s[k]]; }
+    bj.shoe = s; bj.cut = Math.floor(s.length * 0.25);
+}
+const bjDraw = () => { const c = bj.shoe.pop(); c.n = ++bj.n; return c; };
+function bjVal(cards) {
+    let t = 0, a = 0;
+    for (const c of cards) { if (c.r === 'A') { t += 11; a++; } else t += ['10', 'J', 'Q', 'K'].includes(c.r) ? 10 : Number(c.r); }
+    while (t > 21 && a) { t -= 10; a--; }
+    return { t, soft: a > 0 };
+}
+const bjNatural = h => h.cards.length === 2 && !h.split && bjVal(h.cards).t === 21;
+const tenVal = r => ['10', 'J', 'Q', 'K'].includes(r);
+
+function bjCard(c, hidden) {
+    if (hidden) return `<div class="pcard back ${c.n === bj.n ? 'new' : ''}"><div class="pback">${ic('bike')}<b>R4S</b></div></div>`;
+    const red = c.s === '♥' || c.s === '♦';
+    return `<div class="pcard ${red ? 'red' : ''} ${c.n === bj.n ? 'new' : ''}" translate="no"><span class="pc-tl">${c.r}<i>${c.s}</i></span><span class="pc-mid">${c.s}</span><span class="pc-br">${c.r}<i>${c.s}</i></span></div>`;
+}
+
+function renderBlackjack() {
+    const dv = bj.dealer.length ? bjVal(bj.hole ? bj.dealer.slice(0, 1) : bj.dealer) : null;
+    const h = bj.hands[bj.cur];
+    const canAct = bj.phase === 'play' && !bj.busy && h;
+    const canDouble = canAct && h.cards.length === 2 && state.balance >= h.bet;
+    const canSplit = canAct && bj.hands.length === 1 && h.cards.length === 2 && (h.cards[0].r === h.cards[1].r || (tenVal(h.cards[0].r) && tenVal(h.cards[1].r))) && state.balance >= h.bet;
+    const betting = bj.phase === 'bet' || bj.phase === 'done';
+    return `
+    <div class="page-head">${ic('crown')}<div><h2>BLACKJACK ROWER4SKINS</h2><small>6 TALII · BLACKJACK PŁACI 3:2 · KRUPIER STAJE NA 17</small></div><span class="r18">18+</span></div>
+    <div class="bj-table">
+        <div class="bj-arc">BLACKJACK PŁACI 3:2 · KRUPIER DOBIERA DO 16 I STAJE NA 17</div>
+        <div class="bj-side dealer">
+            <small>KRUPIER</small>
+            <div class="bj-cards">${bj.dealer.map((c, k) => bjCard(c, k === 1 && bj.hole)).join('') || '<div class="pcard slot"></div><div class="pcard slot"></div>'}</div>
+            ${dv ? `<span class="bj-total">${dv.t}${bj.hole ? '' : dv.t > 21 ? ' · FURA' : ''}</span>` : ''}
+        </div>
+        <div class="bj-logo"><span>ROWER<b>4</b>SKINS</span><em>${ic('bike')}</em></div>
+        <div class="bj-side player">
+            <div class="bj-hands">${bj.hands.length ? bj.hands.map((hh, k) => {
+                const v = bjVal(hh.cards);
+                return `<div class="bj-hand ${k === bj.cur && bj.phase === 'play' ? 'act' : ''} ${hh.res ? 'r-' + hh.res : ''}">
+                    <div class="bj-cards">${hh.cards.map(c => bjCard(c)).join('')}</div>
+                    <span class="bj-total">${bjNatural(hh) ? 'BLACKJACK' : v.t > 21 ? `${v.t} · FURA` : `${v.soft && v.t < 21 ? `${v.t - 10}/` : ''}${v.t}`}</span>
+                    <span class="bj-bet">${money(hh.bet)}${hh.res ? ` · ${{ win: 'WYGRANA', bj: 'BLACKJACK!', push: 'REMIS', lose: 'PRZEGRANA' }[hh.res]}` : ''}</span>
+                </div>`;
+            }).join('') : '<div class="bj-cards"><div class="pcard slot"></div><div class="pcard slot"></div></div>'}</div>
+            <small>TY</small>
+        </div>
+        ${bj.msg ? `<div class="bj-msg">${bj.msg}</div>` : ''}
+    </div>
+    <div class="panel bj-ctl">
+        ${betCtl('bjBet', bj.bet, 'bjbet', !betting)}
+        <div class="bj-btns">
+            ${betting ? `<button class="btn btn-green btn-xl" data-act="bjDeal">${ic('bolt')}${bj.phase === 'done' ? 'NOWE ROZDANIE' : 'ROZDAJ'}</button>` : `
+            <button class="btn btn-green" data-act="bjHit" ${canAct ? '' : 'disabled'}>DOBIERZ <kbd>H</kbd></button>
+            <button class="btn btn-red" data-act="bjStand" ${canAct ? '' : 'disabled'}>STÓJ <kbd>S</kbd></button>
+            <button class="btn btn-purple" data-act="bjDouble" ${canDouble ? '' : 'disabled'}>PODWÓJ <kbd>D</kbd></button>
+            <button class="btn btn-blue" data-act="bjSplit" ${canSplit ? '' : 'disabled'}>ROZDZIEL <kbd>P</kbd></button>`}
+        </div>
+    </div>`;
+}
+
+const bjRender = () => { if (route.name === 'blackjack') renderPage(); };
+const bjSleep = ms => sleep(ms);
+
+async function bjSettle() {
+    bj.hole = false;
+    const dv = bjVal(bj.dealer).t, dealerBJ = bj.dealer.length === 2 && dv === 21;
+    let ret = 0;
+    for (const h of bj.hands) {
+        const v = bjVal(h.cards).t;
+        if (v > 21) h.res = 'lose';
+        else if (bjNatural(h) && !dealerBJ) { h.res = 'bj'; ret += h.bet * 2.5; }
+        else if (dealerBJ && !bjNatural(h)) h.res = 'lose';
+        else if (dv > 21 || v > dv) { h.res = 'win'; ret += h.bet * 2; }
+        else if (v === dv) { h.res = 'push'; ret += h.bet; }
+        else h.res = 'lose';
+    }
+    ret = round2(ret);
+    const staked = round2(bj.hands.reduce((a, h) => a + h.bet, 0));
+    if (ret > 0) wallet(ret, 'Blackjack: wypłata');
+    const net = round2(ret - staked);
+    bj.msg = net > 0 ? `<span class="pos">Wygrywasz ${money(net)}!</span>` : net === 0 ? 'Remis — stawka wraca.' : `<span class="neg">Przegrywasz ${money(-net)}.</span>`;
+    if (net > 0) winSound(bj.hands.some(h => h.res === 'bj')); else if (net < 0) beep(170, 0.2, 0.04, 'sawtooth');
+    bj.phase = 'done'; bj.busy = false;
+    bjRender();
+}
+
+async function bjDealerPlay() {
+    bj.phase = 'dealer'; bj.busy = true; bj.hole = false;
+    bjRender(); await bjSleep(550);
+    if (bj.hands.some(h => bjVal(h.cards).t <= 21)) {
+        while (bjVal(bj.dealer).t < 17) { bj.dealer.push(bjDraw()); beep(820, 0.03, 0.03); bjRender(); await bjSleep(550); }
+    }
+    bjSettle();
+}
+
+async function bjNext() {
+    bj.cur++;
+    while (bj.cur < bj.hands.length) {
+        const h = bj.hands[bj.cur];
+        if (h.cards.length < 2) { h.cards.push(bjDraw()); bjRender(); await bjSleep(350); }
+        // rozdzielone asy dostają tylko jedną kartę; 21 kończy rękę sama
+        if ((h.split && h.cards[0].r === 'A') || bjVal(h.cards).t >= 21) { bj.cur++; continue; }
+        bj.busy = false; bjRender(); return;
+    }
+    bjDealerPlay();
+}
+
+const BJ_ACT = {
+    bjDeal: async () => {
+        if (bj.busy || !(bj.phase === 'bet' || bj.phase === 'done')) return;
+        const bet = round2(bj.bet);
+        if (!okBet(bet)) return;
+        if (!bj.shoe.length || bj.shoe.length < bj.cut) { bjNewShoe(); toast('Nowy but: 6 talii potasowane.'); }
+        wallet(-bet, 'Blackjack: stawka');
+        spend(bet);
+        bj.dealer = []; bj.hands = [{ cards: [], bet }]; bj.cur = 0; bj.msg = ''; bj.hole = true; bj.busy = true; bj.phase = 'deal';
+        for (const who of ['p', 'd', 'p', 'd']) {
+            (who === 'p' ? bj.hands[0].cards : bj.dealer).push(bjDraw());
+            beep(900, 0.03, 0.03); bjRender(); await bjSleep(300);
+        }
+        const up = bj.dealer[0].r, dBJ = bjVal(bj.dealer).t === 21, pBJ = bjNatural(bj.hands[0]);
+        // krupier sprawdza blackjacka przy asie albo dziesiątce
+        if ((up === 'A' || tenVal(up)) && dBJ) { bj.msg = 'Krupier ma blackjacka!'; bjSettle(); return; }
+        if (pBJ) { bjSettle(); return; }
+        bj.phase = 'play'; bj.busy = false; bjRender();
+    },
+    bjHit: async () => {
+        const h = bj.hands[bj.cur];
+        if (bj.phase !== 'play' || bj.busy || !h) return;
+        bj.busy = true;
+        h.cards.push(bjDraw()); beep(900, 0.03, 0.03); bjRender(); await bjSleep(250);
+        const v = bjVal(h.cards).t;
+        if (v > 21) { beep(200, 0.15, 0.04, 'sawtooth'); await bjSleep(300); bjNext(); }
+        else if (v === 21) bjNext();
+        else { bj.busy = false; bjRender(); }
+    },
+    bjStand: () => { if (bj.phase === 'play' && !bj.busy) { bj.busy = true; bjNext(); } },
+    bjDouble: async () => {
+        const h = bj.hands[bj.cur];
+        if (bj.phase !== 'play' || bj.busy || !h || h.cards.length !== 2 || state.balance < h.bet) return;
+        bj.busy = true;
+        wallet(-h.bet, 'Blackjack: podwojenie'); spend(h.bet); h.bet = round2(h.bet * 2);
+        h.cards.push(bjDraw()); beep(900, 0.03, 0.03); bjRender(); await bjSleep(450);
+        bjNext();
+    },
+    bjSplit: async () => {
+        const h = bj.hands[bj.cur];
+        if (bj.phase !== 'play' || bj.busy || !h || bj.hands.length !== 1 || h.cards.length !== 2 || state.balance < h.bet) return;
+        if (!(h.cards[0].r === h.cards[1].r || (tenVal(h.cards[0].r) && tenVal(h.cards[1].r)))) return;
+        bj.busy = true;
+        wallet(-h.bet, 'Blackjack: rozdzielenie'); spend(h.bet);
+        bj.hands = [{ cards: [h.cards[0]], bet: h.bet, split: true }, { cards: [h.cards[1]], bet: h.bet, split: true }];
+        bj.hands[0].cards.push(bjDraw()); bjRender(); await bjSleep(350);
+        const h0 = bj.hands[0];
+        if (h0.cards[0].r === 'A' || bjVal(h0.cards).t === 21) { bjNext(); return; }
+        bj.busy = false; bjRender();
+    },
+};
+document.addEventListener('keydown', e => {
+    if (route.name !== 'blackjack' || e.target.closest('input') || !$('#modal').hidden) return;
+    const k = { h: 'bjHit', s: 'bjStand', d: 'bjDouble', p: 'bjSplit' }[e.key.toLowerCase()];
+    if (k) { e.preventDefault(); BJ_ACT[k](); }
+});
+
+// ---------- Koło Szprychy (darmowe co 12 h) ----------
+const WHEEL = [[0.25, '#64748b'], [1, '#22c55e'], [0.5, '#0ea5e9'], [2, '#a855f7'], [0.25, '#64748b'], [5, '#f59e0b'], [0.5, '#0ea5e9'], [1, '#22c55e'], [0.25, '#64748b'], [10, '#ef4444'], [0.5, '#0ea5e9'], [25, '#facc15']];
+// szansa na nagrodę (niezależna od szerokości pól): widoczna pod kołem
+const WHEEL_ODDS = [[0.25, 30], [0.5, 25], [1, 20], [2, 12], [5, 8], [10, 4], [25, 1]];
+const WHEEL_CD = 12 * 36e5;
+const wheelWait = () => Math.max(0, (state.wheelNext || 0) - Date.now());
+let wheelAngle = 0, wheelBusy = false;
+
+function wheelSvg() {
+    const n = WHEEL.length, R = 140;
+    const seg = WHEEL.map(([v, col], k) => {
+        const a0 = (k / n) * 2 * Math.PI - Math.PI / 2, a1 = ((k + 1) / n) * 2 * Math.PI - Math.PI / 2, am = (a0 + a1) / 2;
+        const p = a => `${(150 + Math.cos(a) * R).toFixed(1)} ${(150 + Math.sin(a) * R).toFixed(1)}`;
+        return `<path d="M150 150 L${p(a0)} A${R} ${R} 0 0 1 ${p(a1)} Z" fill="${col}" stroke="#0b0e16" stroke-width="2"/>
+            <text x="${(150 + Math.cos(am) * R * 0.66).toFixed(1)}" y="${(150 + Math.sin(am) * R * 0.66).toFixed(1)}" transform="rotate(${(am * 180 / Math.PI + 90).toFixed(1)} ${(150 + Math.cos(am) * R * 0.66).toFixed(1)} ${(150 + Math.sin(am) * R * 0.66).toFixed(1)})" text-anchor="middle" dominant-baseline="middle" font-size="17" font-weight="900" fill="#fff" stroke="#0b0e16" stroke-width="3" paint-order="stroke" font-family="Saira, sans-serif">$${v}</text>`;
+    }).join('');
+    const spokes = Array.from({ length: 24 }, (_, k) => { const a = k * Math.PI / 12; return `<path d="M150 150L${(150 + Math.cos(a) * 34).toFixed(1)} ${(150 + Math.sin(a) * 34).toFixed(1)}" stroke="#cbd5e1" stroke-width="1"/>`; }).join('');
+    return `<svg viewBox="0 0 300 300" class="wheel-svg" id="wheelSvg" style="transform:rotate(${wheelAngle}deg)">${seg}<circle cx="150" cy="150" r="${R}" fill="none" stroke="#e5e7eb" stroke-width="6"/><circle cx="150" cy="150" r="36" fill="#111827" stroke="#e5e7eb" stroke-width="4"/>${spokes}<circle cx="150" cy="150" r="7" fill="#e5e7eb"/></svg>`;
+}
+
+function wheelHtml() {
+    const wait = wheelWait();
+    return `<div class="panel wheel-box">
+        <div class="wb-head"><h3>${ic('refresh')}Koło Szprychy</h3><span class="muted">Darmowy obrót co 12 godzin</span></div>
+        <div class="wb-wheel"><div class="wb-pointer"></div>${wheelSvg()}</div>
+        ${wait ? `<button class="btn btn-dark btn-block" disabled>${ic('clock')}Następny obrót za <span data-cool="wheel">${fmtDur(wait)}</span></button>` : `<button class="btn btn-green btn-xl btn-block" data-act="wheelSpin" ${wheelBusy ? 'disabled' : ''}>${ic('refresh')}ZAKRĘĆ ZA DARMO</button>`}
+        <div class="wb-odds">${WHEEL_ODDS.map(([v, w]) => `<span>${money(v)} <b>${w}%</b></span>`).join('')}</div>
+    </div>`;
+}
+
+const WHEEL_ACT = {
+    wheelSpin: () => {
+        if (wheelBusy || wheelWait()) return;
+        // losujemy nagrodę wg szans, potem jedno z pól z tą nagrodą
+        let r = Math.random() * 100, prize = 0.25;
+        for (const [v, w] of WHEEL_ODDS) { r -= w; if (r < 0) { prize = v; break; } }
+        const idxs = WHEEL.map((x, k) => (x[0] === prize ? k : -1)).filter(k => k >= 0), idx = pick(idxs);
+        const n = WHEEL.length, target = 360 - (idx + 0.5) * (360 / n) + (Math.random() - 0.5) * (300 / n);
+        wheelAngle = wheelAngle - (wheelAngle % 360) + 360 * 6 + target;
+        wheelBusy = true;
+        state.wheelNext = Date.now() + WHEEL_CD; save();
+        const svg = $('#wheelSvg');
+        if (svg) { svg.style.transition = 'transform 5s cubic-bezier(.12,.72,.08,1)'; svg.style.transform = `rotate(${wheelAngle}deg)`; }
+        let t = 0; const tk = setInterval(() => { if (++t > 30) clearInterval(tk); else beep(1300 - t * 25, 0.02, 0.02); }, 160);
+        setTimeout(() => {
+            wheelBusy = false;
+            wallet(prize, 'Koło Szprychy');
+            note(`Koło Szprychy: +${money(prize)}`);
+            toast(`Koło Szprychy: +${money(prize)}!`, 'ok');
+            winSound(prize >= 5); if (prize >= 10) confetti();
+            if (route.name === 'games') renderPage();
+        }, 5200);
+    },
+};
+
+// ---------- strona GRY ----------
+function renderGamesHub() {
+    const tile = (href, icon, t, d, col) => `<button class="game-tile" style="--gc:${col}" data-act="go" data-arg="${href}"><span class="gt-ico">${ic(icon)}</span><b>${t}</b><span>${d}</span></button>`;
+    return `
+    <div class="page-head">${ic('grid')}<div><h2>GRY</h2><small>WIRTUALNE MONETY · SZYBKIE GRY ROWER4SKINS</small></div><span class="r18">18+</span></div>
+    <div class="games-grid">
+        ${tile('#/towers', 'grid', 'Wieża Dętek', 'Towers: wspinaj się po piętrach, omijaj gwoździe, wypłać do x' + twMult(TW_FLOORS, 'ext').toFixed(0) + '.', '#22c55e')}
+        ${tile('#/blackjack', 'crown', 'Blackjack', '6 talii, podwajanie i rozdzielanie. Blackjack płaci 3:2.', '#a855f7')}
+        ${tile('#/upgrader', 'bolt', 'Upgrader', 'Postaw skiny i zamień je na droższy.', '#f59e0b')}
+        <div class="game-boss" data-act="bossIntro">${bossBanner()}</div>
+    </div>
+    ${wheelHtml()}`;
+}
+
+// ============================================================
 // Profil
 // ============================================================
 
@@ -2584,7 +2936,7 @@ const GAMES = {
     ride: { n: 'Zjazd z góry', icon: 'bike', d: 'Omijaj kamienie i dziury, zmieniając pas strzałkami albo przyciskami.' },
     slalom: { n: 'Slalom G2', icon: 'scooter', d: 'Przejedź G2 przez bramki z pachołków. Trzymaj ◀ / ▶ (albo A / D, strzałki) — hulajnoga ma bezwładność, więc skręcaj wcześniej. Niebieskie plamy to lód: tam prawie nie da się hamować.' },
     climb: { n: 'Podjazd e-MTB', icon: 'bolt', d: 'Pedałuj na zmianę LEWA / PRAWA (← / → albo A / D) w równym rytmie — kadencja musi być w zielonej strefie. Ta sama noga dwa razy = poślizg łańcucha. TURBO (↑ / W / spacja) mocno pomaga, ale bateria szybko się kończy, a na końcu czeka ściana 36%.' },
-    arrows: { n: 'Strzałki Bananovca', icon: 'swap', d: 'Jak zmiana biegów w ENGWE, tylko dla spoconych: 48 strzałek w 11 sekund, widać tylko kilka następnych. CZERWONA strzałka = naciśnij w PRZECIWNĄ stronę. Pomyłka zabiera 1 s, a 3 pomyłki kończą grę.' },
+    arrows: { n: 'Strzałki Bananovca', icon: 'swap', d: 'Jak zmiana biegów w ENGWE, tylko dla spoconych: 27 strzałek w 8,5 sekundy, widać tylko kilka następnych. CZERWONA strzałka = naciśnij w PRZECIWNĄ stronę. Pomyłka zabiera 1 s, a 3 pomyłki kończą grę.' },
     brake: { n: 'Stop w strefie', icon: 'target', d: 'Bulleh pędzi coraz szybciej. Trzymaj HAMUJ (↓ / S / spacja), żeby zatrzymać się przodem dokładnie w zielonej strefie. Za długie trzymanie blokuje koło — poślizg hamuje dużo słabiej, więc „pompuj” hamulec jak ABS.' },
     rhythm: { n: 'Rytm Wspomagacza', icon: 'sound', d: 'Nuty zjeżdżają trzema torami. Naciśnij ◀ / ▲ / ▶ (A / W / D albo strzałki), gdy nuta dotknie świecącej linii. Trzeba trafić odpowiedni procent nut — im droższy rower, tym szybsze tempo i więcej nut.' },
     mx: { n: 'Omega MX Supercross', icon: 'skull', d: 'Tor motocrossowy z dołami. GAZ (↑ / W) — 100 KM od razu podrywa przód, więc przy gazowaniu pochylaj się do przodu. ◀ TYŁ / PRZÓD ▶ (A / D) to balans ciałem: w locie obraca motocykl. HAMULEC (↓ / S) zwalnia. Za wolno = wpadasz do dołu, za szybko = twarde lądowanie za rampą. Ląduj równolegle do zielonej rampy.' },
@@ -2596,7 +2948,7 @@ function bikeInfo(i) {
     return { game: b[4], d: b[5] };
 }
 
-const stars = d => (d === 6.5 ? `<span class="stars sweat">💦 SPOCONY 1% 💦</span>` : d >= 8 ? `<span class="stars omega max">☠ OMEGA MAX ☠</span>` : d >= 7 ? `<span class="stars omega">OMEGA++++</span>` : d >= 6 ? `<span class="stars hc">★★★★★ HARDCORE</span>`
+const stars = d => (d === 6.5 ? `<span class="stars sweat">💦 SPOCONY 5% 💦</span>` : d >= 8 ? `<span class="stars omega max">☠ OMEGA MAX ☠</span>` : d >= 7 ? `<span class="stars omega">OMEGA++++</span>` : d >= 6 ? `<span class="stars hc">★★★★★ HARDCORE</span>`
     : `<span class="stars" title="Trudność ${d}/5">${'★'.repeat(d)}<i>${'★'.repeat(5 - d)}</i></span>`);
 const EXTREME = i => bikeInfo(i).d >= 6;
 // Gemy za wpłatę: rosną z trudnością, a dla HARDCORE/OMEGA także z wartością roweru.
@@ -2627,7 +2979,7 @@ function stopGame() {
 
 // Dopiski o zasadach dla najtrudniejszych rowerów.
 const HC = {
-    arrows: 'SPOCONY 1%: ponad 4 strzałki na sekundę przez 11 sekund, od 12. strzałki czerwone pułapki. Da się, ale tylko z idealną koncentracją.',
+    arrows: 'SPOCONY 5%: ponad 3 strzałki na sekundę przez 8,5 sekundy, od 8. strzałki czerwone pułapki. Trudne, ale z treningiem do zrobienia.',
     brake: 'HARDCORE: 8 prób, coraz większa prędkość (do 70 km/h) i coraz krótsza strefa (do 1,1 m). Trzeba zatrzymać się w strefie co najmniej 6 razy.',
     ride: 'HARDCORE: aż 50 sekund zjazdu, gęsta mgła, dwa pasy zawsze zablokowane, a pełne tempo (prawie 2×) przychodzi już po pół minuty.',
     slalom: 'HARDCORE: 45 sekund, bramki coraz węższe i coraz dalej od siebie, lód od 12. sekundy. Wolno ominąć tylko jedną bramkę.',
@@ -3102,9 +3454,9 @@ const GAME_RUN = {
 
     // Bananoviec 3.0: strzałki dla 1% graczy. Czerwona = w przeciwną stronę.
     arrows(i, d, stage) {
-        const count = 48, time = 11000, MAX_BAD = 3, VIEW = 7, RED_FROM = 12;
+        const count = 27, time = 8500, MAX_BAD = 3, VIEW = 7, RED_FROM = 8;
         const A = ['←', '↑', '→', '↓'], K = { ArrowLeft: 0, ArrowUp: 1, ArrowRight: 2, ArrowDown: 3, a: 0, w: 1, d: 2, s: 3, A: 0, W: 1, D: 2, S: 3 }, OPP = [2, 3, 0, 1];
-        const seq = Array.from({ length: count }, (_, n) => ({ k: Math.floor(Math.random() * 4), red: n >= RED_FROM && Math.random() < 0.35 }));
+        const seq = Array.from({ length: count }, (_, n) => ({ k: Math.floor(Math.random() * 4), red: n >= RED_FROM && Math.random() < 0.28 }));
         let at = 0, bad = 0, dead = false;
         stage.innerHTML = `<div class="mg-time"><div id="mgTime"></div></div>
             <div class="mg-info"><span>Postęp: <b id="arAt">0</b> / ${count}</span><span>Pomyłki: <b id="arBad">0</b> / ${MAX_BAD}</span></div>
@@ -3124,7 +3476,7 @@ const GAME_RUN = {
             if (Number(k) === want) {
                 beep(520 + (at % 12) * 40, 0.04, 0.035);
                 at++;
-                if (at >= count) { end(true, `Wszystkie ${count} strzałek w czasie, pomyłki: ${bad}. Jesteś w 1%!`); return; }
+                if (at >= count) { end(true, `Wszystkie ${count} strzałek w czasie, pomyłki: ${bad}. Jesteś w 5%!`); return; }
             } else {
                 bad++;
                 beep(160, 0.15, 0.05, 'sawtooth');
@@ -4140,6 +4492,13 @@ const ACT = {
     },
 
     promoPrefill: code => promoModal(code),
+    ...TW_ACT, ...BJ_ACT, ...WHEEL_ACT,
+    betMod: arg => {
+        const [key, how] = String(arg).split(':');
+        const o = key === 'twbet' ? tw : bj;
+        o.bet = round2(Math.max(0.1, how === 'half' ? o.bet / 2 : how === 'dbl' ? o.bet * 2 : Math.floor(state.balance * 100) / 100));
+        renderPage();
+    },
     bossIntro: () => bossIntro(),
     bossStart: () => bossStart(),
     // upgrader
@@ -4274,6 +4633,8 @@ const IN = {
     fmax: t => { filt.max = t.value; refreshSections(); },
     fq: t => { filt.q = t.value; refreshSections(); },
     exq: t => { exQ = t.value; $('#exMarket').innerHTML = exMarketHtml(); },
+    twbet: t => { tw.bet = Math.max(0, round2(Number(t.value) || 0)); },
+    bjbet: t => { bj.bet = Math.max(0, round2(Number(t.value) || 0)); },
     upq: t => { up.q = t.value; $('#upGrid').innerHTML = upTargetsHtml(); },
     upbal: t => { up.bal = Math.max(0, Math.min(state.balance, round2(Number(t.value) || 0))); upRefresh(); },
     pq: t => { pQ = t.value; $('#pGrid').innerHTML = profInvHtml(); },
@@ -4309,6 +4670,7 @@ function tick() {
     $$('[data-cd="event"]').forEach(el => { el.innerHTML = html; });
     $$('[data-cool="daily"]').forEach(el => { el.textContent = fmtDur(864e5 - (Date.now() - state.daily)); });
     $$('[data-cool="boss"]').forEach(el => { el.textContent = fmtDur(bossWait()); });
+    $$('[data-cool="wheel"]').forEach(el => { el.textContent = fmtDur(wheelWait()); });
 }
 
 // ============================================================
