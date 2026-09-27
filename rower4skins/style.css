@@ -2947,3 +2947,61 @@ body::after {
 .ccard .cbadge { background: linear-gradient(90deg, var(--cc), color-mix(in srgb, var(--cc) 60%, #fff)); color: #0b0e16; }
 
 .sec-title .ic { box-shadow: 0 0 20px -4px currentColor; }
+
+/* pasek z darmowym kodem PLACEKER */
+.promo-bar { display: flex; align-items: center; gap: 14px; width: 100%; margin: 16px 0 0; padding: 12px 18px; border-radius: 14px; border: 1px solid rgba(250, 204, 21, .5); cursor: pointer; text-align: left;
+    background: linear-gradient(90deg, rgba(234, 179, 8, .25), rgba(236, 72, 153, .22), rgba(168, 85, 247, .25)); background-size: 200% 100%; animation: promoBar 6s linear infinite; color: #fff; font: inherit; }
+
+.promo-bar:hover { filter: brightness(1.15); }
+
+.pb-gift { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 10px; background: #facc15; color: #111; animation: heroPulse 1.6s ease-in-out infinite; }
+
+.pb-gift .ic { width: 22px; height: 22px; }
+
+.pb-txt { flex: 1; font-size: 18px; font-weight: 800; }
+
+.pb-txt b { color: #fde047; letter-spacing: .06em; padding: 2px 8px; border: 1px dashed #fde047; border-radius: 6px; }
+
+.pb-cta { display: inline-flex; align-items: center; gap: 6px; font-weight: 900; color: #fde047; }
+
+.pb-cta .ic { width: 16px; height: 16px; }
+
+@keyframes promoBar { to { background-position: 200% 0; } }
+
+.promo-hint { text-align: center; margin: 4px 0 12px; font-weight: 800; color: #fde047; }
+
+.promo-hint b { padding: 2px 8px; border: 1px dashed #fde047; border-radius: 6px; letter-spacing: .06em; }
+
+@media (max-width: 640px) { .pb-txt { font-size: 14px; } .pb-cta { display: none; } }
+
+canvas.brakecv { max-width: 480px; aspect-ratio: 480 / 260; }
+
+.bk-help { align-self: center; font-size: 12px; }
+
+/* Boss event */
+.boss-bar { display: flex; align-items: center; gap: 16px; width: 100%; margin: 14px 0 0; padding: 10px 18px 10px 10px; border-radius: 16px; cursor: pointer; text-align: left; color: #fff; font: inherit;
+    border: 1px solid rgba(255, 77, 94, .55); background: radial-gradient(400px 120px at 0% 50%, rgba(255, 60, 60, .35), transparent 70%), linear-gradient(90deg, #2a0d12, #160c1c); box-shadow: 0 10px 40px -18px #ff2d2d; }
+
+.boss-bar img { width: 78px; height: 78px; border-radius: 50%; object-fit: cover; border: 3px solid #ff4d5e; box-shadow: 0 0 22px #ff2d2d; animation: bossBob 1.6s ease-in-out infinite; }
+
+@keyframes bossBob { 50% { transform: scale(1.06) rotate(-4deg); } }
+
+.bb-txt { flex: 1; display: grid; gap: 2px; }
+
+.bb-txt small { display: inline-flex; align-items: center; gap: 5px; color: #ff8a95; font-weight: 900; letter-spacing: .12em; font-size: 12px; }
+
+.bb-txt small .ic { width: 14px; height: 14px; }
+
+.bb-txt b { font-size: 24px; font-weight: 900; font-style: italic; }
+
+.bb-txt span { color: #fca5a5; font-weight: 700; }
+
+.bb-cta { display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: 10px; background: #ff4d5e; font-weight: 900; }
+
+.bb-cta .ic { width: 16px; height: 16px; }
+
+.boss-ava { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 2px solid #ff4d5e; }
+
+canvas.bosscv { max-width: 480px; aspect-ratio: 480 / 340; }
+
+@media (max-width: 640px) { .bb-txt b { font-size: 18px; } .bb-txt span { font-size: 12px; } .boss-bar img { width: 58px; height: 58px; } .bb-cta { padding: 8px 10px; font-size: 12px; } }
