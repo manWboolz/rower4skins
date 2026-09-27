@@ -2984,7 +2984,7 @@ const HC = {
     ride: 'HARDCORE: aż 50 sekund zjazdu, gęsta mgła, dwa pasy zawsze zablokowane, a pełne tempo (prawie 2×) przychodzi już po pół minuty.',
     slalom: 'HARDCORE: 45 sekund, bramki coraz węższe i coraz dalej od siebie, lód od 12. sekundy. Wolno ominąć tylko jedną bramkę.',
     climb: 'HARDCORE: 560 m pod górę w 57 sekund. Bez oszczędzania baterii na końcową ścianę nie ma szans.',
-    mx: 'OMEGA MAX ☠: 7 skoków, whoopsy, podmuchy wiatru w locie i 55 sekund. Kąt lądowania musi się zgadzać z rampą co do 14°. Jeden błąd = koniec. Najtrudniejsza minigra na stronie.',
+    mx: 'OMEGA MAX ☠: 7 skoków, whoopsy, podmuchy wiatru w locie i tylko 45 sekund. Kąt lądowania musi się zgadzać z rampą co do 11°. Jeden błąd = koniec. Najtrudniejsza minigra na stronie.',
     wheelie: 'OMEGA++++: 35 sekund, strefa 21–39°, silnik reaguje z opóźnieniem, a trzeba spędzić w strefie co najmniej 66% czasu. Powodzenia.',
 };
 
@@ -3046,7 +3046,7 @@ function timerBar(ms, onEnd) {
 // Altis Omega MX: fizyka toru (osobno od rysowania, żeby dało się ją testować).
 // Jednostki: metry, sekundy, stopnie dla pochylenia.
 function mxWorld() {
-    const G = 9.8, PIT = 7, TOL = 14, IMPACT = 11.5, LIMIT = 55;
+    const G = 9.8, PIT = 7, TOL = 11, IMPACT = 10.5, LIMIT = 45;
     const pts = [[-30, 0], [0, 0]], gaps = [], jumps = [];
     let x = 0, y = 0;
     const flat = L => { x += L; pts.push([x, y]); };
@@ -3062,14 +3062,14 @@ function mxWorld() {
     };
     const wz = [];
     const whoops = (n, h, w) => { wz.push([x, x + n * w]); for (let k = 0; k < n; k++) { x += w / 2; y += h; pts.push([x, y]); x += w / 2; y -= h; pts.push([x, y]); } };
-    flat(30); jump(5, 1.6, 7, 10);
-    flat(22); jump(6, 2.4, 11, 11);
+    flat(30); jump(5, 1.6, 8, 8);
+    flat(22); jump(6, 2.4, 12, 9);
     flat(16); whoops(7, 0.35, 4.2);
-    flat(18); jump(6, 3, 15, 12);
-    flat(20); jump(5, 2.2, 9, 10); flat(4); jump(5, 2.2, 9, 10);
-    flat(26); jump(8, 3.4, 16, 15);
+    flat(18); jump(6, 3, 16, 10);
+    flat(20); jump(5, 2.2, 10, 8); flat(3); jump(5, 2.2, 10, 8);
+    flat(26); jump(8, 4, 19, 13);
     flat(14); whoops(6, 0.4, 4);
-    flat(18); jump(6, 2.6, 13, 12);
+    flat(18); jump(6, 2.6, 14, 10);
     flat(12);
     const finish = x;
     flat(60);
@@ -3098,7 +3098,7 @@ function mxWorld() {
             st.airT += dt;
             st.vy -= G * dt; st.x += st.vx * dt; st.y += st.vy * dt;
             st.gustT -= dt;
-            if (st.gustT <= 0) { st.gust = (Math.random() - 0.5) * 90; st.gustT = 0.25 + Math.random() * 0.3; }
+            if (st.gustT <= 0) { st.gust = (Math.random() - 0.5) * 125; st.gustT = 0.25 + Math.random() * 0.3; }
             st.w += ((inp.lb - inp.lf) * 220 + (inp.thr - inp.brk) * 35 + st.gust - 1.8 * st.w) * dt;
             st.th += st.w * dt;
             const gy = ground(st.x);
