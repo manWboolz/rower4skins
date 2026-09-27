@@ -9,7 +9,14 @@ const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const pick = a => a[Math.floor(Math.random() * a.length)];
 const round2 = n => Math.round(n * 100) / 100;
-const money = n => '$' + n.toFixed(2);
+// Ceny są trzymane w dolarach; wyświetlamy je w walucie wybranej w ustawieniach (kursy przybliżone).
+const CUR = {
+    pln: { r: 3.65, n: 'PLN', f: v => v.toFixed(2).replace('.', ',') + ' zł' },
+    usd: { r: 1, n: 'USD', f: v => '$' + v.toFixed(2) },
+    eur: { r: 0.86, n: 'EUR', f: v => v.toFixed(2).replace('.', ',') + ' €' },
+};
+const curr = () => CUR[state.settings.cur] || CUR.usd;
+const money = n => (n < 0 ? '−' : '') + curr().f(Math.abs(n) * curr().r);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -85,6 +92,7 @@ const ICONS = {
     refresh: '<path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/>',
     tag: '<path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
     shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4M12 16h.01"/>',
+    globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
     edit: '<path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
 };
 
@@ -156,6 +164,47 @@ const WEAPON_CASES = [['AK-47', '#a16207'], ['AWP', '#db2777'], ['M4A1-S', '#65a
 const RARITY_CASES = [['consumer', 'Consumer', '#b0c3d9'], ['industrial', 'Industrial', '#5e98d9'], ['milspec', 'Mil-Spec', '#4b69ff'],
     ['restricted', 'Restricted', '#8847ff'], ['classified', 'Classified', '#d32ce6'], ['covert', 'Covert', '#eb4b4b']];
 
+// Skrzynki za gemy: 12 poziomów. Średni drop ≈ 1,2 centa za gem, im droższa, tym więcej Covert i noży.
+const GEM_TIERS = [
+    ['starter', 'Nowicjusz', 500, '#8b5cf6', 'user'], ['explorer', 'Odkrywca', 1000, '#ea580c', 'target'],
+    ['collector', 'Kolekcjoner', 1500, '#16a34a', 'doc'], ['adventurer', 'Poszukiwacz', 2000, '#a855f7', 'star'],
+    ['challenger', 'Pretendent', 2500, '#d97706', 'trophy'], ['seeker', 'Tropiciel', 3000, '#2563eb', 'search'],
+    ['hunter', 'Łowca', 3500, '#65a30d', 'paw'], ['master', 'Mistrz', 4000, '#7c3aed', 'crown'],
+    ['elite', 'Elita', 4500, '#ca8a04', 'shield'], ['supreme', 'Supremacja', 5000, '#0d9488', 'bolt'],
+    ['legendary', 'Legenda', 5500, '#dc2626', 'skull'], ['ultimate', 'Ostateczna', 6000, '#1d4ed8', 'gem'],
+];
+const GEM_VALUE = 0.012;
+
+function poolEv(items) {
+    const t = items.reduce((a, [, w]) => a + w, 0);
+    return items.reduce((a, [id, w]) => a + SKIN[id].price * w / t, 0);
+}
+
+// Szuka x ∈ [0,1] (udział wysokich rzadkości), dla którego średni drop trafia w cel.
+function tunedPool(specFn, target, opts) {
+    let lo = 0, hi = 1, best = pool(specFn(1), opts);
+    if (poolEv(best) < target) return best;
+    for (let k = 0; k < 18; k++) {
+        const mid = (lo + hi) / 2, items = pool(specFn(mid), opts);
+        if (poolEv(items) > target) { hi = mid; best = items; } else lo = mid;
+    }
+    return best;
+}
+
+function gemTierCase([key, name, gems, color, icon], tier) {
+    const hiTier = tier >= 6;
+    return {
+        id: 'gt-' + key, name, color, sec: 'gemtier', currency: 'gems', gems, deco: 'gemtier', icon, tier,
+        items: tunedPool(x => [
+            [R('milspec'), hiTier ? 0 : (1 - x) * 50],
+            [R('restricted'), 30 * (1 - x * 0.6)],
+            [R('classified'), 12 + 22 * x],
+            [R('covert'), 2 + 26 * x],
+            [KNIFE, 0.1 + 3 * x], [GLOVE, 0.05 + 1.2 * x],
+        ], gems * GEM_VALUE, { seed: 'gt' + key, per: 10 }),
+    };
+}
+
 const CASES = [
     // Legendy
     { id: 'smocza', name: 'Smocza Legenda', color: '#b91c1c', sec: 'legend', badge: 'HOT', feature: 'awp-dragon-lore', tag: 'Legenda',
@@ -186,6 +235,8 @@ const CASES = [
         items: pool([[R('milspec', 'restricted'), RW()], [R('classified'), RW()], [R('covert'), RW(0.7)], [R('gold'), 0.3]], { seed: 'ka' }) },
     { id: 'm-zombi', name: 'Zombi', color: '#64748b', sec: 'meme', badge: 'HOT', deco: 'photo', img: 'img/meme-zombi.webp',
         items: pool([[R('consumer'), 120], [R('covert'), 5], [R('gold'), 0.8]], { seed: 'zo' }) },
+    { id: 'm-plecak', name: 'Ląduje w Plecaku', color: '#c026d3', sec: 'meme', badge: 'NEW', deco: 'photo', img: 'img/meme-plecak.webp',
+        items: pool([[R('restricted'), 30], [R('classified'), 30], [R('covert'), 12], [KNIFE, 1.5], [GLOVE, 0.8]], { seed: 'pl' }) },
     { id: 'm-goryl', name: 'Armia Goryli', color: '#16a34a', sec: 'meme', badge: 'MEME', deco: 'photo', img: 'img/meme-goryl.webp',
         items: pool([[R('classified'), 40], [R('covert'), 20], [R('gold'), 3]], { seed: 'gr' }) },
 
@@ -213,14 +264,7 @@ const CASES = [
     })),
 
     // Specjalne
-    { id: 'g-garsc', name: 'Garść Gemów', color: '#c084fc', sec: 'gems', currency: 'gems', gems: 100, deco: 'gems',
-        items: pool([[R('consumer', 'industrial', 'milspec'), RW()], [R('restricted'), RW(0.6)], [R('classified'), RW(0.3)]], { seed: 'g1' }) },
-    { id: 'g-krysztal', name: 'Kryształowa', color: '#8b5cf6', sec: 'gems', currency: 'gems', gems: 600, tag: 'Gemy',
-        items: pool([[R('restricted', 'classified'), RW()], [R('covert'), RW()], [R('gold'), 0.4]], { seed: 'g2' }) },
-    { id: 'g-legenda', name: 'Legenda Gemów', color: '#e879f9', sec: 'gems', currency: 'gems', gems: 1500, tag: 'Legenda',
-        items: pool([[R('classified'), 40], [R('covert'), 25], [R('gold'), 4]], { seed: 'g3' }) },
-    { id: 'gems', name: 'Skrzynka Gemów', color: '#a855f7', sec: 'gems', currency: 'gems', gems: 250, deco: 'gems',
-        items: pool([[R('consumer', 'industrial', 'milspec', 'restricted', 'classified'), RW()], [R('covert'), RW(0.5)]], { seed: 'g4' }) },
+    ...GEM_TIERS.map(gemTierCase),
     { id: 'daily', name: 'Codzienna Skrzynka', color: '#22c55e', currency: 'free', kind: 'daily', deco: 'gift',
         items: pool([[R('consumer', 'industrial'), RW()], [R('milspec'), RW(0.5)], [R('restricted'), RW(0.2)], [R('covert'), 0.3]], { seed: 'dl' }) },
     ...[5, 10, 20, 30, 50].map((lvl, i) => ({
@@ -251,18 +295,20 @@ const SECTIONS = [
     { id: 'legend', title: 'Legendy', icon: 'crown' },
     { id: 'creator', title: 'Skrzynki twórców', icon: 'user' },
     { id: 'meme', title: 'Skrzynki memów', icon: 'bolt' },
-    { id: 'gems', title: 'Skrzynki za gemy', icon: 'gem' },
     { id: 'bday', title: 'Rowerowe Urodziny', icon: 'cake' },
     { id: 'rar', title: 'Rzadkości', icon: 'star' },
     { id: 'wpn', title: 'Bronie', icon: 'target' },
 ];
 
+// [nazwa, wartość $, kolor, zdjęcie, minigra, trudność 1–5; 6 = HARDCORE, 7 = OMEGA]
 const BIKES = [
-    ['Składak Wigry 3', 5, '#94a3b8'], ['Ukraina z piwnicy', 8, '#a16207'], ['Romet Jubilat', 12, '#ef4444'],
-    ['Góral z marketu', 15, '#22c55e'], ['BMX sąsiada', 20, '#f59e0b'], ['Szosówka Kross', 35, '#3b82f6'],
-    ['Elektryk miejski', 60, '#14b8a6'], ['Karbonowa kolarzówka', 120, '#a855f7'],
-    ['ENGWE EP-2.0 Boost', 299, '#3b82f6', 'img/engwe-ep2-boost.png'],
-    ['Ridingtimes GT73 Pro', 499, '#e5b98a', 'img/ridingtimes-gt73-pro.png'],
+    ['Składak Wigry 3', 5, '#94a3b8', '', 'pump', 1], ['Ukraina z piwnicy', 8, '#a16207', '', 'timing', 1],
+    ['Romet Jubilat', 12, '#ef4444', '', 'memory', 2], ['Góral z marketu', 15, '#22c55e', '', 'gears', 2],
+    ['BMX sąsiada', 20, '#f59e0b', '', 'ride', 3], ['Szosówka Kross', 35, '#3b82f6', '', 'pump', 3],
+    ['Elektryk miejski', 60, '#14b8a6', '', 'timing', 4], ['Karbonowa kolarzówka', 120, '#a855f7', '', 'memory', 4],
+    ['ENGWE EP-2.0 Boost', 299, '#3b82f6', 'img/engwe-ep2-boost.png', 'gears', 5],
+    ['Ridingtimes GT73 Pro', 499, '#e5b98a', 'img/ridingtimes-gt73-pro.png', 'ride', 6],
+    ['Stark Varg', 1500, '#e2e8f0', 'img/stark-varg.png', 'wheelie', 7],
 ];
 
 const IMG = {
@@ -274,9 +320,10 @@ const IMG = {
     logo: 'img/logo.png',
     engwe: 'img/engwe-ep2-boost.png',
     gt73: 'img/ridingtimes-gt73-pro.png',
+    varg: 'img/stark-varg.png',
 };
 
-const PROMOS = { ROWER4SKINS: { bal: 1 }, URODZINY: { gems: 100 }, SZPRYCHA: { bal: 0.5 } };
+const PROMOS = { ROWER4SKINS: { bal: 1 }, URODZINY: { gems: 500 }, SZPRYCHA: { bal: 0.5 }, KM5: { bal: 5, gems: 500 }, VIT5: { bal: 5, gems: 500 } };
 
 const BOT_NAMES = ['kolarz_91', 'szprycha', 'MTB_Kuba', 'pedalarz', 'dętka_pl', 'Wigry3', 'turbo_romet', 'łańcuch',
     'bmx_ola', 'peleton', 'góral_pro', 'przerzutka', 'sakwa', 'dzwonek', 'bidon', 'kadencja'];
@@ -291,12 +338,12 @@ const MODES = {
 };
 
 const MISSIONS = [
-    { id: 'm1', t: 'Otwórz 10 skrzynek', goal: 10, v: () => state.stats.opened, gems: 50 },
-    { id: 'm2', t: 'Wygraj bitwę skrzynek', goal: 1, v: () => state.stats.battlesWon, gems: 75 },
-    { id: 'm3', t: 'Podpisz kontrakt', goal: 1, v: () => state.stats.contracts, gems: 50 },
-    { id: 'm4', t: 'Znajdź ukrytą skrzynkę na banerze', goal: 1, v: () => (state.hiddenFound ? 1 : 0), gems: 100 },
-    { id: 'm5', t: 'Osiągnij poziom 5', goal: 5, v: () => level(), gems: 100 },
-    { id: 'm6', t: 'Wydaj łącznie $50 na skrzynki i bitwy', goal: 50, v: () => state.stats.wagered, gems: 150 },
+    { id: 'm1', t: 'Otwórz 10 skrzynek', goal: 10, v: () => state.stats.opened, gems: 400 },
+    { id: 'm2', t: 'Wygraj bitwę skrzynek', goal: 1, v: () => state.stats.battlesWon, gems: 600 },
+    { id: 'm3', t: 'Podpisz kontrakt', goal: 1, v: () => state.stats.contracts, gems: 400 },
+    { id: 'm4', t: 'Znajdź ukrytą skrzynkę na banerze', goal: 1, v: () => (state.hiddenFound ? 1 : 0), gems: 800 },
+    { id: 'm5', t: 'Osiągnij poziom 5', goal: 5, v: () => level(), gems: 800 },
+    { id: 'm6', t: 'Wydaj łącznie $50 na skrzynki i bitwy', goal: 50, v: () => state.stats.wagered, gems: 1200 },
 ];
 
 // ============================================================
@@ -311,7 +358,7 @@ function fresh() {
         inv: [], itemLog: [], walletLog: [], notes: [], unread: 0, favs: [],
         daily: 0, expUsed: {}, promos: [], hiddenFound: false, hiddenUsed: false, claimed: [], myBattles: [],
         stats: { opened: 0, wagered: 0, battles: 0, battlesWon: 0, contracts: 0, best: 0 },
-        settings: { sound: true, fast: false },
+        settings: { sound: true, fast: false, cur: 'usd', lang: 'pl' },
         eventEnd: Date.now() + 45 * 864e5 + 23 * 36e5,
     };
 }
@@ -368,15 +415,15 @@ function spend(dollars) {
     const before = level();
     state.stats.wagered = round2(state.stats.wagered + dollars);
     state.exp += Math.round(dollars * 100);
-    // 1 gem za każdy wydany $1
-    state.gemAcc = (state.gemAcc || 0) + dollars;
+    // 10 gemów za każdy wydany $1
+    state.gemAcc = (state.gemAcc || 0) + dollars * 10;
     const g = Math.floor(state.gemAcc);
     state.gemAcc -= g;
     state.gems += g;
     const after = level();
     for (let L = before + 1; L <= after; L++) {
-        state.gems += 10 * L;
-        note(`Awans na poziom ${L}! +${10 * L} gemów`);
+        state.gems += 100 * L;
+        note(`Awans na poziom ${L}! +${100 * L} gemów`);
         toast(`Awans na poziom ${L}!`, 'ok');
     }
     save();
@@ -522,6 +569,18 @@ function artInSvg(s, w, h) {
     return art(s, `width="${w}" height="${h}"`);
 }
 
+// Kryształy gemów: kanciaste bryły z jasną ścianką i połyskiem.
+function crystals(seed, n, x0, x1, y0, y1, id, scale = 1) {
+    const r = srand(seed);
+    const grad = `<defs><linearGradient id="${id}c1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f5d0fe"/><stop offset=".5" stop-color="#c026d3"/><stop offset="1" stop-color="#4c1d95"/></linearGradient>
+        <linearGradient id="${id}c2" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e9d5ff"/><stop offset="1" stop-color="#7e22ce"/></linearGradient></defs>`;
+    const list = Array.from({ length: n }, () => ({ x: x0 + r() * (x1 - x0), y: y0 + r() * (y1 - y0), s: (6 + r() * 9) * scale, a: (r() - 0.5) * 50 })).sort((a, b) => a.y - b.y);
+    return grad + list.map(({ x, y, s, a }) => `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${a.toFixed(0)})">
+        <path d="M0 ${-s * 1.3} L${s * 0.75} ${-s * 0.3} L${s * 0.5} ${s * 0.8} L${-s * 0.5} ${s * 0.8} L${-s * 0.75} ${-s * 0.3} Z" fill="url(#${id}c1)" stroke="#2e1065" stroke-width=".8"/>
+        <path d="M0 ${-s * 1.3} L${s * 0.75} ${-s * 0.3} L0 ${s * 0.1} Z" fill="url(#${id}c2)" opacity=".9"/>
+        <path d="M${-s * 0.35} ${-s * 0.4} L${-s * 0.1} ${-s * 0.95}" stroke="#fff" stroke-width="${(s / 7).toFixed(1)}" stroke-linecap="round" opacity=".8"/></g>`).join('');
+}
+
 function sparkles(seed, n, x0, x1, y0, y1) {
     const r = srand(seed);
     return Array.from({ length: n }, () => {
@@ -539,10 +598,15 @@ function caseArt(c) {
         const rot = f.type === 'gloves' ? -8 : f.type === 'gun' ? -24 : -34;
         behind = `<g transform="translate(120 66) rotate(${rot}) translate(-92 -36)">${artInSvg(f, 184, 72)}</g>`;
     }
-    if (c.deco === 'gems') {
-        const r = srand(hash(c.id));
-        behind = `<defs><radialGradient id="${id}q" cx=".35" cy=".35" r=".7"><stop offset="0" stop-color="#f5d0fe"/><stop offset=".45" stop-color="#c026d3"/><stop offset="1" stop-color="#581c87"/></radialGradient></defs>` +
-            Array.from({ length: 24 }, () => `<circle cx="${(58 + r() * 124).toFixed(1)}" cy="${(80 + r() * 22).toFixed(1)}" r="${(7 + r() * 5).toFixed(1)}" fill="url(#${id}q)" stroke="#3b0764" stroke-width=".8"/>`).join('');
+    if (c.deco === 'gems') behind = crystals(hash(c.id), 22, 56, 184, 74, 104, id);
+    if (c.deco === 'gemtier') {
+        const t = c.tier;
+        // Emblemat poziomu za skrzynią, stos kryształów i tabliczka z liczbą gemów.
+        behind = `<g transform="translate(120 46) scale(${3.4 + t * 0.05}) translate(-12 -12)" fill="none" stroke="${col}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" opacity=".95" filter="url(#${id}gl)">${ICONS[c.icon]}</g>`
+            + `<g transform="translate(120 46) scale(${3.4 + t * 0.05}) translate(-12 -12)" fill="none" stroke="#fff" stroke-width=".7" stroke-linecap="round" stroke-linejoin="round" opacity=".85">${ICONS[c.icon]}</g>`
+            + crystals(hash(c.id), 16 + t * 2, 50, 190, 70 - t, 104, id);
+        front = crystals(hash(c.id) + 7, 6 + t, 20, 220, 168, 186, id + 'f', 0.8)
+            + `<g transform="translate(120 162)"><rect x="-38" y="-11" width="76" height="22" rx="5" fill="#0b0e16" fill-opacity=".85" stroke="${col}" stroke-width="1.5"/><text y="5" text-anchor="middle" font-size="12" font-weight="900" fill="#f5d0fe" font-family="Saira, sans-serif" letter-spacing="1">${c.gems} GEMÓW</text></g>`;
     }
     if (c.deco === 'gift') {
         behind = `<rect x="84" y="38" width="72" height="58" rx="4" fill="#16a34a" stroke="#052e16" stroke-width="2"/><rect x="113" y="38" width="14" height="58" fill="#fde047"/><rect x="80" y="30" width="80" height="14" rx="3" fill="#22c55e" stroke="#052e16" stroke-width="2"/><rect x="113" y="30" width="14" height="14" fill="#facc15"/><path d="M120 30 C104 10 88 20 104 30 M120 30 C136 10 152 20 136 30" stroke="#facc15" stroke-width="6" fill="none"/>`;
@@ -577,23 +641,46 @@ function caseArt(c) {
         front = `<g transform="translate(160 42) rotate(22)"><path d="M0 0 H58 L64 9 L58 18 H0 Z" fill="#eef0f5" stroke="#0b0e16" stroke-width="1.2"/><circle cx="57" cy="9" r="2" fill="#0b0e16"/><text x="28" y="13" text-anchor="middle" font-size="10" font-weight="800" fill="#111" font-family="Saira, sans-serif" ${long ? 'textLength="50" lengthAdjust="spacingAndGlyphs"' : ''}>${esc(c.tag)}</text></g>`;
     }
 
+    const r = srand(hash(c.id) + 3);
+    // Promienie światła za skrzynią.
+    const rays = Array.from({ length: 9 }, (_, k) => {
+        const a = (-80 + k * 20 + (r() - 0.5) * 8) * Math.PI / 180, w = 0.06 + r() * 0.05, L = 150;
+        const p1 = [120 + Math.sin(a - w) * L, 96 - Math.cos(a - w) * L], p2 = [120 + Math.sin(a + w) * L, 96 - Math.cos(a + w) * L];
+        return `<path d="M120 96 L${p1[0].toFixed(1)} ${p1[1].toFixed(1)} L${p2[0].toFixed(1)} ${p2[1].toFixed(1)} Z" fill="${col}" opacity="${(0.08 + r() * 0.1).toFixed(2)}"/>`;
+    }).join('');
+    const rivets = [[52, 110], [188, 110], [55, 170], [185, 170]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2.6" fill="url(#${id}t)" stroke="#0b0e16" stroke-width=".8"/>`).join('');
     return `<svg class="kart" viewBox="0 0 240 200" aria-hidden="true"><defs>
-        <radialGradient id="${id}r" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="${col}" stop-opacity=".9"/><stop offset=".6" stop-color="${col}" stop-opacity=".28"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></radialGradient>
-        <linearGradient id="${id}m" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#454e66"/><stop offset="1" stop-color="#171c29"/></linearGradient>
-        <linearGradient id="${id}l" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2b3246"/><stop offset="1" stop-color="#3d4760"/></linearGradient>
+        <radialGradient id="${id}r" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="${col}" stop-opacity=".95"/><stop offset=".55" stop-color="${col}" stop-opacity=".3"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></radialGradient>
+        <radialGradient id="${id}f" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="${col}" stop-opacity=".7"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></radialGradient>
+        <linearGradient id="${id}m" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4b5573"/><stop offset=".55" stop-color="#262d40"/><stop offset="1" stop-color="#141824"/></linearGradient>
+        <linearGradient id="${id}p" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#394260"/><stop offset="1" stop-color="#1b2030"/></linearGradient>
+        <linearGradient id="${id}l" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#262d40"/><stop offset="1" stop-color="#465072"/></linearGradient>
+        <linearGradient id="${id}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${col}"/><stop offset="1" stop-color="${col}" stop-opacity=".55"/></linearGradient>
+        <linearGradient id="${id}t" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f4f6fb"/><stop offset=".5" stop-color="#9aa3bb"/><stop offset="1" stop-color="#4b5573"/></linearGradient>
+        <filter id="${id}gl" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3"/></filter>
     </defs>
-    <circle cx="120" cy="96" r="98" fill="url(#${id}r)"/>
-    ${sparkles(hash(c.id), 6, 20, 220, 8, 90)}
-    <ellipse cx="120" cy="183" rx="94" ry="9" fill="#000" opacity=".5"/>
+    ${rays}
+    <circle cx="120" cy="96" r="96" fill="url(#${id}r)"/>
+    ${sparkles(hash(c.id), 8, 16, 224, 6, 96)}
+    <ellipse cx="120" cy="184" rx="104" ry="12" fill="url(#${id}f)"/>
+    <ellipse cx="120" cy="182" rx="90" ry="7" fill="#000" opacity=".55"/>
     <path d="M50 100 L60 66 H180 L190 100 Z" fill="url(#${id}l)" stroke="#0b0e16" stroke-width="2"/>
+    <path d="M60 66 H180" stroke="${col}" stroke-width="2" opacity=".7"/>
     ${behind}
     <path d="M42 100 H198 L190 180 H50 Z" fill="url(#${id}m)" stroke="#0b0e16" stroke-width="2"/>
-    <rect x="38" y="95" width="164" height="11" rx="3" fill="#5a6480" stroke="#0b0e16" stroke-width="1.5"/>
-    <rect x="72" y="106" width="15" height="74" fill="${col}" opacity=".9"/>
-    <rect x="153" y="106" width="15" height="74" fill="${col}" opacity=".9"/>
-    <rect x="108" y="112" width="24" height="26" rx="4" fill="#cfd5e3" stroke="#0b0e16" stroke-width="1.5"/>
-    <circle cx="120" cy="122" r="3.5" fill="#1b2030"/><rect x="118.8" y="123" width="2.4" height="8" fill="#1b2030"/>
-    <text x="120" y="164" text-anchor="middle" font-size="10" font-weight="800" letter-spacing="1.5" fill="#fff" fill-opacity=".28" font-family="Saira, sans-serif">ROWER4SKINS</text>
+    <path d="M56 112 H96 V170 H59 Z M144 112 H184 L181 170 H144 Z" fill="url(#${id}p)" stroke="#0b0e16" stroke-opacity=".6" stroke-width="1"/>
+    <path d="M44 102 H196" stroke="#fff" stroke-opacity=".25" stroke-width="1.2"/>
+    <rect x="36" y="94" width="168" height="12" rx="3.5" fill="url(#${id}t)" stroke="#0b0e16" stroke-width="1.5"/>
+    <rect x="36" y="94" width="168" height="4" rx="2" fill="#fff" opacity=".35"/>
+    <rect x="72" y="106" width="15" height="74" fill="url(#${id}s)"/><rect x="72" y="106" width="3" height="74" fill="#fff" opacity=".25"/>
+    <rect x="153" y="106" width="15" height="74" fill="url(#${id}s)"/><rect x="153" y="106" width="3" height="74" fill="#fff" opacity=".25"/>
+    <path d="M42 100 L50 180 M198 100 L190 180" stroke="url(#${id}t)" stroke-width="4"/>
+    ${rivets}
+    <rect x="104" y="108" width="32" height="34" rx="6" fill="${col}" opacity=".55" filter="url(#${id}gl)"/>
+    <rect x="107" y="111" width="26" height="28" rx="5" fill="url(#${id}t)" stroke="#0b0e16" stroke-width="1.5"/>
+    <circle cx="120" cy="122" r="4" fill="#141824"/><rect x="118.6" y="123" width="2.8" height="9" rx="1" fill="#141824"/>
+    <circle cx="120" cy="122" r="1.4" fill="${col}"/>
+    ${c.deco === 'gemtier' ? '' : `<text x="120" y="163" text-anchor="middle" font-size="9.5" font-weight="900" letter-spacing="1.8" fill="#fff" fill-opacity=".3" font-family="Saira, sans-serif">ROWER4SKINS</text>`}
     ${front}
     </svg>`;
 }
@@ -604,8 +691,8 @@ function bikeArt(color) {
 
 function avatar(p, cls = '') {
     if (!p) return `<span class="ava ava-empty ${cls}">${ic('plus')}</span>`;
-    const name = p.you ? state.name : p.name;
-    const color = p.you ? state.color : `hsl(${hash(p.name) % 360} 70% 55%)`;
+    const name = (p.you ? state.name : p.name) || '?';
+    const color = p.you ? state.color : p.color || `hsl(${hash(p.name || '?') % 360} 70% 55%)`;
     const letter = name.replace(/[^\p{L}\p{N}]/gu, '').charAt(0).toUpperCase() || '?';
     return `<span class="ava ${cls}" style="--a:${color}">${esc(letter)}</span>`;
 }
@@ -620,8 +707,8 @@ function itemCard(s, { cls = '', attrs = '', top = '', bottom = '', wear = '' } 
     return `<div class="icard ${cls}" style="--rc:${RAR[s.rarity].c}" ${attrs}>
         ${top}${wear ? `<span class="wear" title="${WEAR_NAME[wear]}">${wear}</span>` : ''}
         <div class="iart">${art(s)}</div>
-        <div class="iw">${esc(s.weapon)}</div>
-        <div class="in">${esc(s.name)}</div>
+        <div class="iw" translate="no">${esc(s.weapon)}</div>
+        <div class="in" translate="no">${esc(s.name)}</div>
         <div class="ip">${money(s.price)}</div>
         ${bottom}
     </div>`;
@@ -666,6 +753,7 @@ function modal(html, cls = '') {
 function closeModal() { stopGame(); $('#modal').hidden = true; }
 
 $('#modal').addEventListener('click', e => { if (e.target.id === 'modal') closeModal(); });
+document.addEventListener('keyup', e => { if (MG?.keyup) MG.keyup(e); });
 document.addEventListener('keydown', e => {
     if (e.key === 'Escape') { closeModal(); $('#drawer').hidden = true; return; }
     if (MG?.key && !$('#modal').hidden) MG.key(e);
@@ -708,6 +796,7 @@ function showWin(ids, uids, title, reopen = false) {
 const NAV = [
     ['event', '#/event', 'star', 'Event'],
     ['home', '#/', 'box', 'Skrzynki'],
+    ['gems', '#/gems', 'gem', 'Gemy'],
     ['battles', '#/battles', 'swords', 'Bitwy'],
     ['contract', '#/contract', 'doc', 'Kontrakt'],
     ['exchanger', '#/exchanger', 'swap', 'Wymiennik'],
@@ -718,7 +807,7 @@ function renderShell() {
         <a class="logo" data-act="go" data-arg="#/" href="#/"><img class="logo-img" src="${IMG.logo}" alt="Rower4Skins — twoje skórki rowerowe"></a>
         <nav class="nav" id="nav">${NAV.map(([k, h, i, t]) => `<a data-act="go" data-arg="${h}" data-nav="${k}" href="${h}">${ic(i)}${t}</a>`).join('')}<a class="only-sm" data-act="notes" href="#/">${ic('bell')}Powiadomienia</a></nav>
         <div class="tr">
-            <div class="pill gem-pill" title="Gemy">${ic('gem')}<span id="tGems"></span></div>
+            <button class="pill gem-pill" title="Skrzynki za gemy" data-act="go" data-arg="#/gems">${ic('gem')}<span id="tGems"></span></button>
             <div class="wallet-group">
                 <div class="pill money-pill" title="Saldo">${ic('wallet')}<span id="tBal"></span></div>
                 <button class="btn-dep" data-act="depositModal">${ic('bike')}WPŁAĆ <small>+10%</small></button>
@@ -731,7 +820,7 @@ function renderShell() {
 
     $('#dropsbar').innerHTML = `
         <div class="d-side">
-            <div class="online" title="Symulowani gracze online">${ic('users')}<b id="online">3130</b></div>
+            <div class="online" title="Gracze z otwartą stroną">${ic('users')}<b id="online">1</b></div>
             <div class="d-modes">
                 <button data-act="dmode" data-arg="all" class="on" aria-label="Wszystkie dropy">${ic('grid')}</button>
                 <button data-act="dmode" data-arg="top" aria-label="Najlepsze dropy">${ic('crown')}</button>
@@ -747,6 +836,7 @@ function renderShell() {
     $('#subbar').innerHTML = `<div class="wrap">
         <button class="sublink y" data-act="promoModal">${ic('gift')}KOD PROMOCYJNY</button>
         <button class="sublink" data-act="go" data-arg="#/free">${ic('star')}CODZIENNA SKRZYNKA</button>
+        <button class="sublink g" data-act="go" data-arg="#/gems">${ic('gem')}SKRZYNKI ZA GEMY</button>
         <button class="sublink" data-act="go" data-arg="#/free">${ic('box')}SKRZYNKI EXP</button>
         <button class="sublink hide-sm" data-act="go" data-arg="#/destiny">${ic('target')}PRZEZNACZENIE</button>
         <span class="sub-note">${ic('shield')}Symulator · wirtualne monety</span>
@@ -769,6 +859,14 @@ let dropMode = 'all';
 
 function pushDrop(id, user, mine = false, caseId = null) {
     drops.unshift({ id, user, mine, c: caseId, st: Math.random() < 0.12 });
+    if (mine) {
+        // Pokaż mój drop kolegom w pasku LIVE (kilka ostatnich naraz).
+        const t = Date.now();
+        const items = lastDrops && t - lastDrops.t < 1500 ? [[id, caseId || ''], ...lastDrops.items].slice(0, 6) : [[id, caseId || '']];
+        lastDrops = { t, items };
+        clearTimeout(pushDrop.tm);
+        pushDrop.tm = setTimeout(publish, 400);
+    }
     drops.length = Math.min(drops.length, 80);
     renderDrops(true);
 }
@@ -779,9 +877,9 @@ function renderDrops(animate) {
         const s = SKIN[d.id];
         const c = d.c && CASE[d.c];
         const link = c ? `data-act="go" data-arg="#/case/${c.id}"` : '';
-        return `<div class="dtile ${d.mine ? 'mine' : ''} ${c ? 'has-case' : ''} ${animate && i === 0 ? 'new' : ''}" ${link} style="--rc:${RAR[s.rarity].c}" title="${esc(s.weapon)} | ${esc(s.name)} — ${money(s.price)} · ${esc(d.user)}${c ? ` · z: ${esc(c.name)}` : ''}">
+        return `<div translate="no" class="dtile ${d.mine ? 'mine' : ''} ${c ? 'has-case' : ''} ${animate && i === 0 ? 'new' : ''}" ${link} style="--rc:${RAR[s.rarity].c}" title="${esc(s.weapon)} | ${esc(s.name)} — ${money(s.price)} · ${esc(d.user)}${c ? ` · z: ${esc(c.name)}` : ''}">
             ${d.st ? '<span class="st">ST</span>' : ''}${art(s)}${c ? `<span class="dcase">${caseArt(c)}</span>` : ''}
-            <span class="dname">${esc(s.name)}</span><span class="duser">${esc(d.user)}</span>
+            <span class="dname" translate="no">${esc(s.name)}</span><span class="duser" translate="no">${esc(d.user)}</span>
         </div>`;
     }).join('');
 }
@@ -881,6 +979,7 @@ const PAGES = {
     destiny: { r: renderDestiny, nav: '' },
     profile: { r: renderProfile, nav: '' },
     free: { r: renderFree, nav: 'home' },
+    gems: { r: renderGems, nav: 'gems' },
     event: { r: renderEvent, nav: 'event' },
 };
 
@@ -947,7 +1046,7 @@ function bannerHtml() {
 function renderHome() {
     return `
     <div class="tiles3">
-        ${featTile('SKRZYNKA GEMÓW', 'go', '#/case/gems', caseArt(CASE.gems))}
+        ${featTile('SKRZYNKI ZA GEMY', 'go', '#/gems', caseArt(CASE['gt-ultimate']))}
         ${featTile('PRZEZNACZENIE', 'go', '#/destiny', ORBS)}
         ${featTile('RANKING', 'ranking', '', TROPHY)}
     </div>
@@ -957,7 +1056,7 @@ function renderHome() {
         <div class="select"><select id="fSort" data-ch="fsort" aria-label="Sortowanie">
             <option value="def">Sortuj</option><option value="pa" ${filt.sort === 'pa' ? 'selected' : ''}>Cena rosnąco</option><option value="pd" ${filt.sort === 'pd' ? 'selected' : ''}>Cena malejąco</option><option value="az" ${filt.sort === 'az' ? 'selected' : ''}>Nazwa A–Z</option>
         </select>${ic('chev')}</div>
-        <div class="range"><input id="fMin" data-in="fmin" inputmode="decimal" placeholder="$0.00" value="${esc(filt.min)}" aria-label="Cena od"><span>–</span><input id="fMax" data-in="fmax" inputmode="decimal" placeholder="$0.00" value="${esc(filt.max)}" aria-label="Cena do"></div>
+        <div class="range"><input id="fMin" data-in="fmin" inputmode="decimal" placeholder="${money(0)}" value="${esc(filt.min)}" aria-label="Cena od"><span>–</span><input id="fMax" data-in="fmax" inputmode="decimal" placeholder="${money(0)}" value="${esc(filt.max)}" aria-label="Cena do"></div>
         <label class="search">${ic('search')}<input id="fQ" data-in="fq" placeholder="Nazwa skrzynki" value="${esc(filt.q)}"></label>
         <label class="toggle"><input id="fAff" type="checkbox" data-ch="faff" ${filt.afford ? 'checked' : ''}><span></span>Wystarczające saldo</label>
     </div>
@@ -965,7 +1064,8 @@ function renderHome() {
 }
 
 function sectionsHtml() {
-    const min = parseFloat(filt.min.replace(',', '.')), max = parseFloat(filt.max.replace(',', '.'));
+    // Filtr kwot jest w walucie wyświetlania — przelicz na dolary.
+    const min = parseFloat(filt.min.replace(',', '.')) / curr().r, max = parseFloat(filt.max.replace(',', '.')) / curr().r;
     const q = filt.q.trim().toLowerCase();
     const gem = c => c.currency === 'gems';
     // Skrzynki za gemy nie mają ceny w $, więc filtry kwot ich nie dotyczą.
@@ -1098,53 +1198,278 @@ async function openCase(demo) {
 }
 
 // ============================================================
-// Bitwy
+// Sieć: pokój na żywo (claude.use("room")) — gracze, bitwy, dropy
 // ============================================================
 
-let BATTLES = [];
-let bseq = 1;
-const bl = { tab: 'active', sort: 'new', avail: false, mode: 'all' };
+// Moja obecność w pokoju (presence) niesie: nick, kolor, poziom, bitwę, którą hostuję,
+// miejsce, które zajmuję w cudzej bitwie, i ostatnie dropy. Host jest źródłem prawdy o swojej bitwie;
+// wynik liczy każdy u siebie z tego samego ziarna (seed), więc wszyscy widzą to samo.
+const NET = { room: null, me: 'me', peers: [], connected: false };
+let MYB = null;          // bitwa, którą hostuję
+let SEAT = null;         // { h: peer hosta, b: id bitwy, i: miejsce }
+const KNOWN = new Map(); // bid -> ostatnio widziana bitwa
+const RUN = new Map();   // bid -> przebieg bitwy (animacja + wynik)
+const dropSeen = new Map();
+let lastDrops = null;
 
+const bid = b => b.host + '.' + b.id;
+const myBattle = () => (MYB ? { ...MYB, host: NET.me, bid: NET.me + '.' + MYB.id } : null);
 const bValue = b => round2(b.cases.reduce((s, id) => s + CASE[id].price, 0));
-const botPlayer = () => ({ name: pick(BOT_NAMES), bot: true });
+const botPlayer = () => ({ peer: '', nick: pick(BOT_NAMES), bot: true, color: '' });
+const mySlot = () => ({ peer: NET.me, nick: state.name, color: state.color, bot: false });
+const cleanNick = v => String(v ?? '').replace(/[\u0000-\u001f\u007f<>]/g, '').trim().slice(0, 16) || 'Gracz';
+const cleanColor = v => (/^#[0-9a-f]{6}$/i.test(String(v)) ? v : '');
+const isMeSlot = s => !!s && !s.bot && s.peer === NET.me;
 
-function newBotBattle() {
-    const players = pick([2, 2, 2, 3, 3, 4]);
-    const cheap = USD_CASES.filter(c => c.price < 25);
-    const a = pick(cheap), b = pick(cheap);
-    const rounds = pick([1, 2, 3, 4, 5, 6, 8, 10]);
-    const cases = Array.from({ length: rounds }, (_, i) => (i % 3 === 2 ? b : a).id);
-    const slots = Array(players).fill(null);
-    const filled = 1 + Math.floor(Math.random() * (players - 1));
-    for (let i = 0; i < filled; i++) slots[i] = botPlayer();
-    return { id: bseq++, mode: pick(['normal', 'normal', 'underdog', 'terminal']), players, cases, slots, status: 'waiting', t: Date.now() };
+function packBattle(b) {
+    return { id: b.id, mode: b.mode, players: b.players, cases: b.cases, status: b.status, seed: b.seed || 0, t: b.t,
+        slots: b.slots.map(s => (s ? { peer: s.peer, nick: s.nick, color: s.color, bot: s.bot } : null)) };
 }
 
-function battleTick() {
-    // Do bitew, w których czekasz, czasem dosiada się ktoś sam z siebie.
-    for (const b of BATTLES.filter(x => x.status === 'waiting' && !x.running && isIn(x) && x.slots.includes(null))) {
-        if (Math.random() < 0.22) {
-            b.slots[b.slots.indexOf(null)] = { name: pick(BOT_NAMES) };
-            if (bvOpen(b)) renderPage();
-            startIfFull(b);
-        }
-    }
-    const idle = BATTLES.filter(b => b.status === 'waiting' && !b.running && !b.watched && !isIn(b));
-    if (idle.length < 6 || Math.random() < 0.3) BATTLES.unshift(newBotBattle());
-    else {
-        const b = pick(idle);
-        b.slots[b.slots.indexOf(null)] = botPlayer();
-        if (!b.slots.includes(null)) {
-            b.status = 'running';
-            setTimeout(() => { if (!b.watched) { BATTLES = BATTLES.filter(x => x !== b); refreshBattleList(); } }, 9000);
-        }
-    }
-    // Nie usuwaj bitew, w których grasz lub które oglądasz.
-    const keep = BATTLES.filter(b => b.running || b.watched || b.slots.some(s => s?.you));
-    const rest = BATTLES.filter(b => !keep.includes(b)).slice(0, Math.max(0, 14 - keep.length));
-    BATTLES = BATTLES.filter(b => keep.includes(b) || rest.includes(b));
-    refreshBattleList();
+// Dane od innych graczy są niezaufane: sprawdzamy każde pole.
+function parseBattle(raw, host) {
+    if (!raw || typeof raw !== 'object') return null;
+    const { id, mode, players, cases, slots, status, seed, t } = raw;
+    if (typeof id !== 'string' || !/^[a-z0-9]{1,12}$/.test(id)) return null;
+    if (!MODES[mode] || ![2, 3, 4].includes(players)) return null;
+    if (!Array.isArray(cases) || !cases.length || cases.length > 20 || !cases.every(c => typeof c === 'string' && CASE[c]?.currency === 'usd')) return null;
+    if (!Array.isArray(slots) || slots.length !== players) return null;
+    if (!['waiting', 'running'].includes(status) || !Number.isSafeInteger(seed)) return null;
+    const b = {
+        id, mode, players, cases: [...cases], status, seed, t: Number(t) || 0, host,
+        slots: slots.map(s => (s && typeof s === 'object' ? { peer: String(s.peer ?? '').slice(0, 80), nick: cleanNick(s.nick), color: cleanColor(s.color), bot: !!s.bot } : null)),
+    };
+    b.bid = bid(b);
+    return b;
 }
+
+function myPresence() {
+    return { v: 2, nick: cleanNick(state.name), color: state.color, lvl: level(),
+        host: MYB ? packBattle(MYB) : null, seat: SEAT, drop: lastDrops };
+}
+
+function publish() {
+    if (NET.room) NET.room.presence(myPresence()).catch(() => {});
+}
+
+// Wszystkie bitwy widoczne teraz: moja + bitwy innych graczy + te, które jeszcze się odgrywają.
+function allBattles() {
+    const out = new Map();
+    if (MYB) { const m = myBattle(); out.set(m.bid, m); }
+    for (const p of NET.peers) {
+        if (p.peer === NET.me) continue;
+        const b = parseBattle(p.presence?.host, p.peer);
+        if (b) out.set(b.bid, b);
+    }
+    for (const [k, r] of RUN) if (!out.has(k) && !r.gone) out.set(k, r.b);
+    return [...out.values()].sort((a, b) => b.t - a.t);
+}
+
+const findBattle = id => allBattles().find(b => b.bid === id) || KNOWN.get(id) || null;
+
+function onRoom(change) {
+    NET.peers = change.peers.filter(p => p.kind === 'viewer');
+    const online = $('#online');
+    if (online) online.textContent = NET.peers.length;
+
+    // dropy innych graczy do paska LIVE
+    for (const p of NET.peers) {
+        if (p.isMe) continue;
+        const d = p.presence?.drop;
+        if (!d || typeof d !== 'object' || !Number.isFinite(d.t)) continue;
+        const seen = dropSeen.get(p.peer);
+        dropSeen.set(p.peer, d.t);
+        if (seen === undefined || d.t <= seen || !Array.isArray(d.items)) continue;
+        for (const [id, c] of d.items.slice(0, 6)) if (SKIN[id]) pushDrop(id, cleanNick(p.presence.nick), false, CASE[c] ? c : null);
+    }
+
+    // bitwy innych: zapamiętaj i uruchom te, które wystartowały
+    for (const b of allBattles()) {
+        KNOWN.set(b.bid, b);
+        if (b.status === 'running' && !RUN.has(b.bid)) startRun(b);
+    }
+
+    hostDuties();
+    seatDuties();
+    refreshBattleUi();
+}
+
+// Host: przyjmuje graczy, którzy zgłosili się na wolne miejsce, i zwalnia miejsca tych, którzy wyszli.
+function hostDuties() {
+    if (!MYB || MYB.status !== 'waiting') return;
+    let changed = false;
+    const here = new Map(NET.peers.map(p => [p.peer, p]));
+    MYB.slots = MYB.slots.map((s, i) => {
+        if (!s || s.bot || s.peer === NET.me) return s;
+        const p = here.get(s.peer);
+        const seat = p?.presence?.seat;
+        if (p && seat && seat.h === NET.me && seat.b === MYB.id && seat.i === i) return s;
+        changed = true;
+        return null;
+    });
+    for (const p of NET.peers) {
+        if (p.peer === NET.me) continue;
+        const seat = p.presence?.seat;
+        if (!seat || seat.h !== NET.me || seat.b !== MYB.id || !Number.isInteger(seat.i)) continue;
+        if (MYB.slots.some(s => s && s.peer === p.peer)) continue;
+        if (seat.i < 0 || seat.i >= MYB.players || MYB.slots[seat.i]) continue;
+        MYB.slots[seat.i] = { peer: p.peer, nick: cleanNick(p.presence.nick), color: cleanColor(p.presence.color), bot: false };
+        changed = true;
+        beep(700, 0.06, 0.04, 'triangle');
+    }
+    if (changed) { publish(); if (!MYB.slots.includes(null)) hostStart(); }
+}
+
+// Gracz: pilnuje swojego miejsca. Gdy host zniknął albo miejsce zajął ktoś inny — zwrot pieniędzy.
+function seatDuties() {
+    if (!SEAT) return;
+    const b = allBattles().find(x => x.host === SEAT.h && x.id === SEAT.b);
+    let lost = '';
+    if (!b) lost = 'Bitwa zniknęła — host wyszedł.';
+    else if (b.status === 'waiting' && b.slots[SEAT.i] && !isMeSlot(b.slots[SEAT.i])) lost = 'Ktoś zajął to miejsce przed Tobą.';
+    else if (b.status === 'running' && !b.slots.some(isMeSlot)) lost = 'Bitwa wystartowała bez Ciebie.';
+    if (lost) { releaseHold(); SEAT = null; publish(); toast(lost + ' Zwrócono opłatę.', 'err'); }
+}
+
+// Rezerwacja: opłata jest pobierana od razu i zwracana, jeśli bitwa nie wystartuje.
+function holdFor(b) {
+    const cost = bValue(b);
+    wallet(-cost, `Bitwa (rezerwacja)`);
+    state.hold = { cost, key: b.host + '.' + b.id };
+    save();
+}
+
+function releaseHold() {
+    if (!state.hold) return;
+    wallet(state.hold.cost, 'Zwrot za bitwę');
+    state.hold = null;
+    save();
+}
+
+function hostStart() {
+    if (!MYB || MYB.status !== 'waiting' || MYB.slots.includes(null)) return;
+    MYB.status = 'running';
+    MYB.seed = Math.floor(Math.random() * 2 ** 31);
+    MYB.t = Date.now();
+    publish();
+    startRun(myBattle());
+}
+
+function rollWith(c, rnd) {
+    let r = rnd() * c.total;
+    for (const [id, w] of c.items) { r -= w; if (r < 0) return id; }
+    return c.items[c.items.length - 1][0];
+}
+
+function wearWith(rnd) {
+    let r = rnd() * 100;
+    for (const [w, p] of WEARS) { r -= p; if (r < 0) return w; }
+    return 'FT';
+}
+
+// Wynik jest liczony z ziarna — identycznie u każdego widza.
+function startRun(b) {
+    if (RUN.has(b.bid)) return;
+    const rnd = srand(b.seed);
+    const rolls = b.cases.map(id => b.slots.map(() => rollWith(CASE[id], rnd)));
+    const wears = rolls.map(row => row.map(() => wearWith(rnd)));
+    const totals = b.slots.map((s, i) => round2(rolls.reduce((sum, row) => sum + SKIN[row[i]].price, 0)));
+    const scores = b.slots.map((s, i) => (b.mode === 'terminal' ? SKIN[rolls[rolls.length - 1][i]].price : totals[i]));
+    const best = b.mode === 'underdog' ? Math.min(...scores) : Math.max(...scores);
+    const tied = scores.map((sc, i) => (sc === best ? i : -1)).filter(i => i >= 0);
+    const r = {
+        b, rolls, wears, winner: tied[Math.floor(rnd() * tied.length)], pot: round2(totals.reduce((a, x) => a + x, 0)),
+        res: b.slots.map(() => ({ total: 0, drops: [], wears: [] })), round: -1, phase: 'count', count: 3, done: false,
+    };
+    RUN.set(b.bid, r);
+    const me = b.slots.findIndex(isMeSlot);
+    if (me >= 0 && state.hold) { spend(state.hold.cost); state.hold = null; save(); }
+    animateRun(b.bid);
+}
+
+const bvOpen = key => route.name === 'battle' && route.arg === key && !!$('#bv');
+
+async function animateRun(key) {
+    const r = RUN.get(key), b = r.b;
+    if (bvOpen(key)) renderPage();
+    for (let n = 3; n >= 1; n--) {
+        r.phase = 'count'; r.count = n;
+        bvPatch(key);
+        if (bvOpen(key)) beep(520, 0.08, 0.04, 'triangle');
+        await sleep(650);
+    }
+    const dur = state.settings.fast ? 1400 : 3000;
+    for (let k = 0; k < b.cases.length; k++) {
+        r.round = k; r.phase = 'spin';
+        const c = CASE[b.cases[k]];
+        bvPatch(key);
+        const reels = bvOpen(key) ? $$('#bv .bv-reel') : [];
+        await Promise.all(r.rolls[k].map((w, i) => spinReel(reels[i], c, w, dur, i === 0 && bvOpen(key))));
+        r.rolls[k].forEach((w, i) => { const x = r.res[i]; x.total = round2(x.total + SKIN[w].price); x.drops.push(w); x.wears.push(r.wears[k][i]); });
+        r.phase = 'show';
+        bvPatch(key);
+        await sleep(state.settings.fast ? 700 : 1300);
+    }
+    r.phase = 'done'; r.done = true;
+    bvPatch(key);
+
+    const me = b.slots.findIndex(isMeSlot);
+    if (me >= 0) {
+        state.stats.battles++;
+        const won = r.winner === me;
+        if (won) {
+            state.stats.battlesWon++;
+            const all = r.res.flatMap(x => x.drops), wears = r.res.flatMap(x => x.wears);
+            const uids = giveItems(all, 'Wygrana bitwa', wears);
+            all.forEach(id => pushDrop(id, state.name, true, b.cases[0]));
+            showWin(all, uids, 'Wygrałeś bitwę!');
+        } else if (b.mode === 'normal') {
+            const g = pick(SKINS.filter(sk => sk.rarity === 'consumer')).id;
+            giveItems([g], 'Gwarantowany skin z bitwy');
+            toast(`Przegrana. Gwarantowany skin: ${SKIN[g].weapon} | ${SKIN[g].name}`);
+        } else toast('Przegrałeś tę bitwę.', 'err');
+        state.myBattles.unshift({ t: Date.now(), mode: b.mode, players: b.players, value: bValue(b), won, prize: won ? r.pot : 0 });
+        state.myBattles.length = Math.min(state.myBattles.length, 50);
+        save();
+    }
+    if (SEAT && SEAT.h === b.host && SEAT.b === b.id) { SEAT = null; publish(); }
+    if (MYB && b.host === NET.me && MYB.id === b.id) setTimeout(() => { if (MYB?.id === b.id) { MYB = null; publish(); refreshBattleUi(); } }, 30000);
+    setTimeout(() => { r.gone = true; refreshBattleUi(); }, 60000);
+    refreshBattleUi();
+}
+
+function refreshBattleUi() {
+    if (route.name === 'battles') { refreshBattleList(); refreshOnline(); }
+    if (route.name === 'battle') {
+        const r = RUN.get(route.arg);
+        if (!r || r.done) renderPage();
+    }
+}
+
+async function connectRoom() {
+    try {
+        const room = await window.claude?.use?.('room');
+        if (!room) return;
+        NET.room = room;
+        room.onConnection(ok => { NET.connected = ok; refreshOnline(); }, () => { NET.connected = false; refreshOnline(); });
+        room.onPeers(ch => {
+            const mine = ch.peers.find(p => p.sameTab);
+            if (mine && NET.me !== mine.peer) {
+                // Po poznaniu mojego prawdziwego identyfikatora przepisz własną bitwę na niego.
+                if (MYB) MYB.slots = MYB.slots.map(s => (s && !s.bot && s.peer === NET.me ? { ...s, peer: mine.peer } : s));
+                NET.me = mine.peer;
+            }
+            onRoom(ch);
+        });
+        publish();
+    } catch (e) { /* bez pokoju strona działa lokalnie */ }
+}
+
+// ============================================================
+// Bitwy — lista i tworzenie
+// ============================================================
+
+const bl = { tab: 'active', sort: 'new', avail: false, mode: 'all' };
 
 function groupCases(cases) {
     const out = [];
@@ -1156,25 +1481,34 @@ function groupCases(cases) {
     return out;
 }
 
+const canJoin = b => b.status === 'waiting' && b.host !== NET.me && b.slots.includes(null) && !SEAT && !MYB;
+
 function battleRow(b) {
     const m = MODES[b.mode];
     const groups = groupCases(b.cases);
     const cells = groups.slice(0, 8).map(g => `<div class="bcase">${g.n > 1 ? `<span class="bx">x${g.n}</span>` : ''}${caseArt(CASE[g.id])}<span>${esc(CASE[g.id].name)}</span></div>`).join('');
     const empties = Array.from({ length: Math.max(0, 8 - groups.length) }, () => '<div class="bcase ghost"></div>').join('');
-    const canJoin = b.status === 'waiting' && !b.running && b.slots.includes(null);
-    const label = canJoin ? 'DOŁĄCZ' : b.slots.some(s => s?.you) ? 'GRASZ' : b.status === 'done' ? 'KONIEC' : 'TRWA';
+    const mine = b.slots.some(isMeSlot) || (SEAT && SEAT.h === b.host && SEAT.b === b.id);
+    const r = RUN.get(b.bid);
+    const st = r ? (r.done ? 'KONIEC' : 'W TOKU') : 'CZEKA';
+    const label = canJoin(b) ? 'DOŁĄCZ' : mine ? 'GRASZ' : st === 'CZEKA' ? 'PEŁNA' : 'OGLĄDAJ';
     return `<div class="brow" style="--mc:${m.col}">
-        <div class="bstatus">${ic(m.icon)}<span>${b.status === 'waiting' ? 'CZEKA' : b.status === 'running' ? 'W TOKU' : 'KONIEC'}</span><small>${m.n}</small></div>
+        <div class="bstatus">${ic(m.icon)}<span>${st}</span><small>${m.n}</small></div>
         <div class="bcases">${cells}${empties}</div>
         <div class="binfo">
             <div><small>WARTOŚĆ BITWY</small><b class="money">${ic('wallet')}${money(bValue(b))}</b></div>
-            <div><small>GRACZE</small><div class="bslots">${b.slots.map(s => avatar(s, 'xs')).join('')}</div></div>
+            <div><small>GRACZE</small><div class="bslots">${b.slots.map(s => slotAvatar(s, 'xs')).join('')}</div><small class="bhost">host: <span translate="no">${esc(b.slots[0]?.nick || '—')}</span></small></div>
         </div>
         <div class="bact">
-            <button class="btn btn-join-b" data-act="join" data-arg="${b.id}" ${canJoin ? '' : 'disabled'}>${ic(m.icon)}${label}</button>
-            <button class="sq" data-act="watch" data-arg="${b.id}" aria-label="Oglądaj">${ic('eye')}</button>
+            <button class="btn btn-join-b" data-act="${canJoin(b) ? 'join' : 'watch'}" data-arg="${esc(b.bid)}">${ic(canJoin(b) ? m.icon : 'eye')}${label}</button>
+            <button class="sq" data-act="watch" data-arg="${esc(b.bid)}" aria-label="Oglądaj">${ic('eye')}</button>
         </div>
     </div>`;
+}
+
+function slotAvatar(s, cls) {
+    if (!s) return avatar(null, cls);
+    return avatar(isMeSlot(s) ? me() : { name: s.nick, color: s.color }, cls);
 }
 
 function battleListHtml() {
@@ -1185,15 +1519,31 @@ function battleListHtml() {
             <span>${fmtTime(r.t)}</span><span>${r.players} graczy</span><span>Koszt ${money(r.value)}</span>
             <b class="${r.won ? 'pos' : 'neg'}">${r.won ? `Wygrana ${money(r.prize)}` : 'Przegrana'}</b></div>`).join('')}</div>`;
     }
-    let list = BATTLES.filter(b => (bl.mode === 'all' || b.mode === bl.mode) && (!bl.avail || (b.status === 'waiting' && !b.running && b.slots.includes(null))));
+    let list = allBattles().filter(b => (bl.mode === 'all' || b.mode === bl.mode) && (!bl.avail || canJoin(b)));
     if (bl.sort === 'val') list = [...list].sort((a, b) => bValue(b) - bValue(a));
     if (bl.sort === 'cheap') list = [...list].sort((a, b) => bValue(a) - bValue(b));
-    return list.length ? list.map(battleRow).join('') : `<div class="empty">${ic('swords')}<p>Brak bitew. Stwórz własną!</p></div>`;
+    if (list.length) return list.map(battleRow).join('');
+    return `<div class="empty big-empty">${ic('swords')}<p><b>Nikt jeszcze nie stworzył bitwy.</b><br>${NET.room ? 'Stwórz własną — koledzy na serwerze zobaczą ją od razu i będą mogli dołączyć.' : 'Stwórz własną bitwę. Żeby grać z kolegami, otwórzcie stronę przez link claude.ai (zaproszenie mailem).'}</p>
+        <button class="btn btn-purple" data-act="go" data-arg="#/create">${ic('plus')}STWÓRZ BITWĘ</button></div>`;
+}
+
+function onlineHtml() {
+    if (!NET.room) return `<div class="panel online-panel off">${ic('info')}<div><b>Tryb lokalny</b><span>Bitwy z kolegami działają, gdy strona jest otwarta przez link claude.ai, a koledzy są zaproszeni mailem. Teraz możesz grać z botami.</span></div></div>`;
+    const players = NET.peers;
+    return `<div class="panel online-panel">
+        <div class="op-head"><span class="live-dot ${NET.connected ? 'on' : ''}"></span><b>${NET.connected ? 'Serwer online' : 'Łączenie…'}</b><span>${players.length} ${players.length === 1 ? 'gracz' : 'graczy'} na stronie</span></div>
+        <div class="op-list">${players.map(p => `<span class="op-chip ${p.isMe ? 'me' : ''}" translate="no">${avatar(p.isMe ? me() : { name: cleanNick(p.presence?.nick), color: cleanColor(p.presence?.color) }, 'xs')}${esc(p.isMe ? state.name : cleanNick(p.presence?.nick))}${p.isMe ? ' <em>(Ty)</em>' : ''}<small>poz. ${Number.isInteger(p.presence?.lvl) ? p.presence.lvl : '?'}</small></span>`).join('')}</div>
+    </div>`;
 }
 
 function refreshBattleList() {
     const el = $('#blist');
     if (el) el.innerHTML = battleListHtml();
+}
+
+function refreshOnline() {
+    const el = $('#onlineBox');
+    if (el) el.innerHTML = onlineHtml();
 }
 
 function templates() {
@@ -1211,12 +1561,13 @@ function renderBattles() {
     <div class="bhero">
         <div>
             <h1>BITWY SKRZYNEK</h1>
-            <p>Otwierajcie te same skrzynki, a najlepszy drop zgarnia wszystko. Zmierz się z botami w trzech trybach.</p>
+            <p>Otwierajcie te same skrzynki, a najlepszy drop zgarnia wszystko. Graj z kolegami, którzy mają otwartą tę stronę — na żywo.</p>
             <button class="btn btn-purple btn-xl" data-act="go" data-arg="#/create">STWÓRZ BITWĘ ${ic('back', 'flip')}</button>
         </div>
-        <div class="bhero-art"><img src="${IMG.engwe}" alt="ENGWE EP-2.0 Boost"><span class="vs">VS</span><img src="${IMG.gt73}" alt="Ridingtimes GT73 Pro"></div>
+        <div class="bhero-art"><img src="${IMG.engwe}" alt="ENGWE EP-2.0 Boost"><span class="vs">VS</span><img src="${IMG.varg}" alt="Stark Varg"></div>
     </div>
-    <div class="page-head">${ic('swords')}<div><h2>BITWY ROWER4SKINS</h2><small>WALCZ Z INNYMI GRACZAMI (BOTAMI)</small></div><span class="r18">18+</span></div>
+    <div id="onlineBox">${onlineHtml()}</div>
+    <div class="page-head">${ic('swords')}<div><h2>BITWY ROWER4SKINS</h2><small>TYLKO PRAWDZIWI GRACZE — BOTY TYLKO NA TWOJE ŻYCZENIE</small></div><span class="r18">18+</span></div>
     <div class="panel bbar">
         <div class="seg big">
             <button class="${bl.tab === 'active' ? 'on' : ''}" data-act="btab" data-arg="active">${ic('swords')}AKTYWNE BITWY</button>
@@ -1243,9 +1594,7 @@ function renderBattles() {
     <div id="blist" class="blist">${battleListHtml()}</div>`;
 }
 
-// ----- tworzenie bitwy -----
-
-const cr = { cases: [], players: 2, priv: false, mode: 'normal' };
+const cr = { cases: [], players: 2, mode: 'normal' };
 const crCost = () => round2(cr.cases.reduce((s, x) => s + CASE[x.id].price * x.n, 0));
 const crRounds = () => cr.cases.reduce((s, x) => s + x.n, 0);
 
@@ -1269,17 +1618,12 @@ function renderCreate() {
             <h4>${ic('users')}Liczba graczy</h4><p>Im więcej, tym weselej!</p>
             ${[2, 3, 4].map(n => `<button class="opt ${cr.players === n ? 'on' : ''}" data-act="crPlayers" data-arg="${n}">${ic(n === 2 ? 'user' : 'users')}${n} GRACZY</button>`).join('')}
         </div>
-        <div class="panel cr-card">
-            <h4>${ic('lock')}Prywatność</h4><p>Otwieraj z kim chcesz!</p>
-            <button class="opt ${!cr.priv ? 'on' : ''}" data-act="crPriv" data-arg="0">${ic('eye')}PUBLICZNA</button>
-            <button class="opt ${cr.priv ? 'on' : ''}" data-act="crPriv" data-arg="1">${ic('eyeoff')}PRYWATNA</button>
-        </div>
         <div class="panel cr-card wide">
             <h4>${ic('swords')}Tryb bitwy</h4><p>Zdecyduj, jak potoczy się bitwa!</p>
             <div class="opt-grid">${Object.entries(MODES).map(([k, mm]) => `<button class="opt ${cr.mode === k ? 'on' : ''}" data-act="crMode" data-arg="${k}">${ic(mm.icon)}${mm.n.toUpperCase()}</button>`).join('')}</div>
         </div>
         <div class="panel cr-card">
-            <h4>${ic('info')}Podsumowanie</h4><p>Sprawdź szczegóły bitwy!</p>
+            <h4>${ic('info')}Podsumowanie</h4><p>Opłata jest pobierana od razu i wraca, jeśli anulujesz bitwę przed startem.</p>
             <div class="sum-box green">${ic('box')}<div><small>KOSZT SKRZYNEK</small><b>${money(crCost())}</b></div></div>
             <div class="sum-box purple">${ic('gift')}<div><small>${cr.mode === 'normal' ? 'GWARANTOWANY' : 'RUNDY'}</small><b>${cr.mode === 'normal' ? 'SKIN' : crRounds()}</b></div></div>
             <button class="btn btn-green btn-block" data-act="crCreate" ${cr.cases.length ? '' : 'disabled'}>STWÓRZ BITWĘ</button>
@@ -1288,99 +1632,98 @@ function renderCreate() {
     <div class="panel mode-info" style="--mc:${m.col}"><span class="mode-ico">${ic(m.icon)}</span><div><h3>${m.n}</h3><p>${m.d}</p></div></div>`;
 }
 
-function startBattle(b) {
+function createBattle(mode, players, cases) {
+    if (MYB) { toast('Masz już otwartą bitwę. Zakończ ją albo anuluj.', 'err'); go('#/battle/' + myBattle().bid); return; }
+    if (SEAT) { toast('Siedzisz już w innej bitwie.', 'err'); return; }
+    const b = { id: Math.random().toString(36).slice(2, 10), mode, players, cases, status: 'waiting', seed: 0, t: Date.now(),
+        slots: [mySlot(), ...Array(players - 1).fill(null)] };
     const cost = bValue(b);
     if (state.balance < cost) { toast('Za mało środków na tę bitwę.', 'err'); return; }
-    wallet(-cost, `Bitwa #${b.id}`);
-    spend(cost);
-    b.phase = 'wait';
-    BATTLES.unshift(b);
-    go('#/battle/' + b.id);
+    MYB = b;
+    holdFor(myBattle());
+    publish();
+    go('#/battle/' + myBattle().bid);
 }
 
-// Bitwa rusza sama, gdy wszystkie miejsca są zajęte.
-function startIfFull(b) {
-    if (!b.slots.includes(null) && !b.running && b.status === 'waiting') runBattle(b);
-}
-
-// ----- widok bitwy -----
+// ============================================================
+// Bitwy — widok rundy
+// ============================================================
 
 const TAUNTS = ['Haha, Ezz!', 'GG, za łatwo!', 'Kto następny?', 'Skrzynki mnie lubią!'];
-const isIn = b => b.slots.some(s => s?.you);
-const playerName = s => (s ? (s.you ? state.name : s.name) : 'Wolne miejsce');
-const playerSub = s => (!s ? 'CZEKA NA GRACZA' : s.you ? 'TWÓJ PROFIL' : s.bot ? 'BOT' : 'PROFIL ROWER4SKINS');
 
-function bvLeader(b) {
-    if (!b.res || !b.res.some(r => r.drops.length)) return -1;
-    const sc = b.res.map(r => (b.mode === 'terminal' ? (r.drops.length ? SKIN[r.drops[r.drops.length - 1]].price : 0) : r.total));
+function bvLeader(r) {
+    if (!r || !r.res.some(x => x.drops.length)) return -1;
+    const b = r.b;
+    const sc = r.res.map(x => (b.mode === 'terminal' ? (x.drops.length ? SKIN[x.drops[x.drops.length - 1]].price : 0) : x.total));
     const best = b.mode === 'underdog' ? Math.min(...sc) : Math.max(...sc);
     return sc.indexOf(best);
 }
 
-function bvStage(b, i) {
-    const s = b.slots[i], r = b.res?.[i];
+function bvStage(b, r, i) {
+    const s = b.slots[i];
     if (!s) {
-        const act = isIn(b)
-            ? `<button class="btn btn-purple" data-act="summon" data-arg="${b.id}:${i}">${ic('bolt')}Przywołaj bota</button>`
-            : `<button class="btn btn-blue" data-act="join" data-arg="${b.id}">${ic('plus')}Dołącz za ${money(bValue(b))}</button>`;
-        return `<div class="st-wait"><span class="st-ring">${ic('user')}</span><b>Czekamy na gracza…</b>${b.status === 'waiting' && !b.running ? act : ''}</div>`;
+        let act = '';
+        if (b.status === 'waiting') {
+            if (b.host === NET.me) act = `<button class="btn btn-purple" data-act="summon" data-arg="${i}">${ic('bolt')}Przywołaj bota</button>`;
+            else if (canJoin(b)) act = `<button class="btn btn-blue" data-act="join" data-arg="${esc(b.bid)}:${i}">${ic('plus')}Dołącz za ${money(bValue(b))}</button>`;
+            else if (SEAT && SEAT.h === b.host && SEAT.b === b.id && SEAT.i === i) act = `<span class="muted">Czekam, aż host Cię przyjmie…</span>`;
+        }
+        return `<div class="st-wait"><span class="st-ring">${ic('user')}</span><b>Czekamy na gracza…</b>${act}</div>`;
     }
-    if (b.phase === 'count') return `<div class="st-count">${b.count}</div>`;
-    if (b.phase === 'spin') return reelHtml(true, 'bv-reel');
-    if (b.phase === 'show' && r?.drops.length) {
-        const k = r.drops.length - 1, sk = SKIN[r.drops[k]];
-        return `<div class="st-drop" style="--rc:${RAR[sk.rarity].c}"><div class="st-art">${art(sk)}</div><div class="st-txt"><b>${esc(sk.weapon)}</b><span>${esc(sk.name)}</span><small>${WEAR_NAME[r.wears[k]]}</small></div><em class="money">${money(sk.price)}</em></div>`;
+    if (r && r.phase === 'count') return `<div class="st-count">${r.count}</div>`;
+    if (r && r.phase === 'spin') return reelHtml(true, 'bv-reel');
+    if (r && r.phase === 'show' && r.res[i].drops.length) {
+        const x = r.res[i], k = x.drops.length - 1, sk = SKIN[x.drops[k]];
+        return `<div class="st-drop" style="--rc:${RAR[sk.rarity].c}"><div class="st-art">${art(sk)}</div><div class="st-txt"><b>${esc(sk.weapon)}</b><span>${esc(sk.name)}</span><small>${WEAR_NAME[x.wears[k]]}</small></div><em class="money">${money(sk.price)}</em></div>`;
     }
-    if (b.phase === 'done' && r) {
-        if (i === b.winner) return `<div class="st-win">${ic('trophy', 'big')}<small>wartość skinów ${money(b.pot)}</small><b>${b.slots[i].you ? 'Wygrałeś!' : pick(TAUNTS)}</b></div>`;
-        const k = r.drops.length - 1, sk = SKIN[r.drops[k]];
-        return `<div class="st-drop lose" style="--rc:${RAR[sk.rarity].c}"><div class="st-art">${art(sk)}</div><div class="st-txt"><b>${esc(sk.weapon)}</b><span>${esc(sk.name)}</span><small>${WEAR_NAME[r.wears[k]]}</small></div><em class="neg">${money(r.total)}</em></div>`;
+    if (r && r.phase === 'done') {
+        if (i === r.winner) return `<div class="st-win">${ic('trophy', 'big')}<small>wartość skinów ${money(r.pot)}</small><b>${isMeSlot(s) ? 'Wygrałeś!' : TAUNTS[r.b.seed % TAUNTS.length]}</b></div>`;
+        const x = r.res[i], k = x.drops.length - 1, sk = SKIN[x.drops[k]];
+        return `<div class="st-drop lose" style="--rc:${RAR[sk.rarity].c}"><div class="st-art">${art(sk)}</div><div class="st-txt"><b>${esc(sk.weapon)}</b><span>${esc(sk.name)}</span><small>${WEAR_NAME[x.wears[k]]}</small></div><em class="neg">${money(x.total)}</em></div>`;
     }
-    return `<div class="st-ready">${avatar(s, 'xl')}<b>${esc(playerName(s))}</b><span class="pos">${ic('check')}Gotowy</span></div>`;
+    return `<div class="st-ready">${slotAvatar(s, 'xl')}<b translate="no">${esc(isMeSlot(s) ? state.name : s.nick)}</b><span class="pos">${ic('check')}Gotowy</span></div>`;
 }
 
-function bvGrid(b, i) {
-    const r = b.res?.[i];
+function bvGrid(b, r, i) {
+    const x = r?.res[i];
     return b.cases.map((cid, k) => {
-        const id = r?.drops[k];
+        const id = x?.drops[k];
         if (!id) return `<div class="bv-cell ghost">${ic('box')}</div>`;
-        const sk = SKIN[id];
-        return itemCard(sk, { cls: 'bv-cell', wear: r.wears[k] });
+        return itemCard(SKIN[id], { cls: 'bv-cell', wear: x.wears[k] });
     }).join('');
 }
 
-function bvSum(b, i) {
-    const r = b.res?.[i];
-    const lead = bvLeader(b);
-    const up = lead === i;
-    return `<span class="bv-sum ${lead < 0 ? '' : up ? 'up' : 'down'}">${lead < 0 ? '' : ic('chev', up ? 'flip' : '')}${money(r ? r.total : 0)}</span>`;
+function bvSum(r, i) {
+    const lead = bvLeader(r), up = lead === i;
+    return `<span class="bv-sum ${lead < 0 ? '' : up ? 'up' : 'down'}">${lead < 0 ? '' : ic('chev', up ? 'flip' : '')}${money(r ? r.res[i].total : 0)}</span>`;
 }
 
-function bvMsg(b) {
-    if (b.status === 'done') {
-        const w = b.slots[b.winner];
-        return w.you ? `<span class="pos">Wygrałeś ${money(b.pot)}!</span>` : `<span class="neg">Wygrywa ${esc(w.name)} — ${money(b.pot)}</span>`;
+function bvMsg(b, r) {
+    if (r?.done) {
+        const w = b.slots[r.winner];
+        return isMeSlot(w) ? `<span class="pos">Wygrałeś ${money(r.pot)}!</span>` : `<span class="neg">Wygrywa ${esc(w.nick)} — ${money(r.pot)}</span>`;
     }
-    if (b.phase === 'count') return 'Start za chwilę…';
-    if (b.running) return `Runda ${b.round + 1} z ${b.cases.length}`;
+    if (r?.phase === 'count') return 'Start za chwilę…';
+    if (r) return `Runda ${r.round + 1} z ${b.cases.length}`;
     const free = b.slots.filter(x => !x).length;
-    return isIn(b) ? `Brakuje ${free} ${free === 1 ? 'gracza' : 'graczy'}. Poczekaj albo przywołaj boty.` : 'Bitwa czeka na graczy.';
+    if (b.host === NET.me) return `Brakuje ${free} ${free === 1 ? 'gracza' : 'graczy'}. Poczekaj na kolegów albo przywołaj boty.`;
+    return 'Bitwa czeka na graczy.';
 }
 
 function renderBattleView() {
-    const b = BATTLES.find(x => String(x.id) === route.arg);
-    if (!b) return `<button class="back" data-act="go" data-arg="#/battles">${ic('back')}Bitwy</button><div class="empty">${ic('swords')}<p>Ta bitwa już się zakończyła.</p></div>`;
+    const b = findBattle(route.arg);
+    if (!b) return `<button class="back" data-act="go" data-arg="#/battles">${ic('back')}Bitwy</button><div class="empty">${ic('swords')}<p>Tej bitwy już nie ma.</p></div>`;
+    const r = RUN.get(b.bid);
     const m = MODES[b.mode];
-    b.phase = b.phase || (b.status === 'done' ? 'done' : 'wait');
-    b.res = b.res || b.slots.map(() => ({ total: 0, drops: [], wears: [] }));
-    const cells = [...b.cases.map((id, i) => `<div class="bv-case ${i === b.round && b.status !== 'done' ? 'cur' : ''} ${i < b.round || b.status === 'done' ? 'done' : ''}">${caseArt(CASE[id])}<span>${esc(CASE[id].name)}</span></div>`),
+    const waiting = !r && b.status === 'waiting';
+    const cells = [...b.cases.map((id, i) => `<div class="bv-case ${r && i === r.round && !r.done ? 'cur' : ''} ${r && (i < r.round || r.done) ? 'done' : ''}">${caseArt(CASE[id])}<span>${esc(CASE[id].name)}</span></div>`),
         ...Array.from({ length: Math.max(0, 8 - b.cases.length) }, () => '<div class="bv-case ghost"></div>')].join('');
-    const waiting = b.status === 'waiting' && !b.running;
-    return `<div class="bv" id="bv-${b.id}" style="--mc:${m.col}">
+    const amHost = b.host === NET.me, amSeated = SEAT && SEAT.h === b.host && SEAT.b === b.id;
+    return `<div class="bv" id="bv" style="--mc:${m.col}">
         <div class="bv-top">
-            <div class="bv-status"><span class="bv-sico">${ic(m.icon)}<b>${b.players}</b></span><span id="bvState">${waiting ? 'CZEKA' : b.status === 'done' ? 'KONIEC' : 'AKTYWNA'}</span></div>
+            <div class="bv-status"><span class="bv-sico">${ic(m.icon)}<b>${b.players}</b></span><span id="bvState">${waiting ? 'CZEKA' : r?.done ? 'KONIEC' : 'AKTYWNA'}</span></div>
             <div class="bv-stats">
-                <div class="bv-st blue"><small>RUNDY</small><b>${ic('box')}<span id="bvRounds">${b.status === 'done' ? b.cases.length : Math.max(0, (b.round ?? -1) + 1)}/${b.cases.length}</span></b></div>
+                <div class="bv-st blue"><small>RUNDY</small><b>${ic('box')}<span id="bvRounds">${r ? (r.done ? b.cases.length : Math.max(0, r.round + 1)) : 0}/${b.cases.length}</span></b></div>
                 <div class="bv-st green"><small>WARTOŚĆ BITWY</small><b>${ic('wallet')}${money(bValue(b))}</b></div>
             </div>
             <div class="bv-strip">${cells}</div>
@@ -1388,113 +1731,46 @@ function renderBattleView() {
         <div class="bv-tools">
             <button class="sq" data-act="go" data-arg="#/battles" aria-label="Wróć do bitew">${ic('back')}</button>
             <span class="mode-chip">${ic(m.icon)}${m.n}</span>
-            <span class="bv-msg" id="bvMsg">${bvMsg(b)}</span>
-            ${waiting && b.slots.includes(null) ? `<button class="btn btn-purple" data-act="bots" data-arg="${b.id}">${ic('bolt')}${isIn(b) ? 'Przywołaj wszystkie boty' : 'Uruchom z botami'}</button>` : ''}
+            <span class="bv-msg" id="bvMsg">${bvMsg(b, r)}</span>
+            ${waiting && amHost && b.slots.includes(null) ? `<button class="btn btn-purple" data-act="bots">${ic('bolt')}Przywołaj wszystkie boty</button>` : ''}
+            ${waiting && (amHost || amSeated) ? `<button class="btn btn-dark" data-act="leaveBattle">${ic('x')}${amHost ? 'Anuluj bitwę' : 'Wyjdź'}</button>` : ''}
             <button class="sq" data-act="toggleSound" aria-label="Dźwięk">${ic(state.settings.sound ? 'sound' : 'x')}</button>
         </div>
         <div class="bv-arena" style="--n:${b.players}">${b.slots.map((sl, i) => `
-            <div class="bv-col ${b.status === 'done' ? (i === b.winner ? 'win' : 'lose') : ''}">
-                <div class="bv-stage" data-i="${i}">${bvStage(b, i)}</div>
-                <div class="bv-bar">${avatar(sl, 'sm')}<div class="bv-who"><b>${sl && !sl.you && sl.bot ? 'BOT | ' : ''}${esc(playerName(sl))}</b><small>${playerSub(sl)}</small></div><span class="bv-sumw">${bvSum(b, i)}</span></div>
-                <div class="bv-grid">${bvGrid(b, i)}</div>
+            <div class="bv-col ${r?.done ? (i === r.winner ? 'win' : 'lose') : ''}">
+                <div class="bv-stage">${bvStage(b, r, i)}</div>
+                <div class="bv-bar">${slotAvatar(sl, 'sm')}<div class="bv-who"><b translate="no">${sl?.bot ? 'BOT | ' : ''}${esc(sl ? (isMeSlot(sl) ? state.name : sl.nick) : 'Wolne miejsce')}</b><small>${!sl ? 'CZEKA NA GRACZA' : isMeSlot(sl) ? 'TY' : sl.bot ? 'BOT' : i === 0 ? 'HOST' : 'GRACZ'}</small></div><span class="bv-sumw">${bvSum(r, i)}</span></div>
+                <div class="bv-grid">${bvGrid(b, r, i)}</div>
             </div>`).join('')}
         </div>
-        <p class="muted small center">Przeciwnicy w bitwach to boty — to symulator.</p>
     </div>`;
 }
 
 function afterBattleView() {
-    const b = BATTLES.find(x => String(x.id) === route.arg);
+    const b = findBattle(route.arg);
     if (!b) return;
-    const c = CASE[b.cases[Math.max(0, Math.min(b.round ?? 0, b.cases.length - 1))]];
-    $$('.bv-reel').forEach(r => idleReel(r, c));
+    const r = RUN.get(b.bid);
+    const c = CASE[b.cases[Math.max(0, Math.min(r?.round ?? 0, b.cases.length - 1))]];
+    $$('.bv-reel').forEach(el => idleReel(el, c));
 }
 
-// Aktualizuje widok bez przebudowy całej strony (nie przerywa animacji).
-function bvPatch(b, stages = true) {
-    const root = $('#bv-' + b.id);
-    if (!root) return;
-    $('#bvMsg', root).innerHTML = bvMsg(b);
-    $('#bvState', root).textContent = b.status === 'done' ? 'KONIEC' : b.running ? 'AKTYWNA' : 'CZEKA';
-    $('#bvRounds', root).textContent = `${b.status === 'done' ? b.cases.length : Math.max(0, b.round + 1)}/${b.cases.length}`;
+// Aktualizuje widok bitwy bez przebudowy strony (nie przerywa animacji).
+function bvPatch(key) {
+    if (!bvOpen(key)) return;
+    const r = RUN.get(key), b = r.b, root = $('#bv');
+    $('#bvMsg', root).innerHTML = bvMsg(b, r);
+    $('#bvState', root).textContent = r.done ? 'KONIEC' : 'AKTYWNA';
+    $('#bvRounds', root).textContent = `${r.done ? b.cases.length : Math.max(0, r.round + 1)}/${b.cases.length}`;
     $$('.bv-case', root).forEach((el, i) => {
-        el.classList.toggle('cur', i === b.round && b.status !== 'done');
-        el.classList.toggle('done', i < b.round || b.status === 'done');
+        el.classList.toggle('cur', i === r.round && !r.done);
+        el.classList.toggle('done', i < r.round || r.done);
     });
     $$('.bv-col', root).forEach((el, i) => {
-        if (stages) $('.bv-stage', el).innerHTML = bvStage(b, i);
-        $('.bv-sumw', el).innerHTML = bvSum(b, i);
-        $('.bv-grid', el).innerHTML = bvGrid(b, i);
-        if (b.status === 'done') el.classList.add(i === b.winner ? 'win' : 'lose');
+        $('.bv-stage', el).innerHTML = bvStage(b, r, i);
+        $('.bv-sumw', el).innerHTML = bvSum(r, i);
+        $('.bv-grid', el).innerHTML = bvGrid(b, r, i);
+        if (r.done) el.classList.add(i === r.winner ? 'win' : 'lose');
     });
-}
-
-const bvOpen = b => route.name === 'battle' && route.arg === String(b.id) && !!$('#bv-' + b.id);
-
-async function runBattle(b) {
-    if (b.running) return;
-    b.running = true;
-    b.round = -1;
-    b.res = b.slots.map(() => ({ total: 0, drops: [], wears: [] }));
-    b.status = 'running';
-    refreshBattleList();
-    if (bvOpen(b)) renderPage();
-
-    for (let n = 3; n >= 1; n--) {
-        b.phase = 'count';
-        b.count = n;
-        bvPatch(b);
-        beep(520, 0.08, 0.04, 'triangle');
-        await sleep(650);
-    }
-
-    const dur = state.settings.fast ? 1400 : 3000;
-    for (let r = 0; r < b.cases.length; r++) {
-        b.round = r;
-        b.phase = 'spin';
-        const c = CASE[b.cases[r]];
-        bvPatch(b);
-        const wins = b.slots.map(() => roll(c));
-        const reels = bvOpen(b) ? $$('#bv-' + b.id + ' .bv-reel') : [];
-        await Promise.all(wins.map((w, i) => spinReel(reels[i], c, w, dur, i === 0)));
-        wins.forEach((w, i) => { const x = b.res[i]; x.total = round2(x.total + SKIN[w].price); x.drops.push(w); x.wears.push(rollWear()); });
-        b.phase = 'show';
-        bvPatch(b);
-        await sleep(state.settings.fast ? 700 : 1300);
-    }
-
-    const scores = b.res.map(r => (b.mode === 'terminal' ? SKIN[r.drops[r.drops.length - 1]].price : r.total));
-    const best = b.mode === 'underdog' ? Math.min(...scores) : Math.max(...scores);
-    b.winner = pick(scores.map((sc, i) => (sc === best ? i : -1)).filter(i => i >= 0));
-    b.pot = round2(b.res.reduce((sum, r) => sum + r.total, 0));
-    b.status = 'done';
-    b.phase = 'done';
-    b.running = false;
-
-    const you = b.slots.findIndex(sl => sl?.you);
-    if (you >= 0) {
-        state.stats.battles++;
-        const won = b.winner === you;
-        if (won) {
-            state.stats.battlesWon++;
-            const all = b.res.flatMap(r => r.drops), wears = b.res.flatMap(r => r.wears);
-            const uids = giveItems(all, `Wygrana bitwa #${b.id}`, wears);
-            all.forEach(id => pushDrop(id, state.name, true, b.cases[0]));
-            showWin(all, uids, 'Wygrałeś bitwę!');
-        } else if (b.mode === 'normal') {
-            const g = pick(SKINS.filter(sk => sk.rarity === 'consumer')).id;
-            giveItems([g], `Gwarantowany skin, bitwa #${b.id}`);
-            toast(`Przegrana. Gwarantowany skin: ${SKIN[g].weapon} | ${SKIN[g].name}`);
-        } else {
-            toast('Przegrałeś tę bitwę.', 'err');
-        }
-        state.myBattles.unshift({ t: Date.now(), mode: b.mode, players: b.players, value: bValue(b), won, prize: won ? b.pot : 0 });
-        state.myBattles.length = Math.min(state.myBattles.length, 50);
-        save();
-    }
-    bvPatch(b);
-    refreshBattleList();
-    setTimeout(() => { if (!bvOpen(b)) { BATTLES = BATTLES.filter(x => x !== b); refreshBattleList(); } }, 60000);
 }
 
 // ============================================================
@@ -1670,6 +1946,11 @@ function renderProfile() {
         body = `<div class="set-grid">
             <div class="panel"><h4>${ic('user')}Nick</h4><div class="inline"><input id="nick" maxlength="16" value="${esc(state.name)}" aria-label="Nick"><button class="btn btn-purple" data-act="saveNick">Zapisz</button></div>
                 <h4>Kolor avatara</h4><div class="swatches">${['#a855f7', '#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6'].map(c => `<button class="sw ${state.color === c ? 'on' : ''}" style="--a:${c}" data-act="setColor" data-arg="${c}" aria-label="Kolor ${c}"></button>`).join('')}</div></div>
+            <div class="panel"><h4>${ic('globe')}Język</h4>
+                <div class="choice">${Object.entries(LANGS).map(([k, l]) => `<button class="${state.settings.lang === k ? 'on' : ''}" data-act="setLang" data-arg="${k}" translate="no">${l}</button>`).join('')}</div>
+                <h4>${ic('wallet')}Waluta</h4>
+                <div class="choice">${Object.entries(CUR).map(([k, c]) => `<button class="${state.settings.cur === k ? 'on' : ''}" data-act="setCur" data-arg="${k}" translate="no">${c.n} · ${c.f(1).replace(/[\d,.]+/, '').trim()}</button>`).join('')}</div>
+                <p class="muted small">Ceny liczone są w dolarach i przeliczane po stałym kursie.</p></div>
             <div class="panel"><h4>${ic('sound')}Dźwięk i animacje</h4>
                 <label class="toggle"><input type="checkbox" id="sSound" data-ch="sound" ${state.settings.sound ? 'checked' : ''}><span></span>Dźwięki ruletki</label>
                 <label class="toggle"><input type="checkbox" id="sFast" data-ch="fast" ${state.settings.fast ? 'checked' : ''}><span></span>Szybkie otwieranie</label></div>
@@ -1706,7 +1987,7 @@ function renderProfile() {
     <div class="promo-banner">${ic('gift', 'big')}<div><b>ODBIERZ CODZIENNĄ SKRZYNKĘ</b><span>I DARMOWE SKRZYNKI ZA POZIOMY</span></div><div class="pb-art">${caseArt(CASE.daily)}</div><button class="btn btn-white" data-act="go" data-arg="#/free">${ic('gift')}ODBIERZ</button></div>
     <div class="info-row">
         <div class="panel info-card red">${ic('info')}<div><b>To jest symulator</b><span>Wszystkie monety, gemy i skiny są wirtualne. Nie da się ich kupić ani wypłacić.</span></div></div>
-        <div class="panel info-card yellow">${ic('tag')}<div><b>Kody promocyjne</b><span>Wpisz kod, np. <code>ROWER4SKINS</code>, i zgarnij bonus.</span></div><button class="btn btn-outline" data-act="promoModal">WPISZ KOD</button></div>
+        <div class="panel info-card yellow">${ic('tag')}<div><b>Kody promocyjne</b><span>Wpisz kod, np. <code translate="no">ROWER4SKINS</code>, i zgarnij bonus.</span></div><button class="btn btn-outline" data-act="promoModal">WPISZ KOD</button></div>
     </div>
     <div class="tabs">${tabs.map(([k, i, t]) => `<button class="${tab === k ? 'on' : ''}" data-act="go" data-arg="#/profile/${k}">${ic(i)}${t}</button>`).join('')}</div>
     ${body}`;
@@ -1715,6 +1996,27 @@ function renderProfile() {
 // ============================================================
 // Darmowe skrzynki i event
 // ============================================================
+
+function renderGems() {
+    const tiers = CASES.filter(c => c.sec === 'gemtier');
+    return `
+    <div class="gems-hero">
+        <div class="gh-text">
+            <span class="eyebrow">${ic('gem')}SKLEP GEMÓW</span>
+            <h1>SKRZYNKI ZA GEMY</h1>
+            <p>Gemy zdobywasz za granie: 10 gemów za każdy wydany dolar, 100× poziom za każdy awans, gemy za wpłaty rowerów, misje i kody. Im wyższy poziom skrzynki, tym więcej Covert i noży.</p>
+        </div>
+        <div class="gh-bal"><small>TWOJE GEMY</small><b>${ic('gem')}${state.gems}</b><button class="btn btn-purple" data-act="go" data-arg="#/event">${ic('star')}Misje za gemy</button></div>
+    </div>
+    <div class="gtiers">${tiers.map(c => {
+        const can = state.gems >= c.gems;
+        return `<div class="gcard ${can ? 'can' : ''}" data-act="go" data-arg="#/case/${c.id}" style="--cc:${c.color}">
+            <div class="gc-art">${caseArt(c)}</div>
+            <div class="gc-foot"><span class="gc-name">${esc(c.name)}</span><span class="gc-price">${ic('gem')}${c.gems}</span></div>
+            ${can ? '' : `<div class="gc-lock"><span>${ic('lock')}brakuje ${c.gems - state.gems}</span></div>`}
+        </div>`;
+    }).join('')}</div>`;
+}
 
 function renderFree() {
     const exp = CASES.filter(c => c.kind === 'exp');
@@ -1768,18 +2070,17 @@ const GAMES = {
     memory: { n: 'Szyfr kłódki', icon: 'lock', d: 'Zapamiętaj kolejność zapalających się pól i powtórz ją bez błędu.' },
     gears: { n: 'Zmiana biegów', icon: 'swap', d: 'Wciskaj strzałki w podanej kolejności. Pomyłka zabiera czas.' },
     ride: { n: 'Zjazd z góry', icon: 'bike', d: 'Omijaj kamienie i dziury, zmieniając pas strzałkami albo przyciskami.' },
+    wheelie: { n: 'Wheelie OMEGA', icon: 'skull', d: 'Trzymaj Varga na tylnym kole: GAZ (↑ / W / spacja) podnosi przód, HAMULEC (↓ / S) go opuszcza. Nie dotknij przodem ziemi i nie przewróć się do tyłu. Wiatr i nierówności będą Ci przeszkadzać coraz mocniej.' },
 };
-const GAME_ORDER = ['pump', 'timing', 'memory', 'gears', 'ride'];
 
-// Każdy rower ma swoją grę; trudność 1–5 rośnie z wartością roweru.
 function bikeInfo(i) {
-    const order = BIKES.map((b, k) => k).sort((a, b) => BIKES[a][1] - BIKES[b][1]);
-    const rank = order.indexOf(i);
-    return { game: GAME_ORDER[rank % GAME_ORDER.length], d: 1 + Math.round(rank * 4 / (BIKES.length - 1)) };
+    const b = BIKES[i];
+    return { game: b[4], d: b[5] };
 }
 
-const stars = d => `<span class="stars" title="Trudność ${d}/5">${'★'.repeat(d)}<i>${'★'.repeat(5 - d)}</i></span>`;
-const EXTREME = i => { const b = bikeInfo(i); return b.d >= 5 && b.game === 'ride'; };
+const stars = d => (d >= 7 ? `<span class="stars omega">OMEGA++++</span>` : d >= 6 ? `<span class="stars hc">★★★★★ HARDCORE</span>`
+    : `<span class="stars" title="Trudność ${d}/5">${'★'.repeat(d)}<i>${'★'.repeat(5 - d)}</i></span>`);
+const EXTREME = i => bikeInfo(i).d >= 6;
 
 function depositModal() {
     const card = (i, premium) => {
@@ -1787,13 +2088,13 @@ function depositModal() {
         const { game, d } = bikeInfo(i);
         return `<button class="bike ${premium ? 'premium' : ''}" data-act="mgIntro" data-arg="${i}" style="--bc:${c}">
             ${premium ? '<span class="bike-tag">PREMIUM</span>' : ''}${img ? `<img src="${img}" alt="${esc(n)}">` : bikeArt(c)}
-            <b>${esc(n)}</b><span class="money">${money(v)}</span><small class="pos">+${money(round2(v * 0.1))} bonus · +${d * 10} gemów</small>
-            <span class="bike-game">${ic(GAMES[game].icon)}${GAMES[game].n} ${stars(d)}${EXTREME(i) ? '<em class="xtr">EKSTREMALNY</em>' : ''}</span></button>`;
+            <b>${esc(n)}</b><span class="money">${money(v)}</span><small class="pos">+${money(round2(v * 0.1))} bonus · +${d * 60 + (d >= 7 ? 2000 : d >= 6 ? 600 : 0)} gemów</small>
+            <span class="bike-game">${ic(GAMES[game].icon)}${GAMES[game].n} ${stars(d)}</span></button>`;
     };
     const idx = BIKES.map((b, i) => i);
     modal(`<h2 class="mtitle">${ic('bike')}Wpłać rower</h2>
         <p class="muted center">Żeby wpłacić rower, musisz wygrać minigrę. Im droższy rower, tym trudniejsza gra. Nagroda: wartość roweru <b class="pos">+10%</b> i gemy.</p>
-        <div class="bikes-premium">${idx.filter(i => BIKES[i][3]).map(i => card(i, true)).join('')}</div>
+        <div class="bikes-premium">${idx.filter(i => BIKES[i][3]).reverse().map(i => card(i, true)).join('')}</div>
         <div class="bikes">${idx.filter(i => !BIKES[i][3]).map(i => card(i, false)).join('')}</div>
         <p class="muted center small">To symulator: rowery i dolary są wirtualne, nic nie jest pobierane.</p>`, 'wide');
 }
@@ -1811,7 +2112,7 @@ function mgIntro(i) {
     const g = GAMES[game];
     modal(`<div class="mg">
         <div class="mg-head">${ic(g.icon, 'big')}<div><small>WPŁATA: ${esc(n)} · ${money(round2(v * 1.1))}</small><h2>${g.n}</h2></div>${stars(d)}</div>
-        <p class="mg-rules">${g.d}${EXTREME(i) ? ' <b class="neg">Tryb ekstremalny: 24 sekundy, a tempo cały czas rośnie.</b>' : ''}</p>
+        <p class="mg-rules">${g.d}${d === 6 ? ' <b class="neg">HARDCORE: 35 sekund, mgła, dwa pasy zawsze zablokowane, a tempo rośnie prawie dwukrotnie.</b>' : ''}${d >= 7 ? ' <b class="neg">OMEGA++++: 35 sekund, wąska strefa 22–38°, silnik reaguje z opóźnieniem, a trzeba spędzić w strefie co najmniej 75% czasu. Powodzenia.</b>' : ''}</p>
         <div class="mg-stage" id="mgStage"><button class="btn btn-green btn-xl" data-act="mgStart" data-arg="${i}">${ic('bolt')}START</button></div>
         <div class="mrow"><button class="btn btn-dark" data-act="depositModal">${ic('back')}Inny rower</button></div>
     </div>`, 'wide game');
@@ -1824,7 +2125,7 @@ function mgEnd(i, won, msg) {
     const stage = $('#mgStage');
     if (!stage) return;
     if (won) {
-        const total = round2(v * 1.1), gems = d * 10;
+        const total = round2(v * 1.1), gems = d * 60 + (d >= 7 ? 2000 : d >= 6 ? 600 : 0);
         wallet(total, `Wpłata: ${n}`);
         state.gems += gems;
         save();
@@ -1969,17 +2270,122 @@ const GAME_RUN = {
         return { stop: () => { dead = true; timer.stop(); }, arrow: press, key: e => { if (e.key in K) { e.preventDefault(); press(K[e.key]); } } };
     },
 
+    wheelie(i, d, stage) {
+        const survive = 35000, need = 0.75, LO = 22, HI = 38, FAIL_LO = 3, FAIL_HI = 62, LAG = 0.14;
+        const img = new Image();
+        img.src = IMG.varg;
+        stage.innerHTML = `<div class="mg-time"><div id="mgTime" class="fill"></div></div>
+            <div class="mg-info"><span>W strefie: <b id="wzPct">0%</b> (min. ${need * 100}%)</span><span>Kąt: <b id="wzAng">20°</b></span></div>
+            <canvas id="wCv" width="420" height="300" class="ride wheelie"></canvas>
+            <div class="garrows two"><button class="btn btn-red hold" data-hold="-1">▼ HAMULEC</button><button class="btn btn-green hold" data-hold="1">▲ GAZ</button></div>`;
+        const cv = $('#wCv'), cx = cv.getContext('2d'), W = cv.width, H = cv.height;
+        let a = 24, v = 0, input = 0, keys = new Set(), last = performance.now(), t0 = last, raf = 0, dead = false;
+        let inZone = 0, total = 0, gust = 0, nextGust = 1800, bumpT = 0, eng = 0, mudT = -3;
+        const holdBtns = $$('[data-hold]', stage);
+        const setInput = () => {
+            let u = 0;
+            if (keys.has('up')) u += 1;
+            if (keys.has('down')) u -= 1;
+            input = Math.max(-1, Math.min(1, u));
+        };
+        holdBtns.forEach(b => {
+            const k = b.dataset.hold === '1' ? 'up' : 'down';
+            const on = e => { e.preventDefault(); keys.add(k); setInput(); b.classList.add('on'); };
+            const off = () => { keys.delete(k); setInput(); b.classList.remove('on'); };
+            b.addEventListener('pointerdown', on); b.addEventListener('pointerup', off); b.addEventListener('pointerleave', off); b.addEventListener('pointercancel', off);
+        });
+        const draw = () => {
+            cx.fillStyle = '#141a28'; cx.fillRect(0, 0, W, H);
+            const gx = 90, gy = H - 50;
+            // zegar kąta w prawym górnym rogu
+            const kx = W - 70, ky = 100, R = 56;
+            cx.lineWidth = 12;
+            for (const [from, to, col] of [[0, LO, 'rgba(255,77,94,.5)'], [LO, HI, 'rgba(69,209,91,.8)'], [HI, 70, 'rgba(255,77,94,.5)']]) {
+                cx.strokeStyle = col; cx.beginPath(); cx.arc(kx, ky, R, -to * Math.PI / 180, -from * Math.PI / 180); cx.stroke();
+            }
+            const na = -Math.max(0, Math.min(70, a)) * Math.PI / 180;
+            cx.strokeStyle = '#ffc41f'; cx.lineWidth = 4; cx.lineCap = 'round';
+            cx.beginPath(); cx.moveTo(kx, ky); cx.lineTo(kx + Math.cos(na) * (R + 10), ky + Math.sin(na) * (R + 10)); cx.stroke();
+            cx.fillStyle = '#ffc41f'; cx.beginPath(); cx.arc(kx, ky, 5, 0, 7); cx.fill();
+            // ziemia z przesuwającym się wzorem
+            cx.fillStyle = '#0b0f19'; cx.fillRect(0, gy + 26, W, H);
+            const off = ((performance.now() - t0) / 3) % 40;
+            cx.fillStyle = '#263048'; for (let x = -off; x < W; x += 40) cx.fillRect(x, gy + 30, 20, 4);
+            // motocykl obrócony wokół tylnego koła
+            if (img.complete && img.naturalWidth) {
+                // obrót wokół punktu styku tylnego koła z ziemią
+                const bw = 250, bh = bw * img.naturalHeight / img.naturalWidth;
+                cx.save(); cx.translate(gx, gy + 26); cx.rotate(-a * Math.PI / 180);
+                cx.drawImage(img, -bw * 0.17, -bh * 0.985, bw, bh); cx.restore();
+            }
+            cx.font = '800 14px Saira, sans-serif';
+            if (Math.abs(gust) > 8) { cx.fillStyle = 'rgba(147,197,253,.8)'; cx.fillText(gust > 0 ? 'PODMUCH ↑' : 'PODMUCH ↓', W - 120, 24); }
+            if (mudT > 0) { cx.fillStyle = 'rgba(161,98,7,.9)'; cx.fillText('BŁOTO — silnik muli!', 12, 24); cx.fillStyle = 'rgba(120,72,20,.55)'; cx.fillRect(0, gy + 24, W, 12); }
+        };
+        const loop = now => {
+            if (dead) return;
+            const dt = Math.min(0.033, (now - last) / 1000);
+            last = now;
+            const t = now - t0, p = Math.min(1, t / survive);
+            // Niestabilna równowaga wokół 30°: im dalej, tym mocniej ciągnie w tę stronę. Z czasem coraz silniej.
+            const G = 3.0 + 3.6 * p;
+            // Odcinki błota (od 12 s): silnik reaguje jeszcze wolniej.
+            mudT -= dt;
+            if (t > 12000 && mudT <= -2.5 && Math.random() < dt * 0.35) mudT = 2.2;
+            const mud = mudT > 0;
+            // Silnik reaguje z opóźnieniem — gaz i hamulec działają po chwili.
+            eng += (input - eng) * Math.min(1, dt / (mud ? LAG * 2 : LAG));
+            nextGust -= dt * 1000;
+            if (nextGust <= 0) { gust = (Math.random() < 0.5 ? -1 : 1) * (45 + 55 * p + Math.random() * 30); nextGust = 1000 + Math.random() * (1600 - 800 * p); }
+            gust *= Math.pow(0.12, dt);
+            bumpT -= dt;
+            let bump = 0;
+            if (bumpT <= 0) { bump = (Math.random() - 0.5) * (40 + 80 * p); bumpT = 0.35 + Math.random() * 0.5; }
+            const acc = G * (a - 30) + eng * (96 + 14 * p) + gust - 0.7 * v + bump + (Math.random() - 0.5) * 45;
+            v += acc * dt;
+            a += v * dt;
+            total += dt;
+            if (a >= LO && a <= HI) inZone += dt;
+            draw();
+            $('#wzPct').textContent = Math.round(inZone / Math.max(0.001, total) * 100) + '%';
+            $('#wzAng').textContent = Math.round(a) + '°';
+            const bar = $('#mgTime');
+            if (bar) bar.style.width = p * 100 + '%';
+            if (a <= FAIL_LO) { dead = true; mgEnd(i, false, 'Przednie koło uderzyło w ziemię. Wywrotka!'); return; }
+            if (a >= FAIL_HI) { dead = true; mgEnd(i, false, 'Za mocno! Varg przewrócił się do tyłu.'); return; }
+            if (t >= survive) {
+                dead = true;
+                const share = inZone / total;
+                if (share >= need) mgEnd(i, true, `Wheelie przez 35 s, ${Math.round(share * 100)}% czasu w strefie. Legenda.`);
+                else mgEnd(i, false, `Utrzymałeś się, ale tylko ${Math.round(share * 100)}% czasu w strefie (trzeba ${need * 100}%).`);
+                return;
+            }
+            raf = requestAnimationFrame(loop);
+        };
+        img.onload = draw;
+        raf = requestAnimationFrame(loop);
+        const map = { ArrowUp: 'up', w: 'up', W: 'up', ' ': 'up', ArrowDown: 'down', s: 'down', S: 'down' };
+        return {
+            stop: () => { dead = true; cancelAnimationFrame(raf); },
+            key: e => { const k = map[e.key]; if (k) { e.preventDefault(); keys.add(k); setInput(); } },
+            keyup: e => { const k = map[e.key]; if (k) { keys.delete(k); setInput(); } },
+            // do testów automatycznych
+            peek: () => ({ a, v }),
+            hold: u => { input = u; },
+        };
+    },
+
     ride(i, d, stage) {
-        const extreme = d >= 5;
-        const survive = (extreme ? 24 : 8 + d * 2) * 1000, speed = extreme ? 330 : 220 + d * 55, spawn = extreme ? 400 : 900 - d * 110;
-        // Na 5 gwiazdkach tempo rośnie aż do 1,6× pod koniec zjazdu.
-        const boost = t => (extreme ? 1 + 0.6 * Math.min(1, t / survive) : 1);
+        const extreme = d >= 5, hard = d >= 6;
+        const survive = (hard ? 35 : extreme ? 24 : 8 + d * 2) * 1000, speed = hard ? 360 : extreme ? 330 : 220 + d * 55, spawn = extreme ? 400 : 900 - d * 110;
+        // Tempo rośnie do 1,6× (5 gwiazdek) albo 1,9× (HARDCORE) pod koniec zjazdu.
+        const boost = t => (extreme ? 1 + (hard ? 0.9 : 0.6) * Math.min(1, t / survive) : 1);
         stage.innerHTML = `<div class="mg-time"><div id="mgTime" class="fill"></div></div>
             <canvas id="rideCv" width="360" height="420" class="ride"></canvas>
             <div class="garrows two"><button class="btn btn-dark" data-act="mgLane" data-arg="-1">◀</button><button class="btn btn-dark" data-act="mgLane" data-arg="1">▶</button></div>`;
         const cv = $('#rideCv'), cx = cv.getContext('2d');
         const W = cv.width, H = cv.height, LW = W / 3;
-        const ROW_GAP = 175;
+        const ROW_GAP = hard ? 168 : 175;
         let lane = 1, px = LW * 1.5, obs = [], last = performance.now(), t0 = last, nextSpawn = 400, raf = 0, dead = false, lastFree = 1, lastRowY = null;
         const draw = () => {
             cx.fillStyle = '#1b2233'; cx.fillRect(0, 0, W, H);
@@ -1998,6 +2404,12 @@ const GAME_RUN = {
             cx.beginPath(); cx.arc(px, y - 10, 13, 0, 7); cx.stroke();
             cx.beginPath(); cx.moveTo(px, y - 10); cx.lineTo(px, y + 34); cx.stroke();
             cx.strokeStyle = '#a54ef2'; cx.beginPath(); cx.moveTo(px - 16, y - 18); cx.lineTo(px + 16, y - 18); cx.stroke();
+            if (hard) {
+                // mgła: przeszkody widać dopiero w dolnej części trasy
+                const g = cx.createLinearGradient(0, 0, 0, H * 0.62);
+                g.addColorStop(0, 'rgba(12,15,24,1)'); g.addColorStop(0.7, 'rgba(12,15,24,.92)'); g.addColorStop(1, 'rgba(12,15,24,0)');
+                cx.fillStyle = g; cx.fillRect(0, 0, W, H * 0.62);
+            }
         };
         const loop = now => {
             if (dead) return;
@@ -2011,7 +2423,7 @@ const GAME_RUN = {
             const due = extreme ? (lastRowY === null || lastRowY >= -30 + ROW_GAP) : nextSpawn <= 0;
             if (due) {
                 const free = extreme ? Math.max(0, Math.min(2, lastFree + Math.floor(Math.random() * 3) - 1)) : Math.floor(Math.random() * 3);
-                const lanes = [0, 1, 2].filter(l => l !== free && Math.random() < (extreme ? 0.8 : 0.55));
+                const lanes = [0, 1, 2].filter(l => l !== free && (hard || Math.random() < (extreme ? 0.8 : 0.55)));
                 (lanes.length ? lanes : [(free + 1) % 3]).forEach(l => obs.push({ x: LW * (l + 0.5), y: -30, kind: Math.random() < 0.5 ? 0 : 1 }));
                 nextSpawn = spawn * (0.8 + Math.random() * 0.5);
                 lastFree = free;
@@ -2063,7 +2475,7 @@ function rankingModal() {
     modal(`<h2 class="mtitle">${ic('trophy')}Ranking graczy</h2>
         <div class="table rank">${rows.map((r, i) => `<div class="trow ${r.you ? 'you' : ''}">
             <span class="rk ${i < 3 ? 'top' + i : ''}">${i + 1}</span>
-            <span class="rname">${avatar(r.you ? me() : { name: r.name }, 'xs')}${esc(r.name)}</span>
+            <span class="rname" translate="no">${avatar(r.you ? me() : { name: r.name }, 'xs')}${esc(r.name)}</span>
             <span>Poz. ${level(Math.round(r.wagered * 100))}</span>
             <span class="muted">${r.best ? esc(SKIN[r.best].name) : '—'}</span>
             <b class="money">${money(r.wagered)}</b></div>`).join('')}</div>
@@ -2150,46 +2562,39 @@ const ACT = {
     // bitwy
     btab: t => { bl.tab = t; renderPage(); },
     bmode: m => { bl.mode = m; renderPage(); },
-    join: id => {
-        const b = BATTLES.find(x => String(x.id) === id);
-        if (!b || b.status !== 'waiting' || b.running || !b.slots.includes(null)) { toast('Ta bitwa już wystartowała.', 'err'); return; }
-        const cost = bValue(b);
-        if (state.balance < cost) { toast('Za mało środków na tę bitwę.', 'err'); return; }
-        b.slots[b.slots.indexOf(null)] = me();
-        b.phase = 'wait';
-        wallet(-cost, `Bitwa #${b.id}`);
-        spend(cost);
-        go('#/battle/' + b.id);
-        startIfFull(b);
+    join: arg => {
+        const [key, want] = String(arg).split(':');
+        const b = findBattle(key);
+        if (!b || !canJoin(b)) { toast('Nie możesz dołączyć do tej bitwy.', 'err'); return; }
+        const i = want !== undefined && !b.slots[Number(want)] ? Number(want) : b.slots.indexOf(null);
+        if (state.balance < bValue(b)) { toast('Za mało środków na tę bitwę.', 'err'); return; }
+        holdFor(b);
+        SEAT = { h: b.host, b: b.id, i };
+        publish();
+        go('#/battle/' + b.bid);
     },
-    summon: arg => {
-        const [id, i] = arg.split(':');
-        const b = BATTLES.find(x => String(x.id) === id);
-        if (!b || b.running || b.slots[i]) return;
-        b.slots[i] = botPlayer();
+    watch: key => go('#/battle/' + key),
+    summon: i => {
+        if (!MYB || MYB.status !== 'waiting' || MYB.slots[Number(i)]) return;
+        MYB.slots[Number(i)] = botPlayer();
         beep(700, 0.06, 0.04, 'triangle');
-        if (bvOpen(b)) renderPage();
-        startIfFull(b);
+        publish();
+        if (!MYB.slots.includes(null)) hostStart(); else renderPage();
     },
-    toggleSound: () => { state.settings.sound = !state.settings.sound; save(); if (route.name === 'battle') renderPage(); toast(state.settings.sound ? 'Dźwięk włączony' : 'Dźwięk wyłączony'); },
-    watch: id => {
-        const b = BATTLES.find(x => String(x.id) === id);
-        if (!b) return;
-        b.watched = true;
-        go('#/battle/' + id);
-        // Bitwa botów „w toku” w tle — odtwórz ją naprawdę, żeby było co oglądać.
-        if (!b.running && b.status === 'running' && !b.slots.includes(null)) { b.status = 'waiting'; runBattle(b); }
+    bots: () => {
+        if (!MYB || MYB.status !== 'waiting') return;
+        MYB.slots = MYB.slots.map(sl => sl || botPlayer());
+        publish();
+        hostStart();
     },
-    bots: id => {
-        const b = BATTLES.find(x => String(x.id) === id);
-        if (!b || b.status !== 'waiting' || b.running) return;
-        b.slots = b.slots.map(sl => sl || botPlayer());
-        if (bvOpen(b)) renderPage();
-        startIfFull(b);
+    leaveBattle: () => {
+        if (MYB && MYB.status === 'waiting') { MYB = null; releaseHold(); publish(); toast('Bitwa anulowana, opłata wróciła.'); go('#/battles'); return; }
+        if (SEAT) { SEAT = null; releaseHold(); publish(); toast('Wyszedłeś z bitwy, opłata wróciła.'); go('#/battles'); }
     },
+    toggleSound: () => { state.settings.sound = !state.settings.sound; save(); if (route.name === 'battle' && !RUN.get(route.arg)) renderPage(); toast(state.settings.sound ? 'Dźwięk włączony' : 'Dźwięk wyłączony'); },
     tpl: i => {
         const t = templates()[Number(i)];
-        startBattle({ id: bseq++, mode: 'normal', players: t.players, cases: t.cases, slots: [me(), ...Array(t.players - 1).fill(null)], status: 'waiting', t: Date.now() });
+        createBattle('normal', t.players, t.cases);
     },
     crAddModal: () => {
         modal(`<h2 class="mtitle">${ic('plus')}Dodaj skrzynkę</h2>
@@ -2210,12 +2615,10 @@ const ACT = {
     crInc: i => { if (crRounds() >= 20) { toast('Maksymalnie 20 rund.', 'err'); return; } cr.cases[Number(i)].n++; renderPage(); },
     crDec: i => { const x = cr.cases[Number(i)]; x.n--; if (!x.n) cr.cases.splice(Number(i), 1); renderPage(); },
     crPlayers: n => { cr.players = Number(n); renderPage(); },
-    crPriv: v => { cr.priv = v === '1'; renderPage(); },
     crMode: m => { cr.mode = m; renderPage(); },
     crCreate: () => {
         if (!cr.cases.length) return;
-        const cases = cr.cases.flatMap(x => Array(x.n).fill(x.id));
-        startBattle({ id: bseq++, mode: cr.mode, players: cr.players, cases, slots: [me(), ...Array(cr.players - 1).fill(null)], status: 'waiting', t: Date.now(), priv: cr.priv });
+        createBattle(cr.mode, cr.players, cr.cases.flatMap(x => Array(x.n).fill(x.id)));
     },
 
     // kontrakt
@@ -2297,10 +2700,13 @@ const ACT = {
         state.name = v;
         save();
         renderTop();
+        publish();
         toast('Zapisano nick.', 'ok');
         renderPage();
     },
-    setColor: c => { state.color = c; save(); renderTop(); renderPage(); },
+    setLang: l => { if (!LANGS[l]) return; state.settings.lang = l; save(); applyLang(); },
+    setCur: c => { if (!CUR[c]) return; state.settings.cur = c; save(); renderTop(); renderDrops(false); renderPage(); toast(`Waluta: ${CUR[c].n}`, 'ok'); },
+    setColor: c => { state.color = c; save(); renderTop(); renderPage(); publish(); },
     reset: (_, el) => {
         if (!resetArmed) {
             el.textContent = 'Kliknij ponownie, by potwierdzić';
@@ -2385,9 +2791,11 @@ renderShell();
 renderTop();
 for (let i = 0; i < 30; i++) { const c = pick(USD_CASES); drops.push({ id: roll(c), user: pick(BOT_NAMES), mine: false, c: c.id, st: Math.random() < 0.12 }); }
 renderDrops(false);
-for (let i = 0; i < 8; i++) BATTLES.push(newBotBattle());
+// Rezerwacja z poprzedniej wizyty (strona zamknięta przed startem bitwy) — zwrot.
+if (state.hold) { releaseHold(); note('Zwrócono opłatę za niedokończoną bitwę.'); }
 go('#/');
+if (state.settings.lang !== 'pl') applyLang();
 setInterval(tick, 1000);
-setInterval(battleTick, 4500);
-setInterval(() => { const el = $('#online'); if (el) el.textContent = 3000 + Math.floor(Math.random() * 300); }, 5000);
+setInterval(() => { const el = $('#online'); if (el && !NET.room) el.textContent = 1; }, 5000);
+connectRoom();
 setTimeout(botDropLoop, 2000);
