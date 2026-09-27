@@ -105,190 +105,134 @@ const RAR = {
     gold: { n: '★ Rare Special', c: '#e4ae39', w: 1 },
 };
 
-// Filtry kolorów nakładane na zdjęcie broni — z jednego modelu powstaje kilka skinów.
-const TINT = {
-    none: '',
-    h90: 'hue-rotate(90deg) saturate(1.6)',
-    h140: 'hue-rotate(140deg) saturate(3) brightness(1.1)',
-    h180: 'hue-rotate(180deg) saturate(1.8)',
-    h270: 'hue-rotate(270deg) saturate(2)',
-    gold: 'sepia(1) saturate(3) hue-rotate(-10deg) brightness(1.05)',
-    pink: 'sepia(1) saturate(4) hue-rotate(300deg)',
-    ice: 'sepia(1) saturate(4) hue-rotate(170deg) brightness(1.05)',
-    black: 'grayscale(1) contrast(1.3) brightness(.9)',
-};
-
-const WIMG = {
-    'AK-47': 'img/w-ak47.png', 'AWP': 'img/w-awp.png', 'M4A1-S': 'img/w-m4a1s.png', 'M4A4': 'img/w-m4a4.png',
-    'Galil AR': 'img/w-galil.png', 'USP-S': 'img/w-usps.png', 'SSG 08': 'img/w-ssg08.png', 'Glock-18': 'img/w-glock.png',
-};
-
-// [id, broń, nazwa, rzadkość, cena, filtr]  — broń ze zdjęciem
-const GUNS = [
-    ['ak_0', 'AK-47', 'Buntownik Pustkowi', 'covert', 62, 'none'],
-    ['ak_2', 'AK-47', 'Złoty Spray', 'covert', 48, 'gold'],
-    ['ak_1', 'AK-47', 'Neonowe Graffiti', 'classified', 17, 'h180'],
-    ['ak_3', 'AK-47', 'Czerwony Alarm', 'restricted', 5.8, 'pink'],
-    ['ak_4', 'AK-47', 'Nocny Tag', 'milspec', 1.3, 'black'],
-    ['awp_0', 'AWP', 'Neonowy Sen', 'covert', 145, 'none'],
-    ['awp_2', 'AWP', 'Złoty Celownik', 'covert', 95, 'gold'],
-    ['awp_1', 'AWP', 'Toksyczna Fala', 'classified', 22, 'h90'],
-    ['awp_3', 'AWP', 'Różowy Horyzont', 'restricted', 7.5, 'pink'],
-    ['awp_4', 'AWP', 'Cień Snajpera', 'milspec', 1.6, 'black'],
-    ['m41_3', 'M4A1-S', 'Złota Cisza', 'covert', 54, 'gold'],
-    ['m41_0', 'M4A1-S', 'Cichy Protest', 'classified', 19, 'none'],
-    ['m41_2', 'M4A1-S', 'Lazurowy Szept', 'restricted', 5.1, 'h180'],
-    ['m41_1', 'M4A1-S', 'Leśne Szepty', 'restricted', 4.4, 'h90'],
-    ['m41_4', 'M4A1-S', 'Grafitowy Tłumik', 'industrial', 0.32, 'black'],
-    ['m4_1', 'M4A4', 'Złota Legenda', 'covert', 71, 'gold'],
-    ['m4_0', 'M4A4', 'Chromowy Duch', 'classified', 14, 'none'],
-    ['m4_2', 'M4A4', 'Krwawa Meta', 'restricted', 6.2, 'pink'],
-    ['m4_3', 'M4A4', 'Lodowa Stal', 'milspec', 1.1, 'ice'],
-    ['m4_4', 'M4A4', 'Czarna Owca', 'industrial', 0.4, 'black'],
-    ['gal_0', 'Galil AR', 'Tygrysi Pazur', 'classified', 8.9, 'none'],
-    ['gal_3', 'Galil AR', 'Różowa Pantera', 'restricted', 4.1, 'h270'],
-    ['gal_1', 'Galil AR', 'Kwasowy Tygrys', 'restricted', 3.4, 'h90'],
-    ['gal_2', 'Galil AR', 'Błękitny Łowca', 'milspec', 0.95, 'h180'],
-    ['gal_4', 'Galil AR', 'Szary Tygrys', 'consumer', 0.12, 'black'],
-    ['usp_4', 'USP-S', 'Ognisty Strzał', 'classified', 11, 'h140'],
-    ['usp_1', 'USP-S', 'Purpurowy Szept', 'restricted', 3.2, 'h90'],
-    ['usp_0', 'USP-S', 'Głębia Oceanu', 'milspec', 0.88, 'none'],
-    ['usp_3', 'USP-S', 'Szmaragd', 'industrial', 0.33, 'h270'],
-    ['usp_2', 'USP-S', 'Rdzawy Tłumik', 'consumer', 0.07, 'h180'],
-    ['ssg_4', 'SSG 08', 'Różowy Wystrzał', 'classified', 7.2, 'h270'],
-    ['ssg_0', 'SSG 08', 'Pomarańczowy Tygrys', 'restricted', 3.9, 'none'],
-    ['ssg_3', 'SSG 08', 'Błękitny Pazur', 'milspec', 1.05, 'h180'],
-    ['ssg_1', 'SSG 08', 'Jadowity', 'industrial', 0.29, 'h90'],
-    ['ssg_2', 'SSG 08', 'Nocny Łowca', 'consumer', 0.06, 'black'],
-    ['glk_0', 'Glock-18', 'Neonowe Miasto', 'classified', 9.6, 'none'],
-    ['glk_1', 'Glock-18', 'Zachód Słońca', 'restricted', 3.0, 'h90'],
-    ['glk_2', 'Glock-18', 'Kwaśne Miasto', 'milspec', 0.8, 'h180'],
-    ['glk_3', 'Glock-18', 'Błękitna Noc', 'industrial', 0.26, 'h270'],
-    ['glk_4', 'Glock-18', 'Miejski Duch', 'consumer', 0.05, 'black'],
-];
-
-// [id, broń, nazwa, cena, kształt, kolor1, kolor2, wzór]  — noże i rękawice (rysowane)
-const SPECIALS = [
-    ['kn1', '★ Bagnet', 'Stalowa Szprycha', 180, 'bayonet', '#9ca3af', '#f3f4f6', 'f'],
-    ['gl2', '★ Rękawice Kierowcy', 'Kamuflaż MTB', 190, 'gloves', '#3f6212', '#d9f99d', 'c'],
-    ['gl1', '★ Rękawice Sportowe', 'Żółta Koszulka', 260, 'gloves', '#ca8a04', '#fef08a', 's'],
-    ['kn2', '★ Nóż Motylkowy', 'Zanikanie', 320, 'butterfly', '#f472b6', '#fde047', 'f'],
-    ['kn4', '★ Bagnet M9', 'Nocna Jazda', 410, 'm9', '#1e1b4b', '#818cf8', 'f'],
-    ['kn3', '★ Karambit', 'Tęczowa Szprycha', 540, 'karambit', '#22d3ee', '#e879f9', 'f'],
-    ['kn5', '★ Talon', 'Złoty Pazur', 760, 'talon', '#a16207', '#fde047', 's'],
-];
-
+// Katalog skinów pochodzi z skins.js (GUN_DATA, KNIFE_DATA, TINTS).
 const SKINS = [
-    ...GUNS.map(([id, weapon, name, rarity, price, tint]) => ({ id, weapon, name, rarity, price, img: WIMG[weapon], f: TINT[tint], type: 'gun' })),
-    ...SPECIALS.map(([id, weapon, name, price, type, c1, c2, pat]) => ({ id, weapon, name, rarity: 'gold', price, type, c1, c2, pat })),
+    ...GUN_DATA.map(([id, weapon, name, rarity, price, img, tint, type]) => ({ id, weapon, name, rarity, price, img, f: TINTS[tint] || '', type })),
+    ...KNIFE_DATA.map(([id, weapon, name, price, type, c1, c2, pat]) => ({ id, weapon, name, rarity: 'gold', price, type, c1, c2, pat })),
 ];
 
 const SKIN = Object.fromEntries(SKINS.map(s => [s.id, s]));
 
-// Buduje pulę [id, waga] z listy [filtr, waga|funkcja] — wagi tego samego skina się sumują.
-function pool(spec) {
-    const m = new Map();
-    for (const [f, w] of spec) {
-        for (const s of SKINS) {
-            if (!f(s)) continue;
-            const ww = typeof w === 'function' ? w(s) : w;
-            if (ww > 0) m.set(s.id, (m.get(s.id) || 0) + ww);
+// Buduje pulę skrzynki [id, waga]. Każdy wpis [filtr, waga] dzielony jest na grupy rzadkości;
+// waga to łączna szansa całej grupy (liczba albo funkcja od skina, np. RW()).
+// W grupie drogie skiny są rzadsze (∝ (mediana/cena)^skew). `per` ogranicza liczbę skinów w grupie
+// (wybór losowy, ale zawsze ten sam dla danej skrzynki), `mix` traktuje wpis jako jedną grupę.
+function pool(spec, { per: perAll = 8, seed = '', skew = 0.7, mix = false } = {}) {
+    const out = new Map();
+    // Trzeci element wpisu może nadpisać limit, np. [KNIFE, 0.25, { per: 6 }].
+    spec.forEach(([f, w, opt = {}], k) => {
+        const per = opt.per ?? perAll;
+        const groups = {};
+        for (const s of SKINS) if (f(s)) (groups[mix ? 'all' : s.rarity] ||= []).push(s);
+        for (const [g, list0] of Object.entries(groups)) {
+            const mass = typeof w === 'function' ? w(list0[0]) : w;
+            if (!(mass > 0)) continue;
+            const rnd = srand(hash(seed + k + g));
+            const list = per && list0.length > per ? list0.map(s => [s, rnd()]).sort((a, b) => a[1] - b[1]).slice(0, per).map(x => x[0]) : list0;
+            const med = list.map(s => s.price).sort((a, b) => a - b)[Math.floor(list.length / 2)];
+            const shares = list.map(s => Math.pow(med / s.price, skew));
+            const sum = shares.reduce((a, b) => a + b, 0);
+            list.forEach((s, i) => out.set(s.id, (out.get(s.id) || 0) + mass * shares[i] / sum));
         }
-    }
-    return [...m];
+    });
+    return [...out];
 }
 const R = (...r) => s => r.includes(s.rarity);
 const KNIFE = s => s.rarity === 'gold' && s.type !== 'gloves';
+const GLOVE = s => s.type === 'gloves';
 const RW = (mult = 1) => s => RAR[s.rarity].w * mult;
+const W = (...w) => s => w.includes(s.weapon);
+
+// Skiny z obrazka „Smoczej Legendy” (prawdziwe modele).
+const LEGEND = ['awp-dragon-lore', 'ak-47-fire-serpent', 'm4a4-buzz-kill', 'ssg-08-dragonfire', 'p90-asiimov', 'm4a1-s-cyrex', 'ak-47-vulcan',
+    'usp-s-kill-confirmed', 'mac-10-neon-rider', 'm4a1-s-hyper-beast', 'm4a1-s-chantico-s-fire', 'awp-man-o-war', 'ak-47-neon-revolution',
+    'galil-ar-chatterbox', 'm4a1-s-mecha-industries', 'ak-47-bloodsport', 'r8-revolver-fade', 'p2000-fire-elemental', 'm4a1-s-golden-coil',
+    'ak-47-the-empress', 'awp-asiimov', 'ak-47-aquamarine-revenge', 'awp-hyper-beast', 'm4a4-desert-strike'].filter(id => SKIN[id]);
+
+const WEAPON_CASES = [['AK-47', '#a16207'], ['AWP', '#db2777'], ['M4A1-S', '#65a30d'], ['M4A4', '#64748b'], ['Galil AR', '#eab308'],
+    ['USP-S', '#2563eb'], ['SSG 08', '#ea580c'], ['Glock-18', '#8b5cf6'], ['P90', '#f97316'], ['MAC-10', '#ec4899'], ['R8 Revolver', '#b45309'],
+    ['P2000', '#0ea5e9'], ['MP5-SD', '#14b8a6'], ['Nova', '#84cc16'], ['SG 553', '#6366f1'], ['XM1014', '#ef4444']];
+
+const RARITY_CASES = [['consumer', 'Consumer', '#b0c3d9'], ['industrial', 'Industrial', '#5e98d9'], ['milspec', 'Mil-Spec', '#4b69ff'],
+    ['restricted', 'Restricted', '#8847ff'], ['classified', 'Classified', '#d32ce6'], ['covert', 'Covert', '#eb4b4b']];
 
 const CASES = [
+    // Legendy
+    { id: 'smocza', name: 'Smocza Legenda', color: '#b91c1c', sec: 'legend', badge: 'HOT', feature: 'awp-dragon-lore', tag: 'Legenda',
+        items: pool([[s => LEGEND.includes(s.id), 100]], { per: 0, mix: true, skew: 1.15 }) },
+    { id: 'wyjec', name: 'Wyjec', color: '#dc2626', sec: 'legend', feature: 'm4a4-howl', tag: 'Howl',
+        items: pool([[R('covert'), 20], [R('classified'), 60], [s => ['m4a4-howl', 'awp-medusa', 'awp-gungnir', 'ak-47-wild-lotus'].includes(s.id), 1.2]], { seed: 'wyjec' }) },
+
     // Skrzynki twórców
     { id: 'vit', name: 'Vit Case', color: '#2563eb', sec: 'creator', badge: 'CREATOR', deco: 'creator', mono: 'VIT',
-        items: pool([[R('restricted'), RW()], [R('classified'), RW()], [R('covert'), RW()], [R('gold'), 0.6]]) },
+        items: pool([[R('restricted'), RW()], [R('classified'), RW()], [R('covert'), RW()], [R('gold'), 0.6]], { seed: 'vit' }) },
     { id: 'km', name: 'KM Case', color: '#14b8a6', sec: 'creator', badge: 'CREATOR', deco: 'photo', img: 'img/km-case.webp',
-        items: pool([[R('classified'), 40], [R('covert'), 18], [R('gold'), 2.5]]) },
+        items: pool([[R('classified'), 40], [R('covert'), 18], [R('gold'), 2.5]], { seed: 'km' }) },
 
     // Skrzynki memów
     { id: 'm-zlodziej', name: 'Złodziej Rowerów', color: '#65a30d', sec: 'meme', badge: 'MEME', deco: 'photo', img: 'img/meme-zlodziej.webp',
-        items: pool([[s => ['USP-S', 'Glock-18'].includes(s.weapon), RW()], [R('covert'), 2], [s => s.id === 'kn1', 0.4]]) },
+        items: pool([[W('USP-S', 'Glock-18', 'P2000', 'R8 Revolver'), RW()], [R('covert'), 2], [KNIFE, 0.4]], { seed: 'zl' }) },
     { id: 'm-golab', name: 'Gołąb z KFC', color: '#f59e0b', sec: 'meme', badge: 'MEME', deco: 'photo', img: 'img/meme-golab.webp',
-        items: pool([[R('consumer', 'industrial'), RW()], [R('milspec'), RW(0.5)], [R('restricted'), RW(0.3)], [s => s.id === 'kn2', 0.08]]) },
+        items: pool([[R('consumer', 'industrial'), RW()], [R('milspec'), RW(0.5)], [R('restricted'), RW(0.3)], [KNIFE, 0.08]], { seed: 'go' }) },
     { id: 'm-pies', name: 'Pies Sąsiada', color: '#d4a373', sec: 'meme', badge: 'MEME', deco: 'photo', img: 'img/meme-pies.webp',
-        items: pool([[R('industrial', 'milspec', 'restricted'), RW()], [R('classified'), RW()], [R('covert'), RW(0.6)]]) },
+        items: pool([[R('industrial', 'milspec', 'restricted'), RW()], [R('classified'), RW()], [R('covert'), RW(0.6)]], { seed: 'pi' }) },
     { id: 'm-mis', name: 'Miś Miodek', color: '#facc15', sec: 'meme', badge: 'MEME', deco: 'photo', img: 'img/meme-mis.webp',
-        items: pool([[R('milspec', 'restricted'), RW()], [s => ['ak_2', 'm4_1', 'gl1'].includes(s.id), 3], [R('classified'), RW()]]) },
+        items: pool([[R('milspec', 'restricted'), RW()], [s => /gold|golden|honey|sun/i.test(s.name), 30], [R('classified'), RW()]], { seed: 'mi' }) },
     { id: 'm-cyborg', name: 'Mięsny Cyborg', color: '#ef4444', sec: 'meme', badge: 'MEME', deco: 'photo', img: 'img/meme-cyborg.webp',
-        items: pool([[R('restricted'), 40], [R('classified'), 40], [R('covert'), 16], [R('gold'), 2]]) },
-
+        items: pool([[R('restricted'), 40], [R('classified'), 40], [R('covert'), 16], [R('gold'), 2]], { seed: 'cy' }) },
     { id: 'm-szyja', name: 'Długa Szyja', color: '#f97316', sec: 'meme', badge: 'MEME', deco: 'photo', img: 'img/meme-szyja.webp',
-        items: pool([[R('consumer', 'industrial', 'milspec'), RW()], [R('restricted'), RW(0.5)], [R('covert'), 0.6]]) },
+        items: pool([[R('consumer', 'industrial', 'milspec'), RW()], [R('restricted'), RW(0.5)], [R('covert'), 0.6]], { seed: 'sz' }) },
     { id: 'm-kanada', name: 'Kanadyjski Syrop', color: '#dc2626', sec: 'meme', badge: 'MEME', deco: 'photo', img: 'img/meme-kanada.webp',
-        items: pool([[R('milspec', 'restricted'), RW()], [R('classified'), RW()], [R('covert'), RW(0.7)], [R('gold'), 0.3]]) },
+        items: pool([[R('milspec', 'restricted'), RW()], [R('classified'), RW()], [R('covert'), RW(0.7)], [R('gold'), 0.3]], { seed: 'ka' }) },
     { id: 'm-zombi', name: 'Zombi', color: '#64748b', sec: 'meme', badge: 'HOT', deco: 'photo', img: 'img/meme-zombi.webp',
-        items: pool([[R('consumer'), 120], [R('covert'), 5], [R('gold'), 0.8]]) },
+        items: pool([[R('consumer'), 120], [R('covert'), 5], [R('gold'), 0.8]], { seed: 'zo' }) },
     { id: 'm-goryl', name: 'Armia Goryli', color: '#16a34a', sec: 'meme', badge: 'MEME', deco: 'photo', img: 'img/meme-goryl.webp',
-        items: pool([[R('classified'), 40], [R('covert'), 20], [R('gold'), 3]]) },
+        items: pool([[R('classified'), 40], [R('covert'), 20], [R('gold'), 3]], { seed: 'gr' }) },
 
     // Rowerowe Urodziny (event)
     { id: 'tort', name: 'Tort Urodzinowy', color: '#ec4899', sec: 'bday', badge: 'NEW', deco: 'cake',
-        items: pool([[s => s.rarity !== 'gold', RW()], [R('gold'), 0.5]]) },
-    { id: 'balon', name: 'Balonik', color: '#3b82f6', sec: 'bday', badge: 'NEW', feature: 'kn1',
-        items: pool([[R('consumer', 'industrial'), RW()], [R('milspec'), RW(0.6)], [R('restricted'), RW(0.3)], [s => s.id === 'kn1', 0.25]]) },
-    { id: 'swieczka', name: 'Świeczka', color: '#f59e0b', sec: 'bday', badge: 'NEW', feature: 'kn2',
-        items: pool([[R('industrial'), 80], [R('classified'), 10], [R('covert'), 3], [s => s.id === 'kn2', 0.4]]) },
-    { id: 'konfetti', name: 'Konfetti', color: '#8b5cf6', sec: 'bday', badge: 'NEW', feature: 'm41_0',
-        items: pool([[R('milspec', 'restricted', 'classified', 'covert'), RW()], [R('gold'), 0.5]]) },
-    { id: 'prezent', name: 'Wielki Prezent', color: '#ef4444', sec: 'bday', badge: 'NEW', feature: 'kn3',
-        items: pool([[R('classified'), 60], [R('covert'), 20], [R('gold'), 3]]) },
+        items: pool([[s => s.rarity !== 'gold', RW()], [R('gold'), 0.5]], { seed: 'to' }) },
+    { id: 'balon', name: 'Balonik', color: '#3b82f6', sec: 'bday', badge: 'NEW',
+        items: pool([[R('consumer', 'industrial'), RW()], [R('milspec'), RW(0.6)], [R('restricted'), RW(0.3)], [KNIFE, 0.25]], { seed: 'ba', per: 6 }) },
+    { id: 'swieczka', name: 'Świeczka', color: '#f59e0b', sec: 'bday', badge: 'NEW',
+        items: pool([[R('industrial'), 80], [R('classified'), 10], [R('covert'), 3], [KNIFE, 0.4]], { seed: 'sw', per: 6 }) },
+    { id: 'konfetti', name: 'Konfetti', color: '#8b5cf6', sec: 'bday', badge: 'NEW',
+        items: pool([[R('milspec', 'restricted', 'classified', 'covert'), RW()], [R('gold'), 0.5]], { seed: 'ko' }) },
+    { id: 'prezent', name: 'Wielki Prezent', color: '#ef4444', sec: 'bday', badge: 'NEW',
+        items: pool([[R('classified'), 60], [R('covert'), 20], [R('gold'), 3]], { seed: 'pr' }) },
 
-    // Rzadkości
-    { id: 'r-mil', name: 'Mil-Spec', color: '#4b69ff', sec: 'rar', tag: 'Mil-Spec', feature: 'm4_3',
-        items: pool([[R('consumer', 'industrial'), 40], [R('milspec'), 60], [R('restricted'), 6], [R('classified'), 1]]) },
-    { id: 'r-res', name: 'Restricted', color: '#8847ff', sec: 'rar', tag: 'Restricted', feature: 'ak_3',
-        items: pool([[R('industrial'), 30], [R('milspec'), 40], [R('restricted'), 60], [R('classified'), 5], [R('covert'), 1]]) },
-    { id: 'r-cla', name: 'Classified', color: '#d32ce6', sec: 'rar', tag: 'Classified', feature: 'awp_1',
-        items: pool([[R('milspec'), 30], [R('restricted'), 50], [R('classified'), 60], [R('covert'), 5], [R('gold'), 0.4]]) },
-    { id: 'r-cov', name: 'Covert', color: '#eb4b4b', sec: 'rar', tag: 'Covert', feature: 'ak_0',
-        items: pool([[R('restricted'), 40], [R('classified'), 60], [R('covert'), 50], [R('gold'), 2]]) },
-    { id: 'r-kni', name: 'Noże', color: '#e4ae39', sec: 'rar', tag: 'Noże', feature: 'kn2',
-        items: pool([[R('covert'), 60], [KNIFE, 12]]) },
-    { id: 'r-glk', name: 'GLOCK-18', color: '#f59e0b', sec: 'rar', tag: 'Glock-18',
-        items: pool([[s => s.weapon === 'Glock-18', RW(2)], [R('consumer', 'industrial'), RW(0.5)]]) },
+    // Rzadkości — każda skrzynka zawiera wyłącznie skiny jednej rzadkości
+    ...RARITY_CASES.map(([r, n, color]) => ({ id: 'r-' + r, name: n, color, sec: 'rar', tag: n, items: pool([[R(r), 100]], { per: 0, skew: 0.8 }) })),
+    { id: 'r-kni', name: 'Noże', color: '#e4ae39', sec: 'rar', tag: 'Noże', items: pool([[KNIFE, 100]], { per: 0, skew: 0.8, mix: true }) },
+    { id: 'r-glv', name: 'Rękawice', color: '#d97706', sec: 'rar', tag: 'Rękawice', items: pool([[GLOVE, 100]], { per: 0, skew: 0.8, mix: true }) },
 
-    // Bronie
-    ...[['AK-47', '#a16207'], ['AWP', '#db2777'], ['M4A1-S', '#65a30d'], ['M4A4', '#64748b'],
-        ['Galil AR', '#eab308'], ['USP-S', '#2563eb'], ['SSG 08', '#ea580c']]
-        .map(([w, color]) => ({
-            id: 'w-' + w.toLowerCase().replace(/[^a-z0-9]/g, ''), name: w, color, sec: 'wpn', tag: w,
-            feature: SKINS.filter(s => s.weapon === w).sort((a, b) => b.price - a.price)[0].id,
-            items: pool([[s => s.weapon === w, RW(3)], [R('consumer', 'industrial'), RW(0.4)], [R('covert'), 1], [R('gold'), 0.15]]),
-        })),
-    { id: 'w-glv', name: 'Rękawice', color: '#d97706', sec: 'wpn', tag: 'Rękawice', feature: 'gl1',
-        items: pool([[s => s.type === 'gloves', 10], [R('covert'), 20], [R('classified'), 60], [R('restricted'), 100]]) },
-    { id: 'w-lux', name: 'Luksusowy Nóż', color: '#eab308', sec: 'wpn', tag: 'Luksus', feature: 'kn5',
-        items: pool([[KNIFE, 10], [R('covert'), 30], [R('classified'), 60]]) },
+    // Bronie — tylko skiny danej broni i mała szansa na nóż
+    ...WEAPON_CASES.map(([w, color]) => ({
+        id: 'w-' + w.toLowerCase().replace(/[^a-z0-9]/g, ''), name: w, color, sec: 'wpn', tag: w,
+        items: pool([[W(w), RW()], [KNIFE, 0.25, { per: 6 }]], { per: 0, seed: w, skew: 0.6 }),
+    })),
 
     // Specjalne
     { id: 'g-garsc', name: 'Garść Gemów', color: '#c084fc', sec: 'gems', currency: 'gems', gems: 100, deco: 'gems',
-        items: pool([[R('consumer', 'industrial', 'milspec'), RW()], [R('restricted'), RW(0.6)], [R('classified'), RW(0.3)]]) },
-    { id: 'g-krysztal', name: 'Kryształowa', color: '#8b5cf6', sec: 'gems', currency: 'gems', gems: 600, feature: 'awp_1', tag: 'Gemy',
-        items: pool([[R('restricted', 'classified'), RW()], [R('covert'), RW()], [R('gold'), 0.4]]) },
-    { id: 'g-legenda', name: 'Legenda Gemów', color: '#e879f9', sec: 'gems', currency: 'gems', gems: 1500, feature: 'kn3', tag: 'Legenda',
-        items: pool([[R('classified'), 40], [R('covert'), 25], [R('gold'), 4]]) },
+        items: pool([[R('consumer', 'industrial', 'milspec'), RW()], [R('restricted'), RW(0.6)], [R('classified'), RW(0.3)]], { seed: 'g1' }) },
+    { id: 'g-krysztal', name: 'Kryształowa', color: '#8b5cf6', sec: 'gems', currency: 'gems', gems: 600, tag: 'Gemy',
+        items: pool([[R('restricted', 'classified'), RW()], [R('covert'), RW()], [R('gold'), 0.4]], { seed: 'g2' }) },
+    { id: 'g-legenda', name: 'Legenda Gemów', color: '#e879f9', sec: 'gems', currency: 'gems', gems: 1500, tag: 'Legenda',
+        items: pool([[R('classified'), 40], [R('covert'), 25], [R('gold'), 4]], { seed: 'g3' }) },
     { id: 'gems', name: 'Skrzynka Gemów', color: '#a855f7', sec: 'gems', currency: 'gems', gems: 250, deco: 'gems',
-        items: pool([[R('consumer', 'industrial', 'milspec', 'restricted', 'classified'), RW()], [R('covert'), RW(0.5)]]) },
+        items: pool([[R('consumer', 'industrial', 'milspec', 'restricted', 'classified'), RW()], [R('covert'), RW(0.5)]], { seed: 'g4' }) },
     { id: 'daily', name: 'Codzienna Skrzynka', color: '#22c55e', currency: 'free', kind: 'daily', deco: 'gift',
-        items: pool([[R('consumer', 'industrial'), RW()], [R('milspec'), RW(0.5)], [R('restricted'), RW(0.2)], [R('covert'), 0.3]]) },
+        items: pool([[R('consumer', 'industrial'), RW()], [R('milspec'), RW(0.5)], [R('restricted'), RW(0.2)], [R('covert'), 0.3]], { seed: 'dl' }) },
     ...[5, 10, 20, 30, 50].map((lvl, i) => ({
         id: 'exp' + lvl, name: 'Poziom ' + lvl, color: ['#38bdf8', '#34d399', '#a78bfa', '#f472b6', '#fbbf24'][i],
         currency: 'free', kind: 'exp', lvl, deco: 'lvl',
         items: pool([
             [[R('consumer', 'industrial'), R('industrial', 'milspec'), R('milspec', 'restricted'), R('restricted', 'classified'), R('classified', 'covert')][i], RW()],
             [[R('milspec'), R('restricted'), R('classified'), R('covert'), R('gold')][i], RW(0.5)],
-        ]),
+        ], { seed: 'exp' + lvl }),
     })),
     { id: 'hidden', name: 'Ukryta Skrzynka', color: '#fb923c', currency: 'free', kind: 'hidden', deco: 'hidden',
-        items: pool([[R('restricted'), 50], [R('classified'), 30], [R('covert'), 10], [R('gold'), 1]]) },
+        items: pool([[R('restricted'), 50], [R('classified'), 30], [R('covert'), 10], [R('gold'), 1]], { seed: 'hd' }) },
 ];
 
 for (const c of CASES) {
@@ -304,6 +248,7 @@ const CASE = Object.fromEntries(CASES.map(c => [c.id, c]));
 const USD_CASES = CASES.filter(c => c.currency === 'usd');
 
 const SECTIONS = [
+    { id: 'legend', title: 'Legendy', icon: 'crown' },
     { id: 'creator', title: 'Skrzynki twórców', icon: 'user' },
     { id: 'meme', title: 'Skrzynki memów', icon: 'bolt' },
     { id: 'gems', title: 'Skrzynki za gemy', icon: 'gem' },
@@ -381,7 +326,7 @@ function load() {
             // Katalog skinów się zmienił — stare skiny zamieniamy na $ po ostatniej cenie, żeby nic nie przepadło.
             const lost = out.inv.filter(i => !SKIN[i.id]);
             if (lost.length) {
-                out.balance = round2(out.balance + lost.length * 0.5);
+                out.balance = round2(out.balance + lost.reduce((sum, i) => sum + (OLD_PRICES[i.id] ?? 0.5), 0));
                 out.inv = out.inv.filter(i => SKIN[i.id]);
             }
             out.itemLog = out.itemLog.filter(r => SKIN[r.id]);
@@ -1089,7 +1034,7 @@ function renderCase() {
         </div>
         ${lock ? `<div class="lock-note">${ic('lock')}<span>${lock}</span></div>` : ''}
         <div class="sec-title">${ic('box')}<span>Zawartość skrzynki</span></div>
-        <div class="igrid">${sorted.map(([id]) => { const ch = chanceOf(c, id); return itemCard(SKIN[id], { top: `<span class="chance">${ch.toFixed(ch < 0.1 ? 3 : 2)}%</span>` }); }).join('')}</div>
+        <div class="igrid">${sorted.map(([id]) => { const ch = chanceOf(c, id); return itemCard(SKIN[id], { top: `<span class="chance">${ch.toFixed(ch < 0.01 ? 4 : ch < 0.1 ? 3 : 2)}%</span>` }); }).join('')}</div>
     </div>`;
 }
 
