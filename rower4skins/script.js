@@ -205,7 +205,7 @@ const CASES = [
     // Skrzynki twórców
     { id: 'vit', name: 'Vit Case', color: '#2563eb', sec: 'creator', badge: 'CREATOR', deco: 'creator', mono: 'VIT',
         items: pool([[R('restricted'), RW()], [R('classified'), RW()], [R('covert'), RW()], [R('gold'), 0.6]]) },
-    { id: 'km', name: 'KM Case', color: '#14b8a6', sec: 'creator', badge: 'CREATOR', deco: 'creator', mono: 'KM',
+    { id: 'km', name: 'KM Case', color: '#14b8a6', sec: 'creator', badge: 'CREATOR', deco: 'photo', img: 'img/km-case.webp',
         items: pool([[R('classified'), 40], [R('covert'), 18], [R('gold'), 2.5]]) },
 
     // Skrzynki memów
@@ -219,6 +219,15 @@ const CASES = [
         items: pool([[R('milspec', 'restricted'), RW()], [s => ['ak_2', 'm4_1', 'gl1'].includes(s.id), 3], [R('classified'), RW()]]) },
     { id: 'm-cyborg', name: 'Mięsny Cyborg', color: '#ef4444', sec: 'meme', badge: 'MEME', deco: 'photo', img: 'img/meme-cyborg.webp',
         items: pool([[R('restricted'), 40], [R('classified'), 40], [R('covert'), 16], [R('gold'), 2]]) },
+
+    { id: 'm-szyja', name: 'Długa Szyja', color: '#f97316', sec: 'meme', badge: 'MEME', deco: 'photo', img: 'img/meme-szyja.webp',
+        items: pool([[R('consumer', 'industrial', 'milspec'), RW()], [R('restricted'), RW(0.5)], [R('covert'), 0.6]]) },
+    { id: 'm-kanada', name: 'Kanadyjski Syrop', color: '#dc2626', sec: 'meme', badge: 'MEME', deco: 'photo', img: 'img/meme-kanada.webp',
+        items: pool([[R('milspec', 'restricted'), RW()], [R('classified'), RW()], [R('covert'), RW(0.7)], [R('gold'), 0.3]]) },
+    { id: 'm-zombi', name: 'Zombi', color: '#64748b', sec: 'meme', badge: 'HOT', deco: 'photo', img: 'img/meme-zombi.webp',
+        items: pool([[R('consumer'), 120], [R('covert'), 5], [R('gold'), 0.8]]) },
+    { id: 'm-goryl', name: 'Armia Goryli', color: '#16a34a', sec: 'meme', badge: 'MEME', deco: 'photo', img: 'img/meme-goryl.webp',
+        items: pool([[R('classified'), 40], [R('covert'), 20], [R('gold'), 3]]) },
 
     // Rowerowe Urodziny (event)
     { id: 'tort', name: 'Tort Urodzinowy', color: '#ec4899', sec: 'bday', badge: 'NEW', deco: 'cake',
@@ -1825,6 +1834,7 @@ function bikeInfo(i) {
 }
 
 const stars = d => `<span class="stars" title="Trudność ${d}/5">${'★'.repeat(d)}<i>${'★'.repeat(5 - d)}</i></span>`;
+const EXTREME = i => { const b = bikeInfo(i); return b.d >= 5 && b.game === 'ride'; };
 
 function depositModal() {
     const card = (i, premium) => {
@@ -1833,7 +1843,7 @@ function depositModal() {
         return `<button class="bike ${premium ? 'premium' : ''}" data-act="mgIntro" data-arg="${i}" style="--bc:${c}">
             ${premium ? '<span class="bike-tag">PREMIUM</span>' : ''}${img ? `<img src="${img}" alt="${esc(n)}">` : bikeArt(c)}
             <b>${esc(n)}</b><span class="money">${money(v)}</span><small class="pos">+${money(round2(v * 0.1))} bonus · +${d * 10} gemów</small>
-            <span class="bike-game">${ic(GAMES[game].icon)}${GAMES[game].n} ${stars(d)}</span></button>`;
+            <span class="bike-game">${ic(GAMES[game].icon)}${GAMES[game].n} ${stars(d)}${EXTREME(i) ? '<em class="xtr">EKSTREMALNY</em>' : ''}</span></button>`;
     };
     const idx = BIKES.map((b, i) => i);
     modal(`<h2 class="mtitle">${ic('bike')}Wpłać rower</h2>
@@ -1856,7 +1866,7 @@ function mgIntro(i) {
     const g = GAMES[game];
     modal(`<div class="mg">
         <div class="mg-head">${ic(g.icon, 'big')}<div><small>WPŁATA: ${esc(n)} · ${money(round2(v * 1.1))}</small><h2>${g.n}</h2></div>${stars(d)}</div>
-        <p class="mg-rules">${g.d}</p>
+        <p class="mg-rules">${g.d}${EXTREME(i) ? ' <b class="neg">Tryb ekstremalny: 24 sekundy, a tempo cały czas rośnie.</b>' : ''}</p>
         <div class="mg-stage" id="mgStage"><button class="btn btn-green btn-xl" data-act="mgStart" data-arg="${i}">${ic('bolt')}START</button></div>
         <div class="mrow"><button class="btn btn-dark" data-act="depositModal">${ic('back')}Inny rower</button></div>
     </div>`, 'wide game');
@@ -1924,8 +1934,8 @@ const GAME_RUN = {
     },
 
     timing(i, d, stage) {
-        const need = 2 + Math.ceil(d / 2), width = 28 - d * 4, period = 1500 - d * 200;
-        let lives = d <= 2 ? 2 : 1, hits = 0, zone = 0, raf = 0, dead = false, pos = 0;
+        const need = 2 + Math.ceil(d / 2), width = 30 - d * 3.5, period = 1600 - d * 170;
+        let lives = d <= 2 ? 3 : 2, hits = 0, zone = 0, raf = 0, dead = false, pos = 0;
         stage.innerHTML = `<div class="mg-info"><span>Trafienia: <b id="tHits">0/${need}</b></span><span>Życia: <b id="tLives">${'❤'.repeat(lives)}</b></span></div>
             <div class="tbar"><div class="tzone" id="tZone"></div><div class="tmark" id="tMark"></div></div>
             <button class="btn btn-green btn-xl" data-act="mgTap">${ic('target')}STOP!</button>`;
@@ -1958,7 +1968,7 @@ const GAME_RUN = {
     },
 
     memory(i, d, stage) {
-        const len = 3 + d, flash = 650 - d * 60;
+        const len = [0, 4, 5, 6, 6, 7][d], flash = 720 - d * 45;
         const cols = ['#ef4444', '#22c55e', '#3b82f6', '#eab308'];
         const tones = [330, 440, 550, 660];
         const seq = Array.from({ length: len }, () => Math.floor(Math.random() * 4));
@@ -2015,17 +2025,21 @@ const GAME_RUN = {
     },
 
     ride(i, d, stage) {
-        const survive = (8 + d * 2) * 1000, speed = 220 + d * 55, spawn = 900 - d * 110;
+        const extreme = d >= 5;
+        const survive = (extreme ? 24 : 8 + d * 2) * 1000, speed = extreme ? 330 : 220 + d * 55, spawn = extreme ? 400 : 900 - d * 110;
+        // Na 5 gwiazdkach tempo rośnie aż do 1,6× pod koniec zjazdu.
+        const boost = t => (extreme ? 1 + 0.6 * Math.min(1, t / survive) : 1);
         stage.innerHTML = `<div class="mg-time"><div id="mgTime" class="fill"></div></div>
             <canvas id="rideCv" width="360" height="420" class="ride"></canvas>
             <div class="garrows two"><button class="btn btn-dark" data-act="mgLane" data-arg="-1">◀</button><button class="btn btn-dark" data-act="mgLane" data-arg="1">▶</button></div>`;
         const cv = $('#rideCv'), cx = cv.getContext('2d');
         const W = cv.width, H = cv.height, LW = W / 3;
-        let lane = 1, px = LW * 1.5, obs = [], last = performance.now(), t0 = last, nextSpawn = 400, raf = 0, dead = false;
+        const ROW_GAP = 175;
+        let lane = 1, px = LW * 1.5, obs = [], last = performance.now(), t0 = last, nextSpawn = 400, raf = 0, dead = false, lastFree = 1, lastRowY = null;
         const draw = () => {
             cx.fillStyle = '#1b2233'; cx.fillRect(0, 0, W, H);
             cx.strokeStyle = 'rgba(255,255,255,.25)'; cx.setLineDash([18, 16]); cx.lineWidth = 3;
-            const off = ((performance.now() - t0) / 1000 * speed) % 34;
+            const off = ((performance.now() - t0) / 1000 * speed * boost(performance.now() - t0)) % 34;
             for (const x of [LW, LW * 2]) { cx.lineDashOffset = -off; cx.beginPath(); cx.moveTo(x, 0); cx.lineTo(x, H); cx.stroke(); }
             cx.setLineDash([]);
             for (const o of obs) {
@@ -2045,14 +2059,21 @@ const GAME_RUN = {
             const dt = Math.min(0.05, (now - last) / 1000);
             last = now;
             px += (LW * (lane + 0.5) - px) * Math.min(1, dt * 14);
-            nextSpawn -= dt * 1000;
-            if (nextSpawn <= 0) {
-                const free = Math.floor(Math.random() * 3);
-                const lanes = [0, 1, 2].filter(l => l !== free && Math.random() < 0.55);
+            const k = boost(now - t0);
+            nextSpawn -= dt * 1000 * k;
+            // Tryb ekstremalny: rzędy co stałą odległość, a wolny pas przesuwa się najwyżej o jeden,
+            // więc zawsze da się przejechać — trzeba tylko szybko reagować.
+            const due = extreme ? (lastRowY === null || lastRowY >= -30 + ROW_GAP) : nextSpawn <= 0;
+            if (due) {
+                const free = extreme ? Math.max(0, Math.min(2, lastFree + Math.floor(Math.random() * 3) - 1)) : Math.floor(Math.random() * 3);
+                const lanes = [0, 1, 2].filter(l => l !== free && Math.random() < (extreme ? 0.8 : 0.55));
                 (lanes.length ? lanes : [(free + 1) % 3]).forEach(l => obs.push({ x: LW * (l + 0.5), y: -30, kind: Math.random() < 0.5 ? 0 : 1 }));
                 nextSpawn = spawn * (0.8 + Math.random() * 0.5);
+                lastFree = free;
+                lastRowY = -30;
             }
-            for (const o of obs) o.y += speed * dt;
+            for (const o of obs) o.y += speed * k * dt;
+            if (lastRowY !== null) lastRowY += speed * k * dt;
             obs = obs.filter(o => o.y < H + 40);
             const by = H - 70;
             if (obs.some(o => Math.abs(o.x - px) < 34 && o.y > by - 36 && o.y < by + 50)) { dead = true; draw(); mgEnd(i, false, 'Wywrotka! Przeszkoda na trasie.'); return; }
