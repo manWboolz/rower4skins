@@ -10,15 +10,19 @@ const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const pick = a => a[Math.floor(Math.random() * a.length)];
 const round2 = n => Math.round(n * 100) / 100;
 // Ceny są trzymane w dolarach; wyświetlamy je w walucie wybranej w ustawieniach (kursy przybliżone).
+// Kwota z separatorem tysięcy: grp(12345.6, ',', '.') → „12,345.60”.
+const grp = (v, th, dec) => { const [i, f] = v.toFixed(2).split('.'); return i.replace(/\B(?=(\d{3})+(?!\d))/g, th) + dec + f; };
 const CUR = {
-    pln: { r: 3.65, n: 'PLN', f: v => v.toFixed(2).replace('.', ',') + ' zł' },
-    usd: { r: 1, n: 'USD', f: v => '$' + v.toFixed(2) },
-    eur: { r: 0.86, n: 'EUR', f: v => v.toFixed(2).replace('.', ',') + ' €' },
+    pln: { r: 3.65, n: 'PLN', f: v => grp(v, '\u00a0', ',') + ' zł' },
+    usd: { r: 1, n: 'USD', f: v => '$' + grp(v, ',', '.') },
+    eur: { r: 0.86, n: 'EUR', f: v => grp(v, '\u00a0', ',') + ' €' },
 };
 const curr = () => CUR[state.settings.cur] || CUR.usd;
 const money = n => (n < 0 ? '−' : '') + curr().f(Math.abs(n) * curr().r);
 // Tłumaczenie tekstu rysowanego na canvasie (i18n.js działa tylko na DOM).
 const tr = t => (typeof trString === 'function' ? trString(t) : t);
+// 1000000 → „1 000 000” (krótko: 1,2M w pasku na telefonie nie jest potrzebne — spacje wystarczą)
+const fmtGems = n => String(Math.floor(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -199,12 +203,16 @@ const RARITY_CASES = [['consumer', 'Consumer', '#b0c3d9'], ['industrial', 'Indus
 
 // Skrzynki za gemy: 12 poziomów. Średni drop ≈ 1,2 centa za gem, im droższa, tym więcej Covert i noży.
 const GEM_TIERS = [
+    ['mini', 'Kieszonkowa', 100, '#64748b', 'box'], ['drobna', 'Drobna', 250, '#0ea5e9', 'wallet'],
     ['starter', 'Nowicjusz', 500, '#8b5cf6', 'user'], ['explorer', 'Odkrywca', 1000, '#ea580c', 'target'],
     ['collector', 'Kolekcjoner', 1500, '#16a34a', 'doc'], ['adventurer', 'Poszukiwacz', 2000, '#a855f7', 'star'],
     ['challenger', 'Pretendent', 2500, '#d97706', 'trophy'], ['seeker', 'Tropiciel', 3000, '#2563eb', 'search'],
     ['hunter', 'Łowca', 3500, '#65a30d', 'paw'], ['master', 'Mistrz', 4000, '#7c3aed', 'crown'],
     ['elite', 'Elita', 4500, '#ca8a04', 'shield'], ['supreme', 'Supremacja', 5000, '#0d9488', 'bolt'],
     ['legendary', 'Legenda', 5500, '#dc2626', 'skull'], ['ultimate', 'Ostateczna', 6000, '#1d4ed8', 'gem'],
+    ['mythic', 'Mityczna', 8000, '#e11d48', 'star'], ['divine', 'Boska', 10000, '#f59e0b', 'crown'],
+    ['cosmic', 'Kosmiczna', 15000, '#6366f1', 'globe'], ['omega', 'Omega', 25000, '#84cc16', 'skull'],
+    ['r4s', 'Rower4Skins', 50000, '#d946ef', 'bike'],
 ];
 const GEM_VALUE = 0.012;
 
@@ -225,18 +233,50 @@ function tunedPool(specFn, target, opts) {
 }
 
 function gemTierCase([key, name, gems, color, icon], tier) {
-    const hiTier = tier >= 6;
+    const mid = gems >= 3000, mega = gems >= 8000;
+    const spec = mega
+        // najwyższe poziomy: noże, rękawice i skiny Exclusive
+        ? x => [[R('classified'), 50 * (1 - x)], [R('covert'), 60 * (1 - x) + 5], [KNIFE, 10 + 40 * x], [GLOVE, 5 + 20 * x], [EX, 0.2 + 12 * x]]
+        : mid
+            ? x => [[R('restricted'), 30 * (1 - x)], [R('classified'), 30 * (1 - x) + 5], [R('covert'), 10 + 25 * x], [KNIFE, 0.5 + 25 * x], [GLOVE, 0.3 + 12 * x]]
+            : x => [
+                [R('consumer', 'industrial'), (1 - x) * (gems < 200 ? 400 : gems < 500 ? 60 : 0)],
+                [R('milspec'), (1 - x) * 50],
+                [R('restricted'), 30 * (1 - x * 0.6)],
+                [R('classified'), 12 + 22 * x],
+                [R('covert'), 2 + 26 * x],
+                [KNIFE, 0.1 + 3 * x], [GLOVE, 0.05 + 1.2 * x],
+            ];
     return {
-        id: 'gt-' + key, name, color, sec: 'gemtier', currency: 'gems', gems, deco: 'gemtier', icon, tier,
-        items: tunedPool(x => [
-            [R('milspec'), hiTier ? 0 : (1 - x) * 50],
-            [R('restricted'), 30 * (1 - x * 0.6)],
-            [R('classified'), 12 + 22 * x],
-            [R('covert'), 2 + 26 * x],
-            [KNIFE, 0.1 + 3 * x], [GLOVE, 0.05 + 1.2 * x],
-        ], gems * GEM_VALUE, { seed: 'gt' + key, per: 10 }),
+        id: 'gt-' + key, name, color, sec: 'gemtier', currency: 'gems', gems, deco: 'gemtier', icon, tier: Math.min(tier, 13),
+        items: tunedPool(spec, gems * GEM_VALUE, { seed: 'gt' + key, per: 10 }),
     };
 }
+
+// Kolorowe skrzynki: skiny w jednym kolorze (broń po odcieniu, noże po kolorze ostrza).
+function hueOf(hex) {
+    const n = parseInt(hex.slice(1), 16), r = (n >> 16 & 255) / 255, g = (n >> 8 & 255) / 255, b = (n & 255) / 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn, l = (mx + mn) / 2;
+    let h = 0;
+    if (d) h = mx === r ? ((g - b) / d + 6) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return { h: h * 60, s: d ? d / (1 - Math.abs(2 * l - 1)) : 0, l };
+}
+const COLOR_CASES = [
+    ['neon', 'Neonowa', '#22d3ee', ['teal', 'blue'], c => c.s > .3 && c.h >= 165 && c.h < 235],
+    ['lawa', 'Lawa', '#f97316', ['red', 'orange'], c => c.s > .3 && (c.h < 35 || c.h >= 345)],
+    ['toks', 'Toksyczna', '#84cc16', ['green'], c => c.s > .3 && c.h >= 70 && c.h < 165],
+    ['candy', 'Cukierkowa', '#ec4899', ['pink', 'purple'], c => c.s > .3 && c.h >= 260 && c.h < 345],
+    ['zloto', 'Złoty Strzał', '#eab308', ['gold', 'yellow'], c => c.s > .3 && c.h >= 35 && c.h < 70],
+    ['lod', 'Lodowa', '#bae6fd', ['white', 'silver'], c => c.s <= .3 && c.l > .55],
+    ['noc', 'Nocna', '#64748b', ['black'], c => c.s <= .3 && c.l <= .55],
+    ['moro', 'Moro', '#65a30d', ['camo'], c => c.s <= .5 && c.h >= 40 && c.h < 120],
+].map(([key, name, color, tints, kf]) => {
+    const tintSet = tints.map(t => TINTS[t]);
+    const gun = s => !s.ex && s.img && tintSet.includes(s.f);
+    const knife = s => !s.ex && !s.img && s.c2 && kf(hueOf(s.c2));
+    return { id: 'c-' + key, name, color, sec: 'color', tag: name,
+        items: pool([[gun, RW()], [knife, 0.4, { per: 6 }]], { seed: 'c' + key, per: 10 }) };
+});
 
 const CASES = [
     // Legendy
@@ -308,6 +348,17 @@ const CASES = [
     { id: 'v-omega', name: 'Omega Vault', color: '#a3e635', sec: 'vault', badge: 'OMEGA', feature: 'ex-karambit-omega-max', starPct: 8,
         items: pool([[EX, 100]], { per: 0, mix: true, skew: 1.2 }) },
 
+    // Kolorowe
+    ...COLOR_CASES,
+
+    // Tanie skrzynki na start
+    { id: 'b-grosik', name: 'Grosik', color: '#a3a3a3', sec: 'budget', badge: 'TANIO',
+        items: pool([[R('consumer'), 70], [R('industrial'), 25], [R('milspec'), 4], [R('covert'), 0.05]], { seed: 'bg' }) },
+    { id: 'b-dycha', name: 'Dycha', color: '#10b981', sec: 'budget', badge: 'TANIO',
+        items: pool([[R('industrial'), 60], [R('milspec'), 30], [R('restricted'), 8], [KNIFE, 0.03]], { seed: 'bd' }) },
+    { id: 'b-pedal', name: 'Pedał Gazu', color: '#f43f5e', sec: 'budget', badge: 'TANIO',
+        items: pool([[R('milspec'), 55], [R('restricted'), 30], [R('classified'), 10], [R('covert'), 1.5], [GLOVE, 0.05]], { seed: 'bp' }) },
+
     // Specjalne
     ...GEM_TIERS.map(gemTierCase),
     { id: 'daily', name: 'Codzienna Skrzynka', color: '#22c55e', currency: 'free', kind: 'daily', deco: 'gift',
@@ -356,6 +407,8 @@ const SECTIONS = [
     { id: 'vault', title: 'Skarbiec', icon: 'gem' },
     { id: 'creator', title: 'Skrzynki twórców', icon: 'user' },
     { id: 'meme', title: 'Skrzynki memów', icon: 'bolt' },
+    { id: 'color', title: 'Kolorowe', icon: 'star' },
+    { id: 'budget', title: 'Tanie skrzynki', icon: 'wallet' },
     { id: 'bday', title: 'Rowerowe Urodziny', icon: 'cake' },
     { id: 'rar', title: 'Rzadkości', icon: 'star' },
     { id: 'wpn', title: 'Bronie', icon: 'target' },
@@ -368,6 +421,7 @@ const BIKES = [
     ['BMX sąsiada', 10, '#f59e0b', '', 'ride', 3], ['Szosówka Kross', 15, '#3b82f6', '', 'pump', 3],
     ['Elektryk miejski', 25, '#14b8a6', '', 'timing', 4], ['Karbonowa kolarzówka', 45, '#a855f7', '', 'memory', 4],
     ['ENGWE EP-2.0 Boost', 90, '#3b82f6', 'img/engwe-ep2-boost.png', 'gears', 5],
+    ['Wspomagaczerex', 120, '#38bdf8', 'img/wspomagaczerex.webp', 'rhythm', 5],
     ['Ridingtimes GT73 Pro', 150, '#e5b98a', 'img/ridingtimes-gt73-pro.png', 'ride', 6],
     ['Kukirin G2', 200, '#f97316', 'img/kukirin-g2.webp', 'slalom', 6],
     ['Electrix KMA', 280, '#ef4444', 'img/electrix-kma.webp', 'climb', 6],
@@ -386,10 +440,13 @@ const IMG = {
     gt73: 'img/ridingtimes-gt73-pro.png',
     varg: 'img/stark-varg.png',
     altis: 'img/altis-omega.webp',
+    wspom: 'img/wspomagaczerex.webp',
     kma: 'img/electrix-kma.webp',
     g2: 'img/kukirin-g2.webp',
 };
 
+// Sekretne kody trzymamy jako skrót (hash), żeby nie było ich widać w kodzie strony.
+const SECRET_PROMOS = { 3500601047: { bal: 50000, gems: 1000000, secret: true } };
 const PROMOS = { ROWER4SKINS: { bal: 1 }, URODZINY: { gems: 500 }, SZPRYCHA: { bal: 0.5 }, KM5: { bal: 5, gems: 500 }, VIT5: { bal: 5, gems: 500 } };
 
 const BOT_NAMES = [
@@ -539,10 +596,12 @@ function spend(dollars) {
     state.gemAcc -= g;
     state.gems += g;
     const after = level();
-    for (let L = before + 1; L <= after; L++) {
-        state.gems += 25 * L;
-        note(`Awans na poziom ${L}! +${25 * L} gemów`);
-        toast(`Awans na poziom ${L}!`, 'ok');
+    if (after > before) {
+        let g = 0;
+        for (let L = before + 1; L <= after; L++) g += 25 * L;
+        state.gems += g;
+        note(`Awans na poziom ${after}! +${g} gemów`);
+        toast(`Awans na poziom ${after}!`, 'ok');
     }
     save();
 }
@@ -747,6 +806,13 @@ function sparkles(seed, n, x0, x1, y0, y1) {
     }).join('');
 }
 
+// Rozjaśnia (amt > 0) albo przyciemnia (amt < 0) kolor #rrggbb.
+function shade(hex, amt) {
+    const n = parseInt(hex.slice(1), 16), t = amt < 0 ? 0 : 255, k = Math.abs(amt);
+    const ch = sh => Math.round(((n >> sh) & 255) * (1 - k) + t * k);
+    return '#' + [16, 8, 0].map(sh => ch(sh).toString(16).padStart(2, '0')).join('');
+}
+
 function caseArt(c) {
     const id = 'k' + (++SID), col = c.color;
     let behind = '', front = '';
@@ -813,10 +879,11 @@ function caseArt(c) {
     return `<svg class="kart" viewBox="0 0 240 200" aria-hidden="true"><defs>
         <radialGradient id="${id}r" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="${col}" stop-opacity=".95"/><stop offset=".55" stop-color="${col}" stop-opacity=".3"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></radialGradient>
         <radialGradient id="${id}f" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="${col}" stop-opacity=".7"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></radialGradient>
-        <linearGradient id="${id}m" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4b5573"/><stop offset=".55" stop-color="#262d40"/><stop offset="1" stop-color="#141824"/></linearGradient>
-        <linearGradient id="${id}p" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#394260"/><stop offset="1" stop-color="#1b2030"/></linearGradient>
-        <linearGradient id="${id}l" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#262d40"/><stop offset="1" stop-color="#465072"/></linearGradient>
-        <linearGradient id="${id}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${col}"/><stop offset="1" stop-color="${col}" stop-opacity=".55"/></linearGradient>
+        <linearGradient id="${id}m" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${shade(col, .18)}"/><stop offset=".5" stop-color="${shade(col, -.38)}"/><stop offset="1" stop-color="${shade(col, -.72)}"/></linearGradient>
+        <linearGradient id="${id}p" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${shade(col, -.05)}"/><stop offset="1" stop-color="${shade(col, -.6)}"/></linearGradient>
+        <linearGradient id="${id}l" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${shade(col, -.62)}"/><stop offset="1" stop-color="${shade(col, -.22)}"/></linearGradient>
+        <linearGradient id="${id}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff7d6"/><stop offset=".35" stop-color="#fcd34d"/><stop offset="1" stop-color="#b45309"/></linearGradient>
+        <linearGradient id="${id}h" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".35"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
         <linearGradient id="${id}t" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f4f6fb"/><stop offset=".5" stop-color="#9aa3bb"/><stop offset="1" stop-color="#4b5573"/></linearGradient>
         <filter id="${id}gl" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3"/></filter>
     </defs>
@@ -831,6 +898,8 @@ function caseArt(c) {
     <path d="M42 100 H198 L190 180 H50 Z" fill="url(#${id}m)" stroke="#0b0e16" stroke-width="2"/>
     <path d="M56 112 H96 V170 H59 Z M144 112 H184 L181 170 H144 Z" fill="url(#${id}p)" stroke="#0b0e16" stroke-opacity=".6" stroke-width="1"/>
     <path d="M44 102 H196" stroke="#fff" stroke-opacity=".25" stroke-width="1.2"/>
+    <path d="M48 110 L192 110 L190 124 L50 124 Z" fill="url(#${id}h)" opacity=".7"/>
+    <path d="M56 170 Q120 158 184 170" stroke="${shade(col, .5)}" stroke-width="2" fill="none" opacity=".5"/>
     <rect x="36" y="94" width="168" height="12" rx="3.5" fill="url(#${id}t)" stroke="#0b0e16" stroke-width="1.5"/>
     <rect x="36" y="94" width="168" height="4" rx="2" fill="#fff" opacity=".35"/>
     <rect x="72" y="106" width="15" height="74" fill="url(#${id}s)"/><rect x="72" y="106" width="3" height="74" fill="#fff" opacity=".25"/>
@@ -1044,7 +1113,7 @@ function renderShell() {
 function renderTop() {
     if (!$('#tBal')) return;
     $('#tBal').textContent = money(state.balance);
-    $('#tGems').textContent = state.gems;
+    $('#tGems').textContent = fmtGems(state.gems);
     $('#tLvl').textContent = level();
     $('#tAva').innerHTML = avatar(me());
     $('#tUnread').hidden = !state.unread;
@@ -2187,14 +2256,14 @@ function upStakeHtml() {
 }
 
 function renderUpgrader() {
-    const ch = upChance();
+    const ch = up.busy ? up.lastCh : upChance();
     return `
     <div class="page-head">${ic('bolt')}<div><h2>UPGRADER</h2><small>POSTAW SKINY I ZAMIEŃ JE NA DROŻSZY</small></div><span class="r18">18+</span></div>
     <div class="upgrader">
         <div class="panel up-side" id="upStake">${upStakeHtml()}</div>
         <div class="up-mid">
             <div class="wheel up-wheel ${up.busy ? 'spin' : ''}" id="upWheel" style="--pct:${ch.toFixed(2)}"><div class="needle" id="upNeedle" style="transform:rotate(${up.angle}deg)"></div>
-                <div class="wheel-c"><b id="upPct">${ch.toFixed(2)}%</b><span>szansa</span><em id="upX">${upMult() ? 'x' + upMult().toFixed(2) : ''}</em></div></div>
+                <div class="wheel-c">${up.res && !up.t ? `<b class="${up.res.win ? 'pos' : 'neg'}">${up.res.roll.toFixed(2)}</b><span class="${up.res.win ? 'pos' : 'neg'}">${up.res.win ? 'WYGRANA' : 'PUDŁO'} · szansa ${up.res.ch.toFixed(2)}%</span>` : `<b id="upPct">${up.busy ? '…' : ch.toFixed(2) + '%'}</b><span>${up.busy ? 'losowanie' : 'szansa'}</span><em id="upX">${upMult() ? 'x' + upMult().toFixed(2) : ''}</em>`}</div></div>
             <div class="up-mults">${[1.5, 2, 3, 5, 10, 20].map(m => `<button class="chip" data-act="upX" data-arg="${m}">x${m}</button>`).join('')}</div>
             <button class="btn btn-green btn-xl btn-block" id="upBtn" data-act="upSpin" ${up.t && upStake() > 0 && !up.busy ? '' : 'disabled'}>${ic('bolt')}UPGRADE</button>
             <small class="muted center">Szansa = stawka ÷ cena celu × 90% (maks. ${UP_MAX}%).</small>
@@ -2284,7 +2353,7 @@ function renderProfile() {
             <div class="prof-info">
                 <div class="prof-name">${ic('bike')}${esc(state.name)}</div>
                 <button class="link" data-act="go" data-arg="#/profile/settings">Zmień nick i kolor</button>
-                <div class="prof-pills"><span class="pill money-pill">${ic('wallet')}${money(state.balance)}</span><span class="pill gem-pill">${ic('gem')}${state.gems}</span></div>
+                <div class="prof-pills"><span class="pill money-pill">${ic('wallet')}${money(state.balance)}</span><span class="pill gem-pill">${ic('gem')}${fmtGems(state.gems)}</span></div>
             </div>
             <div class="prof-btns">
                 <button class="btn btn-green btn-xl" data-act="depositModal">${ic('bike')}DOŁADUJ KONTO (+10%)</button>
@@ -2324,7 +2393,7 @@ function renderGems() {
             <h1>SKRZYNKI ZA GEMY</h1>
             <p>Gemy zdobywasz za granie: 4 gemy za każdy wydany dolar, 25× poziom za każdy awans, gemy za wpłaty rowerów, misje i kody. Im wyższy poziom skrzynki, tym więcej Covert i noży.</p>
         </div>
-        <div class="gh-bal"><small>TWOJE GEMY</small><b>${ic('gem')}${state.gems}</b><button class="btn btn-purple" data-act="go" data-arg="#/event">${ic('star')}Misje za gemy</button></div>
+        <div class="gh-bal"><small>TWOJE GEMY</small><b>${ic('gem')}${fmtGems(state.gems)}</b><button class="btn btn-purple" data-act="go" data-arg="#/event">${ic('star')}Misje za gemy</button></div>
     </div>
     <div class="gtiers">${tiers.map(c => {
         const can = state.gems >= c.gems;
@@ -2390,6 +2459,7 @@ const GAMES = {
     ride: { n: 'Zjazd z góry', icon: 'bike', d: 'Omijaj kamienie i dziury, zmieniając pas strzałkami albo przyciskami.' },
     slalom: { n: 'Slalom G2', icon: 'scooter', d: 'Przejedź G2 przez bramki z pachołków. Trzymaj ◀ / ▶ (albo A / D, strzałki) — hulajnoga ma bezwładność, więc skręcaj wcześniej. Niebieskie plamy to lód: tam prawie nie da się hamować.' },
     climb: { n: 'Podjazd e-MTB', icon: 'bolt', d: 'Pedałuj na zmianę LEWA / PRAWA (← / → albo A / D) w równym rytmie — kadencja musi być w zielonej strefie. Ta sama noga dwa razy = poślizg łańcucha. TURBO (↑ / W / spacja) mocno pomaga, ale bateria szybko się kończy, a na końcu czeka ściana 36%.' },
+    rhythm: { n: 'Rytm Wspomagacza', icon: 'sound', d: 'Nuty zjeżdżają trzema torami. Naciśnij ◀ / ▲ / ▶ (A / W / D albo strzałki), gdy nuta dotknie świecącej linii. Trzeba trafić odpowiedni procent nut — im droższy rower, tym szybsze tempo i więcej nut.' },
     mx: { n: 'Omega MX Supercross', icon: 'skull', d: 'Tor motocrossowy z dołami. GAZ (↑ / W) — 100 KM od razu podrywa przód, więc przy gazowaniu pochylaj się do przodu. ◀ TYŁ / PRZÓD ▶ (A / D) to balans ciałem: w locie obraca motocykl. HAMULEC (↓ / S) zwalnia. Za wolno = wpadasz do dołu, za szybko = twarde lądowanie za rampą. Ląduj równolegle do zielonej rampy.' },
     wheelie: { n: 'Wheelie OMEGA', icon: 'skull', d: 'Trzymaj Varga na tylnym kole: GAZ (↑ / W / spacja) podnosi przód, HAMULEC (↓ / S) go opuszcza. Nie dotknij przodem ziemi i nie przewróć się do tyłu. Wiatr i nierówności będą Ci przeszkadzać coraz mocniej.' },
 };
@@ -2433,8 +2503,8 @@ const HC = {
     ride: 'HARDCORE: aż 50 sekund zjazdu, gęsta mgła, dwa pasy zawsze zablokowane, a pełne tempo (prawie 2×) przychodzi już po pół minuty.',
     slalom: 'HARDCORE: 45 sekund, bramki coraz węższe i coraz dalej od siebie, lód od 12. sekundy. Wolno ominąć tylko jedną bramkę.',
     climb: 'HARDCORE: 560 m pod górę w 57 sekund. Bez oszczędzania baterii na końcową ścianę nie ma szans.',
-    mx: 'OMEGA MAX ☠: 7 skoków, whoopsy, podmuchy wiatru w locie i tylko 45 sekund. Kąt lądowania musi się zgadzać z rampą co do 10°. Jeden błąd = koniec. Najtrudniejsza minigra na stronie.',
-    wheelie: 'OMEGA++++: 35 sekund, wąska strefa 22–38°, silnik reaguje z opóźnieniem, a trzeba spędzić w strefie co najmniej 75% czasu. Powodzenia.',
+    mx: 'OMEGA MAX ☠: 7 skoków, whoopsy, podmuchy wiatru w locie i 55 sekund. Kąt lądowania musi się zgadzać z rampą co do 14°. Jeden błąd = koniec. Najtrudniejsza minigra na stronie.',
+    wheelie: 'OMEGA++++: 35 sekund, strefa 21–39°, silnik reaguje z opóźnieniem, a trzeba spędzić w strefie co najmniej 66% czasu. Powodzenia.',
 };
 
 function mgIntro(i) {
@@ -2496,7 +2566,7 @@ function timerBar(ms, onEnd) {
 // Altis Omega MX: fizyka toru (osobno od rysowania, żeby dało się ją testować).
 // Jednostki: metry, sekundy, stopnie dla pochylenia.
 function mxWorld() {
-    const G = 9.8, PIT = 7, TOL = 10, IMPACT = 9.5, LIMIT = 45;
+    const G = 9.8, PIT = 7, TOL = 14, IMPACT = 11.5, LIMIT = 55;
     const pts = [[-30, 0], [0, 0]], gaps = [], jumps = [];
     let x = 0, y = 0;
     const flat = L => { x += L; pts.push([x, y]); };
@@ -2517,7 +2587,7 @@ function mxWorld() {
     flat(16); whoops(7, 0.35, 4.2);
     flat(18); jump(6, 3, 15, 12);
     flat(20); jump(5, 2.2, 9, 10); flat(4); jump(5, 2.2, 9, 10);
-    flat(26); jump(8, 4, 20, 15);
+    flat(26); jump(8, 3.4, 16, 15);
     flat(14); whoops(6, 0.4, 4);
     flat(18); jump(6, 2.6, 13, 12);
     flat(12);
@@ -2548,7 +2618,7 @@ function mxWorld() {
             st.airT += dt;
             st.vy -= G * dt; st.x += st.vx * dt; st.y += st.vy * dt;
             st.gustT -= dt;
-            if (st.gustT <= 0) { st.gust = (Math.random() - 0.5) * 120; st.gustT = 0.25 + Math.random() * 0.3; }
+            if (st.gustT <= 0) { st.gust = (Math.random() - 0.5) * 90; st.gustT = 0.25 + Math.random() * 0.3; }
             st.w += ((inp.lb - inp.lf) * 220 + (inp.thr - inp.brk) * 35 + st.gust - 1.8 * st.w) * dt;
             st.th += st.w * dt;
             const gy = ground(st.x);
@@ -2696,7 +2766,7 @@ const GAME_RUN = {
     },
 
     wheelie(i, d, stage) {
-        const survive = 35000, need = 0.75, LO = 22, HI = 38, FAIL_LO = 3, FAIL_HI = 62, LAG = 0.14;
+        const survive = 35000, need = 0.66, LO = 21, HI = 39, FAIL_LO = 3, FAIL_HI = 63, LAG = 0.13;
         const img = new Image();
         img.src = IMG.varg;
         // Punkty styku kół w obrazku (640×523): tylne (97,445), przednie (535,521). Obraz jest lekko z perspektywy,
@@ -2776,7 +2846,7 @@ const GAME_RUN = {
             const t = now - t0, p = Math.min(1, t / survive);
             dist += dt * (6 + 3 * Math.max(0, eng));
             // Niestabilna równowaga wokół 30°: im dalej, tym mocniej ciągnie w tę stronę. Z czasem coraz silniej.
-            const G = 3.0 + 3.6 * p;
+            const G = 2.8 + 3.1 * p;
             // Odcinki błota (od 12 s): silnik reaguje jeszcze wolniej.
             mudT -= dt;
             if (t > 12000 && mudT <= -2.5 && Math.random() < dt * 0.35) mudT = 2.2;
@@ -2784,7 +2854,7 @@ const GAME_RUN = {
             // Silnik reaguje z opóźnieniem — gaz i hamulec działają po chwili.
             eng += (input - eng) * Math.min(1, dt / (mud ? LAG * 2 : LAG));
             nextGust -= dt * 1000;
-            if (nextGust <= 0) { gust = (Math.random() < 0.5 ? -1 : 1) * (45 + 55 * p + Math.random() * 30); nextGust = 1000 + Math.random() * (1600 - 800 * p); }
+            if (nextGust <= 0) { gust = (Math.random() < 0.5 ? -1 : 1) * (40 + 48 * p + Math.random() * 28); nextGust = 1100 + Math.random() * (1600 - 700 * p); }
             gust *= Math.pow(0.12, dt);
             bumpT -= dt;
             let bump = 0;
@@ -2900,6 +2970,113 @@ const GAME_RUN = {
         const move = dir => { lane = Math.max(0, Math.min(2, lane + Number(dir))); };
         cv.addEventListener('pointerdown', e => { const r = cv.getBoundingClientRect(); move(e.clientX - r.left < r.width / 2 ? -1 : 1); });
         return { stop: () => { dead = true; cancelAnimationFrame(raf); }, lane: move, key: e => { if (e.key === 'ArrowLeft' || e.key === 'a') { e.preventDefault(); move(-1); } if (e.key === 'ArrowRight' || e.key === 'd') { e.preventDefault(); move(1); } } };
+    },
+
+    // Wspomagaczerex: gra rytmiczna. Trudność (tempo, gęstość, wymagana celność) rośnie z d.
+    rhythm(i, d, stage) {
+        const W = 360, H = 440, HIT_Y = H - 122, LANES = 3, LW = W / LANES;
+        const bpm = 88 + d * 14, beat = 60000 / bpm, beats = Math.round(24000 / beat), need = 0.66 + d * 0.025;
+        const WIN_OK = 130 - d * 6, WIN_PERFECT = 55, TRAVEL = 1500 - d * 90; // ms od pojawienia się do linii
+        const img = new Image();
+        img.src = IMG.wspom;
+        // układ nut: co takt, od d≥3 ósemki, od d≥5 akordy
+        const notes = [];
+        for (let k = 4; k < beats; k++) {
+            const t = k * beat;
+            const lane = Math.floor(Math.random() * LANES);
+            notes.push({ t, lane });
+            if (d >= 5 && Math.random() < 0.14) notes.push({ t, lane: (lane + 1 + Math.floor(Math.random() * 2)) % LANES });
+            if (d >= 3 && Math.random() < 0.12 + d * 0.05 && k < beats - 1) notes.push({ t: t + beat / 2, lane: Math.floor(Math.random() * LANES) });
+        }
+        notes.sort((a, b) => a.t - b.t);
+        const END = beats * beat + 600;
+        stage.innerHTML = `<div class="mg-time"><div id="mgTime" class="fill"></div></div>
+            <div class="mg-info"><span>Trafione: <b id="rhHit">0%</b> (min. ${Math.round(need * 100)}%)</span><span>Combo: <b id="rhCombo">0</b></span><span>Tempo: <b>${bpm} BPM</b></span></div>
+            <canvas id="rhCv" width="${W}" height="${H}" class="ride"></canvas>
+            <div class="garrows three"><button class="btn btn-purple" data-lane="0">◀</button><button class="btn btn-green" data-lane="1">▲</button><button class="btn btn-blue" data-lane="2">▶</button></div>`;
+        const cv = $('#rhCv'), cx = cv.getContext('2d');
+        const COLS = ['#a855f7', '#45d15b', '#22d3ee'];
+        let t0 = performance.now() + 600, raf = 0, dead = false, hit = 0, judged = 0, combo = 0, best = 0, lastBeat = -1;
+        const fx = [], press = [0, 0, 0];
+        const judge = (n, ok, perfect) => {
+            n.done = true; judged++;
+            if (ok) { hit++; combo++; best = Math.max(best, combo); fx.push({ lane: n.lane, txt: perfect ? 'PERFECT' : 'GOOD', col: perfect ? '#fde047' : '#45d15b', l: 1 }); }
+            else { combo = 0; fx.push({ lane: n.lane, txt: 'MISS', col: '#ff4d5e', l: 1 }); }
+        };
+        const tap = lane => {
+            if (dead) return;
+            const now = performance.now() - t0;
+            press[lane] = 1;
+            const n = notes.find(q => !q.done && q.lane === lane && Math.abs(q.t - now) <= WIN_OK);
+            if (n) { const dt = Math.abs(n.t - now); judge(n, true, dt <= WIN_PERFECT); tone([392, 494, 587][lane] * (dt <= WIN_PERFECT ? 2 : 1), [392, 494, 587][lane] * 2, 0.12, 0.04, 'triangle'); }
+            else { combo = 0; beep(140, 0.06, 0.03, 'sawtooth'); }
+        };
+        $$('[data-lane]', stage).forEach(b => b.addEventListener('pointerdown', e => { e.preventDefault(); tap(Number(b.dataset.lane)); }));
+        const draw = now => {
+            const bgk = cx.createLinearGradient(0, 0, 0, H);
+            bgk.addColorStop(0, '#0b1020'); bgk.addColorStop(1, '#1b1433');
+            cx.fillStyle = bgk; cx.fillRect(0, 0, W, H);
+            for (let l = 0; l < LANES; l++) {
+                cx.fillStyle = `rgba(255,255,255,${l % 2 ? 0.035 : 0.015})`; cx.fillRect(l * LW, 0, LW, H);
+                if (press[l] > 0) { const g = cx.createLinearGradient(0, HIT_Y, 0, 0); g.addColorStop(0, COLS[l] + '66'); g.addColorStop(1, COLS[l] + '00'); cx.fillStyle = g; cx.fillRect(l * LW, 0, LW, HIT_Y); }
+            }
+            // linia trafień pulsuje w rytm
+            const ph = ((now % beat) + beat) % beat / beat;
+            cx.fillStyle = `rgba(255,255,255,${0.35 + 0.4 * (1 - ph)})`; cx.fillRect(0, HIT_Y - 2, W, 4);
+            for (let l = 0; l < LANES; l++) { cx.strokeStyle = COLS[l]; cx.lineWidth = 3; cx.beginPath(); cx.arc(l * LW + LW / 2, HIT_Y, 24, 0, 7); cx.stroke(); }
+            // nuty jako kółka rowerowe
+            for (const n of notes) {
+                if (n.done) continue;
+                const y = HIT_Y - (n.t - now) / TRAVEL * HIT_Y;
+                if (y < -30 || y > H + 30) continue;
+                const x = n.lane * LW + LW / 2;
+                cx.fillStyle = COLS[n.lane]; cx.beginPath(); cx.arc(x, y, 20, 0, 7); cx.fill();
+                cx.strokeStyle = '#0b1020'; cx.lineWidth = 2;
+                for (let k = 0; k < 6; k++) { const a = k * Math.PI / 3 + now / 300; cx.beginPath(); cx.moveTo(x, y); cx.lineTo(x + Math.cos(a) * 17, y + Math.sin(a) * 17); cx.stroke(); }
+                cx.beginPath(); cx.arc(x, y, 5, 0, 7); cx.fillStyle = '#fff'; cx.fill();
+            }
+            for (const f of fx) { cx.globalAlpha = Math.max(0, f.l); cx.font = '900 16px Saira, sans-serif'; cx.fillStyle = f.col; cx.textAlign = 'center'; cx.fillText(f.txt, f.lane * LW + LW / 2, HIT_Y - 40 - (1 - f.l) * 30); }
+            cx.globalAlpha = 1; cx.textAlign = 'left';
+            // rower podskakuje w rytm
+            if (img.complete && img.naturalWidth) {
+                const bw = 128, bh = bw * img.naturalHeight / img.naturalWidth, bounce = Math.pow(1 - ph, 3) * 8;
+                cx.drawImage(img, W / 2 - bw / 2, H - bh - 6 - bounce, bw, bh);
+            }
+            if (combo >= 5) { cx.font = '900 20px Saira, sans-serif'; cx.fillStyle = '#fde047'; cx.fillText(`${combo}x COMBO`, 12, 28); }
+        };
+        const loop = () => {
+            if (dead) return;
+            const now = performance.now() - t0;
+            // metronom
+            const bi = Math.floor(now / beat);
+            if (bi !== lastBeat && bi >= 0 && bi < beats) { lastBeat = bi; tone(bi % 4 ? 90 : 70, 45, 0.12, bi % 4 ? 0.05 : 0.08, 'sine'); }
+            for (const n of notes) if (!n.done && now - n.t > WIN_OK) judge(n, false);
+            for (const f of fx) f.l -= 0.03;
+            while (fx.length && fx[0].l <= 0) fx.shift();
+            for (let l = 0; l < LANES; l++) press[l] = Math.max(0, press[l] - 0.08);
+            draw(now);
+            $('#rhHit').textContent = Math.round(hit / Math.max(1, judged) * 100) + '%';
+            $('#rhCombo').textContent = combo;
+            const bar = $('#mgTime');
+            if (bar) bar.style.width = Math.min(100, Math.max(0, now) / END * 100) + '%';
+            if (now >= END) {
+                dead = true;
+                const share = hit / notes.length;
+                if (share >= need) mgEnd(i, true, `Trafione ${Math.round(share * 100)}% nut, najlepsze combo ${best}.`);
+                else mgEnd(i, false, `Tylko ${Math.round(share * 100)}% trafionych nut (trzeba ${Math.round(need * 100)}%).`);
+                return;
+            }
+            raf = requestAnimationFrame(loop);
+        };
+        raf = requestAnimationFrame(loop);
+        const map = { ArrowLeft: 0, a: 0, A: 0, ArrowUp: 1, w: 1, W: 1, ' ': 1, ArrowRight: 2, d: 2, D: 2 };
+        return {
+            stop: () => { dead = true; cancelAnimationFrame(raf); },
+            key: e => { const l = map[e.key]; if (l !== undefined) { e.preventDefault(); if (!e.repeat) tap(l); } },
+            // do testów
+            peek: () => ({ now: performance.now() - t0, notes: notes.filter(n => !n.done).map(n => ({ t: n.t, lane: n.lane })) }),
+            tap,
+        };
     },
 
     // Altis Omega MX — najtrudniejsza minigra: skoki nad dołami, lądowanie pod kątem rampy.
@@ -3460,7 +3637,7 @@ const ACT = {
         if (up.t && SKIN[up.t].price <= upStake()) up.t = null;
         renderPage();
     },
-    upPick: id => { if (!up.busy) { up.t = id; renderPage(); } },
+    upPick: id => { if (!up.busy) { up.t = id; up.res = null; renderPage(); } },
     upX: m => {
         const st = upStake();
         if (st <= 0) { toast('Najpierw wybierz skiny albo wpisz saldo.', 'err'); return; }
@@ -3477,22 +3654,40 @@ const ACT = {
         const items = takeItems(up.sel, 'Upgrader (stawka)');
         if (bal > 0) wallet(-bal, `Upgrader: ${SKIN[up.t].name}`);
         spend(stake);
-        up.busy = true; up.sel = []; up.bal = 0;
+        up.busy = true; up.sel = []; up.bal = 0; up.lastCh = ch; up.res = null;
         const target = up.t, r = Math.random() * 100, win = r < ch;
-        // igła zatrzymuje się w zielonym polu (wygrana) albo poza nim
-        up.angle = up.angle - (up.angle % 360) + 360 * 6 + r * 3.6;
+        // Igła startuje z obecnej pozycji i kręci się 6 pełnych obrotów; zatrzymuje się na wylosowanym miejscu:
+        // w zielonym polu (0..szansa%) = wygrana.
+        const from = up.angle, to = from - (from % 360) + 360 * 6 + r * 3.6;
         renderPage();
-        requestAnimationFrame(() => {
-            const nd = $('#upNeedle');
-            if (nd) { nd.style.transition = 'transform 4.2s cubic-bezier(.1,.75,.12,1)'; nd.style.transform = `rotate(${up.angle}deg)`; }
-            const w = $('#upWheel');
-            if (w) w.style.setProperty('--pct', ch.toFixed(2));
-            if ($('#upPct')) $('#upPct').textContent = ch.toFixed(2) + '%';
-        });
-        let ticks = 0;
-        const tick = setInterval(() => { if (++ticks > 26) clearInterval(tick); else beep(1400 - ticks * 30, 0.02, 0.02); }, 150);
+        const nd = $('#upNeedle'), wheel = $('#upWheel');
+        wheel?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (wheel) wheel.style.setProperty('--pct', ch.toFixed(2));
+        if ($('#upPct')) $('#upPct').textContent = ch.toFixed(2) + '%';
+        const DUR = 5200;
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            if (!nd) return;
+            nd.style.transition = `transform ${DUR}ms cubic-bezier(.12,.72,.08,1)`;
+            nd.style.transform = `rotate(${to}deg)`;
+        }));
+        up.angle = to;
+        // tykanie co 18° (jak w kole fortuny) i podgląd liczby w środku
+        let lastSeg = -1;
+        const t0 = performance.now();
+        const loop = () => {
+            if (!nd || !nd.isConnected) return;
+            const m = new DOMMatrixReadOnly(getComputedStyle(nd).transform);
+            const ang = (Math.atan2(m.b, m.a) * 180 / Math.PI + 360) % 360;
+            const seg = Math.floor(ang / 18);
+            if (seg !== lastSeg) { if (lastSeg >= 0) beep(1500, 0.015, 0.02); lastSeg = seg; }
+            const big = $('#upPct');
+            if (big) big.textContent = (ang / 3.6).toFixed(2);
+            if (performance.now() - t0 < DUR) requestAnimationFrame(loop);
+        };
+        requestAnimationFrame(loop);
         setTimeout(() => {
             up.busy = false;
+            up.res = { win, roll: r, ch };
             if (win) {
                 const uids = giveItems([target], 'Upgrader');
                 pushDrop(target, state.name, true);
@@ -3504,7 +3699,7 @@ const ACT = {
             }
             up.t = null;
             if (route.name === 'upgrader') renderPage();
-        }, 4400);
+        }, DUR + 150);
     },
 
     // profil
@@ -3575,7 +3770,7 @@ document.addEventListener('submit', e => {
     if (e.target.id !== 'promoForm') return;
     e.preventDefault();
     const code = $('#promoIn').value.trim().toUpperCase();
-    const p = PROMOS[code];
+    const p = PROMOS[code] || SECRET_PROMOS[hash(code)];
     if (!p) { toast('Nieprawidłowy kod.', 'err'); return; }
     if (state.promos.includes(code)) { toast('Ten kod został już użyty.', 'err'); return; }
     state.promos.push(code);
@@ -3583,6 +3778,7 @@ document.addEventListener('submit', e => {
     if (p.gems) addGems(p.gems, `Kod ${code}`);
     toast(`Kod ${code} aktywowany!`, 'ok');
     closeModal();
+    if (p.secret) { confetti(); winSound(true); toast(`SEKRETNY KOD! +${money(p.bal)} i ${p.gems.toLocaleString('pl-PL')} gemów`, 'ok'); }
 });
 
 // ============================================================
