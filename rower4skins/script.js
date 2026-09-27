@@ -177,6 +177,12 @@ const R = (...r) => s => r.includes(s.rarity);
 const RW = (mult = 1) => s => RAR[s.rarity].w * mult;
 
 const CASES = [
+    // Skrzynki twórców
+    { id: 'vit', name: 'Vit Case', color: '#2563eb', sec: 'creator', badge: 'CREATOR', deco: 'creator', mono: 'VIT',
+        items: pool([[R('restricted'), RW()], [R('classified'), RW()], [R('covert'), RW()], [R('gold'), 0.6]]) },
+    { id: 'km', name: 'KM Case', color: '#14b8a6', sec: 'creator', badge: 'CREATOR', deco: 'creator', mono: 'KM',
+        items: pool([[R('classified'), 40], [R('covert'), 18], [R('gold'), 2.5]]) },
+
     // Rowerowe Urodziny (event)
     { id: 'tort', name: 'Tort Urodzinowy', color: '#ec4899', sec: 'bday', badge: 'NEW', deco: 'cake',
         items: pool([[s => s.rarity !== 'gold', RW()], [R('gold'), 0.5]]) },
@@ -246,6 +252,7 @@ const CASE = Object.fromEntries(CASES.map(c => [c.id, c]));
 const USD_CASES = CASES.filter(c => c.currency === 'usd');
 
 const SECTIONS = [
+    { id: 'creator', title: 'Skrzynki twórców', icon: 'user' },
     { id: 'bday', title: 'Rowerowe Urodziny', icon: 'cake' },
     { id: 'rar', title: 'Rzadkości', icon: 'star' },
     { id: 'wpn', title: 'Bronie', icon: 'target' },
@@ -255,7 +262,15 @@ const BIKES = [
     ['Składak Wigry 3', 5, '#94a3b8'], ['Ukraina z piwnicy', 8, '#a16207'], ['Romet Jubilat', 12, '#ef4444'],
     ['Góral z marketu', 15, '#22c55e'], ['BMX sąsiada', 20, '#f59e0b'], ['Szosówka Kross', 35, '#3b82f6'],
     ['Elektryk miejski', 60, '#14b8a6'], ['Karbonowa kolarzówka', 120, '#a855f7'],
+    ['ENGWE EP-2.0 Boost', 299, '#3b82f6', 'img/engwe-ep2-boost.png'],
+    ['Ridingtimes GT73 Pro', 499, '#e5b98a', 'img/ridingtimes-gt73-pro.png'],
 ];
+
+const IMG = {
+    logo: 'img/logo.png',
+    engwe: 'img/engwe-ep2-boost.png',
+    gt73: 'img/ridingtimes-gt73-pro.png',
+};
 
 const PROMOS = { ROWER4SKINS: { bal: 1 }, URODZINY: { gems: 100 }, SZPRYCHA: { bal: 0.5 } };
 
@@ -502,6 +517,13 @@ function caseArt(c) {
     if (c.deco === 'hidden') {
         behind = `<text x="120" y="92" text-anchor="middle" font-size="90" font-weight="900" fill="${col}" stroke="#1c1917" stroke-width="3" font-family="Saira, sans-serif">?</text>`;
     }
+    if (c.deco === 'creator') {
+        behind = `<defs><linearGradient id="${id}c" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".35"/><stop offset=".4" stop-color="${col}"/><stop offset="1" stop-color="#0b0e16"/></linearGradient></defs>
+            <g transform="rotate(-8 120 60)"><rect x="78" y="8" width="84" height="96" rx="12" fill="url(#${id}c)" stroke="#fff" stroke-width="3"/>
+            <text x="120" y="${c.mono.length > 2 ? 66 : 70}" text-anchor="middle" font-size="${c.mono.length > 2 ? 30 : 40}" font-weight="900" font-style="italic" fill="#fff" stroke="#0b0e16" stroke-width="2" paint-order="stroke" font-family="Saira, sans-serif">${esc(c.mono)}</text>
+            <rect x="86" y="80" width="68" height="16" rx="4" fill="#0b0e16" opacity=".75"/><text x="120" y="92" text-anchor="middle" font-size="10" font-weight="800" letter-spacing="1.5" fill="#fde047" font-family="Saira, sans-serif">CREATOR</text>
+            <circle cx="156" cy="14" r="11" fill="#1d9bf0" stroke="#fff" stroke-width="2.5"/><path d="M151 14 l3.5 3.5 l6.5 -7" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g>`;
+    }
     if (c.deco === 'lvl') {
         behind = `<path d="M120 12 L136 30 L160 34 L143 52 L147 76 L120 64 L93 76 L97 52 L80 34 L104 30 Z" fill="${col}" stroke="#0b0e16" stroke-width="2.5"/><text x="120" y="58" text-anchor="middle" font-size="24" font-weight="900" fill="#0b0e16" font-family="Saira, sans-serif">${c.lvl}</text>`;
     }
@@ -534,8 +556,6 @@ function caseArt(c) {
 function bikeArt(color) {
     return `<svg viewBox="0 0 64 40" class="bart" fill="none" stroke="${color}" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="13" cy="28" r="10"/><circle cx="51" cy="28" r="10"/><path d="M13 28 22 10h19l10 18M22 10l11 18h18M19 5h7M38 5h7"/></svg>`;
 }
-
-const LOGO = `<svg viewBox="0 0 64 44" class="logo-mark" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e9d5ff"/><stop offset="1" stop-color="#a855f7"/></linearGradient></defs><g fill="none" stroke="url(#lg)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="30" r="10"/><circle cx="51" cy="30" r="10"/><path d="M13 30 23 11h19l9 19M23 11l11 19h17M19 5h9M38 5h9"/></g></svg>`;
 
 function avatar(p, cls = '') {
     if (!p) return `<span class="ava ava-empty ${cls}">${ic('plus')}</span>`;
@@ -632,15 +652,15 @@ const NAV = [
 
 function renderShell() {
     $('#top').innerHTML = `
-        <a class="logo" data-act="go" data-arg="#/" href="#/">${LOGO}<span>ROWER<b>4</b>SKINS</span></a>
-        <nav class="nav" id="nav">${NAV.map(([k, h, i, t]) => `<a data-act="go" data-arg="${h}" data-nav="${k}" href="${h}">${ic(i)}${t}</a>`).join('')}</nav>
+        <a class="logo" data-act="go" data-arg="#/" href="#/"><img class="logo-img" src="${IMG.logo}" alt="Rower4Skins — twoje skórki rowerowe"></a>
+        <nav class="nav" id="nav">${NAV.map(([k, h, i, t]) => `<a data-act="go" data-arg="${h}" data-nav="${k}" href="${h}">${ic(i)}${t}</a>`).join('')}<a class="only-sm" data-act="notes" href="#/">${ic('bell')}Powiadomienia</a></nav>
         <div class="tr">
             <div class="pill gem-pill" title="Gemy">${ic('gem')}<span id="tGems"></span></div>
             <div class="wallet-group">
                 <div class="pill money-pill" title="Saldo">${ic('wallet')}<span id="tBal"></span></div>
                 <button class="btn-dep" data-act="depositModal">${ic('bike')}WPŁAĆ <small>+10%</small></button>
             </div>
-            <button class="sq" data-act="notes" aria-label="Powiadomienia">${ic('bell')}<i id="tUnread" class="dot" hidden></i></button>
+            <button class="sq bell" data-act="notes" aria-label="Powiadomienia">${ic('bell')}<i id="tUnread" class="dot" hidden></i></button>
             <button class="sq hide-sm" data-act="go" data-arg="#/profile/settings" aria-label="Ustawienia">${ic('gear')}</button>
             <button class="ava-btn" data-act="go" data-arg="#/profile" aria-label="Profil"><span id="tAva"></span><span class="lvl" id="tLvl"></span></button>
             <button class="sq burger" data-act="burger" aria-label="Menu">${ic('menu')}</button>
@@ -836,7 +856,6 @@ function bannerHtml() {
     }).join('');
     const balloons = [[90, 70, '#f87171'], [190, 40, '#60a5fa'], [300, 90, '#facc15'], [1180, 50, '#34d399'], [1290, 90, '#f472b6'], [1400, 40, '#c084fc']]
         .map(([x, y, col]) => `<path d="M${x} ${y + 44} Q${x - 8} ${y + 90} ${x + 4} ${y + 140}" stroke="#fff" stroke-opacity=".5" fill="none"/><ellipse cx="${x}" cy="${y}" rx="32" ry="40" fill="${col}"/><ellipse cx="${x - 10}" cy="${y - 14}" rx="8" ry="12" fill="#fff" opacity=".35"/><path d="M${x - 5} ${y + 40} L${x + 5} ${y + 40} L${x} ${y + 47} Z" fill="${col}"/>`).join('');
-    const bike = (x, y, s, col) => `<g transform="translate(${x} ${y}) scale(${s})" fill="none" stroke="${col}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="30" r="11"/><circle cx="51" cy="30" r="11"/><path d="M13 30 23 11h19l9 19M23 11l11 19h17M19 5h9M38 5h9"/></g>`;
     return `<div class="banner">
         <svg class="banner-bg" viewBox="0 0 1500 250" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
             <defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1e1b4b"/><stop offset=".55" stop-color="#6d28d9"/><stop offset="1" stop-color="#f97316"/></linearGradient></defs>
@@ -845,8 +864,9 @@ function bannerHtml() {
             <path d="M0 210 Q200 160 400 200 T800 190 T1200 200 T1500 180 V250 H0 Z" fill="#1e1b4b" opacity=".75"/>
             <path d="M0 235 Q300 215 750 230 T1500 225 V250 H0 Z" fill="#0f0b2e"/>
             ${confetti}${balloons}
-            ${bike(380, 110, 2.4, '#fde047')}${bike(960, 120, 2.2, '#67e8f9')}
         </svg>
+        <img class="banner-bike l" src="${IMG.engwe}" alt="" aria-hidden="true">
+        <img class="banner-bike r" src="${IMG.gt73}" alt="" aria-hidden="true">
         <div class="banner-content">
             <div class="banner-title"><span class="t1">ROWEROWE</span><span class="t2">URODZINY</span></div>
             <div class="cd-row">
@@ -1116,7 +1136,7 @@ function renderBattles() {
             <p>Otwierajcie te same skrzynki, a najlepszy drop zgarnia wszystko. Zmierz się z botami w trzech trybach.</p>
             <button class="btn btn-purple btn-xl" data-act="go" data-arg="#/create">STWÓRZ BITWĘ ${ic('back', 'flip')}</button>
         </div>
-        <div class="bhero-art">${bikeArt('#67e8f9')}<span class="vs">VS</span>${bikeArt('#f472b6')}</div>
+        <div class="bhero-art"><img src="${IMG.engwe}" alt="ENGWE EP-2.0 Boost"><span class="vs">VS</span><img src="${IMG.gt73}" alt="Ridingtimes GT73 Pro"></div>
     </div>
     <div class="page-head">${ic('swords')}<div><h2>BITWY ROWER4SKINS</h2><small>WALCZ Z INNYMI GRACZAMI (BOTAMI)</small></div><span class="r18">18+</span></div>
     <div class="panel bbar">
@@ -1602,7 +1622,9 @@ function renderEvent() {
 function depositModal() {
     modal(`<h2 class="mtitle">${ic('bike')}Wpłać rower</h2>
         <p class="muted center">Zamień rower na wirtualne dolary. Teraz <b class="pos">+10% bonusu</b> do każdej wpłaty!</p>
-        <div class="bikes">${BIKES.map(([n, v, c], i) => `<button class="bike" data-act="deposit" data-arg="${i}" style="--bc:${c}">
+        <div class="bikes-premium">${BIKES.map((b, i) => [b, i]).filter(([b]) => b[3]).map(([[n, v, c, img], i]) => `<button class="bike premium" data-act="deposit" data-arg="${i}" style="--bc:${c}">
+            <span class="bike-tag">PREMIUM</span><img src="${img}" alt="${esc(n)}"><b>${esc(n)}</b><span class="money">${money(v)}</span><small class="pos">+${money(round2(v * 0.1))} bonus</small></button>`).join('')}</div>
+        <div class="bikes">${BIKES.map((b, i) => [b, i]).filter(([b]) => !b[3]).map(([[n, v, c], i]) => `<button class="bike" data-act="deposit" data-arg="${i}" style="--bc:${c}">
             ${bikeArt(c)}<b>${n}</b><span class="money">${money(v)}</span><small class="pos">+${money(round2(v * 0.1))} bonus</small></button>`).join('')}</div>
         <p class="muted center small">To symulator: rowery i dolary są wirtualne, nic nie jest pobierane.</p>`, 'wide');
 }
