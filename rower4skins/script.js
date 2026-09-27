@@ -300,10 +300,9 @@ const CASES = [
     // Skrzynki twórców
     { id: 'vit', name: 'Vit Case', color: '#2563eb', sec: 'creator', badge: 'CREATOR', deco: 'creator', mono: 'VIT',
         items: pool([[R('restricted'), RW()], [R('classified'), RW()], [R('covert'), RW()], [R('gold'), 0.6]], { seed: 'vit' }) },
-    // Zdjęcia do tych dwóch skrzynek podmienimy, gdy dotrą jako pliki — na razie monogram.
-    { id: 'bart', name: 'Bart Case', color: '#f97316', sec: 'creator', badge: 'CREATOR', deco: 'creator', mono: 'BART',
+    { id: 'bart', name: 'Bart Case', color: '#a855f7', sec: 'creator', badge: 'CREATOR', deco: 'photo', img: 'img/meme-bart.webp',
         items: pool([[R('restricted'), 30], [R('classified'), 34], [R('covert'), 12], [KNIFE, 1.2], [GLOVE, 0.6]], { seed: 'bart' }) },
-    { id: 'olaficho', name: 'Olaficho Case', color: '#f5f5f4', sec: 'creator', badge: 'CREATOR', deco: 'creator', mono: 'OLAF',
+    { id: 'olaficho', name: 'Olaficho Case', color: '#38bdf8', sec: 'creator', badge: 'CREATOR', deco: 'photo', img: 'img/meme-olaficho.webp',
         items: pool([[R('milspec'), 40], [R('restricted'), 30], [R('classified'), 14], [R('covert'), 4], [KNIFE, 0.5]], { seed: 'olaf' }) },
     { id: 'km', name: 'KM Case', color: '#14b8a6', sec: 'creator', badge: 'CREATOR', deco: 'photo', img: 'img/km-case.webp',
         items: pool([[R('classified'), 40], [R('covert'), 18], [R('gold'), 2.5]], { seed: 'km' }) },
@@ -367,6 +366,18 @@ const CASES = [
 
     // Kolorowe
     ...COLOR_CASES,
+
+    // Rowerowy Warsztat
+    ...[
+        ['lancuch', 'Łańcuch', '#a1a1aa', [[R('consumer', 'industrial'), RW()], [R('milspec'), RW(0.7)], [R('covert'), 0.4]]],
+        ['szprycha', 'Szprycha', '#0ea5e9', [[R('milspec', 'restricted'), RW()], [R('classified'), RW(0.6)], [KNIFE, 0.2]]],
+        ['dzwonek', 'Dzwonek', '#facc15', [[s => /gold|golden|sun|yellow|lemon|banana/i.test(s.name), 40], [R('restricted'), 30], [R('covert'), 3]]],
+        ['siodelko', 'Siodełko', '#b45309', [[R('restricted'), 40], [R('classified'), 25], [R('covert'), 6], [GLOVE, 0.8]]],
+        ['pompka', 'Pompka', '#22c55e', [[R('industrial', 'milspec'), RW()], [R('restricted', 'classified'), RW(0.8)], [KNIFE, 0.3]]],
+        ['kask', 'Kask', '#ef4444', [[R('classified'), 50], [R('covert'), 20], [KNIFE, 2], [GLOVE, 1.5]]],
+        ['blotnik', 'Błotnik', '#78716c', [[s => /mud|dirt|sand|desert|safari|rust|camo/i.test(s.name), 60], [R('covert'), 2], [KNIFE, 0.3]]],
+        ['detka', 'Dętka Premium', '#8b5cf6', [[R('covert'), 55], [KNIFE, 9], [GLOVE, 5], [EX, 0.05]]],
+    ].map(([key, name, color, spec]) => ({ id: 'bk-' + key, name, color, sec: 'bike', tag: name, items: pool(spec, { seed: 'bk' + key, per: 10 }) })),
 
     // Tanie skrzynki na start
     { id: 'b-grosik', name: 'Grosik', color: '#a3a3a3', sec: 'budget', badge: 'TANIO',
@@ -433,6 +444,7 @@ const SECTIONS = [
     { id: 'vault', title: 'Skarbiec', icon: 'gem' },
     { id: 'creator', title: 'Skrzynki twórców', icon: 'user' },
     { id: 'meme', title: 'Skrzynki memów', icon: 'bolt' },
+    { id: 'bike', title: 'Rowerowy Warsztat', icon: 'bike' },
     { id: 'color', title: 'Kolorowe', icon: 'star' },
     { id: 'budget', title: 'Tanie skrzynki', icon: 'wallet' },
     { id: 'bday', title: 'Rowerowe Urodziny', icon: 'cake' },
@@ -447,6 +459,8 @@ const BIKES = [
     ['BMX sąsiada', 10, '#f59e0b', '', 'ride', 3], ['Szosówka Kross', 15, '#3b82f6', '', 'pump', 3],
     ['Elektryk miejski', 25, '#14b8a6', '', 'timing', 4], ['Karbonowa kolarzówka', 45, '#a855f7', '', 'memory', 4],
     ['ENGWE EP-2.0 Boost', 90, '#3b82f6', 'img/engwe-ep2-boost.png', 'gears', 5],
+    // wypłata za wygraną (wartość +10%) = 990 zł
+    ['Bananoviec 3.0', round2(990 / CUR.pln.r / 1.1), '#facc15', 'img/bananoviec.webp', 'arrows', 6.5],
     ['Wspomagaczerex', 120, '#38bdf8', 'img/wspomagaczerex.webp', 'rhythm', 5],
     ['Ridingtimes GT73 Pro', 150, '#e5b98a', 'img/ridingtimes-gt73-pro.png', 'ride', 6],
     ['Kukirin G2', 260, '#f97316', 'img/kukirin-g2.webp', 'slalom', 6],
@@ -476,7 +490,7 @@ const IMG = {
 
 // Sekretne kody (jako skrót/hash). Kod za $50k i 1M gemów został usunięty.
 const SECRET_PROMOS = {};
-const PROMOS = { PLACEKER: { bal: round2(1000 / CUR.pln.r) }, ROWER4SKINS: { bal: 1 }, URODZINY: { bal: 2 }, SZPRYCHA: { bal: 0.5 }, KM5: { bal: 15 }, VIT5: { bal: 15 } };
+const PROMOS = { ROWER4SKINS: { bal: 1 }, URODZINY: { bal: 2 }, SZPRYCHA: { bal: 0.5 }, KM5: { bal: 15 }, VIT5: { bal: 15 } };
 
 const BOT_NAMES = [
     'Szprycha_Bez_Ham', 'DętkaZBiedronki', 'KołoFortuny', 'ZjazdNaTwarz', 'BMX_Babcia', 'TurboŁańcuch', 'Wigry3_Tuning',
@@ -751,12 +765,13 @@ function tone(f0, f1, len, vol = 0.04, type = 'sine', delay = 0) {
 
 // Własna muzyka do gry rytmicznej (generowana na żywo w tempie gry): stopa, hi-hat, bas, arpeggio i akordy.
 // Progresja Am – F – C – G, 16 kroków na takt. Zwraca funkcję zatrzymującą.
-function chipMusic(bpm, startInMs = 0) {
+function chipMusic(bpm, startInMs = 0, opts = {}) {
     if (!state.settings.sound) return () => {};
     try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return () => {}; }
     const s16 = 60 / bpm / 4, t0 = actx.currentTime + Math.max(0, startInMs) / 1000;
     const out = actx.createGain();
-    out.gain.value = 0.5;
+    out.gain.value = opts.vol ?? 0.5;
+    const X = opts.shift || 1; // transpozycja (inna tonacja dla każdej gry)
     out.connect(actx.destination);
     const CH = [[220, 261.63, 329.63], [174.61, 220, 261.63], [261.63, 329.63, 392], [196, 246.94, 293.66]];
     const BASS = [110, 87.31, 130.81, 98];
@@ -764,7 +779,7 @@ function chipMusic(bpm, startInMs = 0) {
     const HOOK = [4, -1, 4, 3, -1, 2, 3, -1, 1, -1, 2, 1, 0, -1, -1, -1]; // melodia co drugi takt
     const note = (f, t, len, vol, type = 'square') => {
         const o = actx.createOscillator(), g = actx.createGain();
-        o.type = type; o.frequency.setValueAtTime(f, t);
+        o.type = type; o.frequency.setValueAtTime(f * X, t);
         g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + len);
         o.connect(g).connect(out); o.start(t); o.stop(t + len + 0.02);
     };
@@ -1479,7 +1494,6 @@ function heroHtml() {
 
 function renderHome() {
     return `
-    ${placekerBar()}
     ${bossBanner()}
     ${heroHtml()}
     <div class="tiles3">
@@ -2570,6 +2584,7 @@ const GAMES = {
     ride: { n: 'Zjazd z góry', icon: 'bike', d: 'Omijaj kamienie i dziury, zmieniając pas strzałkami albo przyciskami.' },
     slalom: { n: 'Slalom G2', icon: 'scooter', d: 'Przejedź G2 przez bramki z pachołków. Trzymaj ◀ / ▶ (albo A / D, strzałki) — hulajnoga ma bezwładność, więc skręcaj wcześniej. Niebieskie plamy to lód: tam prawie nie da się hamować.' },
     climb: { n: 'Podjazd e-MTB', icon: 'bolt', d: 'Pedałuj na zmianę LEWA / PRAWA (← / → albo A / D) w równym rytmie — kadencja musi być w zielonej strefie. Ta sama noga dwa razy = poślizg łańcucha. TURBO (↑ / W / spacja) mocno pomaga, ale bateria szybko się kończy, a na końcu czeka ściana 36%.' },
+    arrows: { n: 'Strzałki Bananovca', icon: 'swap', d: 'Jak zmiana biegów w ENGWE, tylko dla spoconych: 48 strzałek w 11 sekund, widać tylko kilka następnych. CZERWONA strzałka = naciśnij w PRZECIWNĄ stronę. Pomyłka zabiera 1 s, a 3 pomyłki kończą grę.' },
     brake: { n: 'Stop w strefie', icon: 'target', d: 'Bulleh pędzi coraz szybciej. Trzymaj HAMUJ (↓ / S / spacja), żeby zatrzymać się przodem dokładnie w zielonej strefie. Za długie trzymanie blokuje koło — poślizg hamuje dużo słabiej, więc „pompuj” hamulec jak ABS.' },
     rhythm: { n: 'Rytm Wspomagacza', icon: 'sound', d: 'Nuty zjeżdżają trzema torami. Naciśnij ◀ / ▲ / ▶ (A / W / D albo strzałki), gdy nuta dotknie świecącej linii. Trzeba trafić odpowiedni procent nut — im droższy rower, tym szybsze tempo i więcej nut.' },
     mx: { n: 'Omega MX Supercross', icon: 'skull', d: 'Tor motocrossowy z dołami. GAZ (↑ / W) — 100 KM od razu podrywa przód, więc przy gazowaniu pochylaj się do przodu. ◀ TYŁ / PRZÓD ▶ (A / D) to balans ciałem: w locie obraca motocykl. HAMULEC (↓ / S) zwalnia. Za wolno = wpadasz do dołu, za szybko = twarde lądowanie za rampą. Ląduj równolegle do zielonej rampy.' },
@@ -2581,7 +2596,7 @@ function bikeInfo(i) {
     return { game: b[4], d: b[5] };
 }
 
-const stars = d => (d >= 8 ? `<span class="stars omega max">☠ OMEGA MAX ☠</span>` : d >= 7 ? `<span class="stars omega">OMEGA++++</span>` : d >= 6 ? `<span class="stars hc">★★★★★ HARDCORE</span>`
+const stars = d => (d === 6.5 ? `<span class="stars sweat">💦 SPOCONY 1% 💦</span>` : d >= 8 ? `<span class="stars omega max">☠ OMEGA MAX ☠</span>` : d >= 7 ? `<span class="stars omega">OMEGA++++</span>` : d >= 6 ? `<span class="stars hc">★★★★★ HARDCORE</span>`
     : `<span class="stars" title="Trudność ${d}/5">${'★'.repeat(d)}<i>${'★'.repeat(5 - d)}</i></span>`);
 const EXTREME = i => bikeInfo(i).d >= 6;
 // Gemy za wpłatę: rosną z trudnością, a dla HARDCORE/OMEGA także z wartością roweru.
@@ -2612,6 +2627,7 @@ function stopGame() {
 
 // Dopiski o zasadach dla najtrudniejszych rowerów.
 const HC = {
+    arrows: 'SPOCONY 1%: ponad 4 strzałki na sekundę przez 11 sekund, od 12. strzałki czerwone pułapki. Da się, ale tylko z idealną koncentracją.',
     brake: 'HARDCORE: 8 prób, coraz większa prędkość (do 70 km/h) i coraz krótsza strefa (do 1,1 m). Trzeba zatrzymać się w strefie co najmniej 6 razy.',
     ride: 'HARDCORE: aż 50 sekund zjazdu, gęsta mgła, dwa pasy zawsze zablokowane, a pełne tempo (prawie 2×) przychodzi już po pół minuty.',
     slalom: 'HARDCORE: 45 sekund, bramki coraz węższe i coraz dalej od siebie, lód od 12. sekundy. Wolno ominąć tylko jedną bramkę.',
@@ -3082,6 +3098,48 @@ const GAME_RUN = {
         const move = dir => { lane = Math.max(0, Math.min(2, lane + Number(dir))); };
         cv.addEventListener('pointerdown', e => { const r = cv.getBoundingClientRect(); move(e.clientX - r.left < r.width / 2 ? -1 : 1); });
         return { stop: () => { dead = true; cancelAnimationFrame(raf); }, lane: move, key: e => { if (e.key === 'ArrowLeft' || e.key === 'a') { e.preventDefault(); move(-1); } if (e.key === 'ArrowRight' || e.key === 'd') { e.preventDefault(); move(1); } } };
+    },
+
+    // Bananoviec 3.0: strzałki dla 1% graczy. Czerwona = w przeciwną stronę.
+    arrows(i, d, stage) {
+        const count = 48, time = 11000, MAX_BAD = 3, VIEW = 7, RED_FROM = 12;
+        const A = ['←', '↑', '→', '↓'], K = { ArrowLeft: 0, ArrowUp: 1, ArrowRight: 2, ArrowDown: 3, a: 0, w: 1, d: 2, s: 3, A: 0, W: 1, D: 2, S: 3 }, OPP = [2, 3, 0, 1];
+        const seq = Array.from({ length: count }, (_, n) => ({ k: Math.floor(Math.random() * 4), red: n >= RED_FROM && Math.random() < 0.35 }));
+        let at = 0, bad = 0, dead = false;
+        stage.innerHTML = `<div class="mg-time"><div id="mgTime"></div></div>
+            <div class="mg-info"><span>Postęp: <b id="arAt">0</b> / ${count}</span><span>Pomyłki: <b id="arBad">0</b> / ${MAX_BAD}</span></div>
+            <div class="gseq arrows-seq" id="gSeq"></div>
+            <div class="garrows">${[1, 0, 3, 2].map(k => `<button class="btn btn-dark ga${k}" data-act="mgArrow" data-arg="${k}">${A[k]}</button>`).join('')}</div>`;
+        const stopMusic = chipMusic(172, 0, { vol: 0.35, shift: 1.12 });
+        const view = () => {
+            $('#gSeq').innerHTML = seq.slice(at, at + VIEW).map((q, n) => `<span class="${n === 0 ? 'cur' : ''} ${q.red ? 'red' : ''}">${A[q.k]}</span>`).join('');
+            $('#arAt').textContent = at; $('#arBad').textContent = bad;
+        };
+        view();
+        const end = (won, msg) => { dead = true; timer.stop(); stopMusic(); mgEnd(i, won, msg); };
+        const timer = timerBar(time, () => { if (!dead) end(false, `Czas minął na ${at} z ${count} strzałek.`); });
+        const press = k => {
+            if (dead) return;
+            const q = seq[at], want = q.red ? OPP[q.k] : q.k;
+            if (Number(k) === want) {
+                beep(520 + (at % 12) * 40, 0.04, 0.035);
+                at++;
+                if (at >= count) { end(true, `Wszystkie ${count} strzałek w czasie, pomyłki: ${bad}. Jesteś w 1%!`); return; }
+            } else {
+                bad++;
+                beep(160, 0.15, 0.05, 'sawtooth');
+                timer.add(-1000);
+                $('#gSeq span')?.classList.add('bad');
+                if (bad >= MAX_BAD) { setTimeout(() => end(false, `${MAX_BAD} pomyłki — Bananoviec ucieka.`), 150); dead = true; return; }
+            }
+            view();
+        };
+        return {
+            stop: () => { dead = true; timer.stop(); stopMusic(); },
+            arrow: press,
+            key: e => { if (e.key in K) { e.preventDefault(); if (!e.repeat) press(K[e.key]); } },
+            peek: () => ({ at, bad, cur: seq[at] && { ...seq[at] } }),
+        };
     },
 
     // Bulleh K9: precyzyjne hamowanie do strefy. Za długie trzymanie hamulca blokuje koło.
@@ -3641,18 +3699,30 @@ const GAME_RUN = {
     },
 };
 
+// Muzyczka w tle dla minigier: [tempo BPM, transpozycja]. Rytm i strzałki mają własną.
+const GAME_MUSIC = { pump: [150, 1.12], timing: [118, 0.94], memory: [100, 0.84], gears: [146, 1.06], ride: [158, 0.94],
+    slalom: [140, 1.19], climb: [128, 0.89], wheelie: [112, 0.84], mx: [165, 1], brake: [136, 1.06] };
+
+function withMusic(mg, cfg, vol = 0.28) {
+    if (!mg || !cfg) return mg;
+    const stopMusic = chipMusic(cfg[0], 150, { vol, shift: cfg[1] });
+    const stop = mg.stop;
+    mg.stop = () => { stopMusic(); stop(); };
+    return mg;
+}
+
 function mgStart(i) {
     stopGame();
     if (!$('#mgStage')) mgIntro(i);
     const { game, d } = bikeInfo(i);
-    MG = GAME_RUN[game](i, d, $('#mgStage'));
+    MG = withMusic(GAME_RUN[game](i, d, $('#mgStage')), GAME_MUSIC[game]);
 }
 
 // ============================================================
 // BOSS EVENT: Wściekły Pies — walka o $500
 // ============================================================
 
-const BOSS = { reward: 500, cdWin: 30 * 60e3, cdLose: 2 * 60e3 };
+const BOSS = { reward: round2(1000 / CUR.pln.r), cdWin: 30 * 60e3, cdLose: 2 * 60e3 };
 const bossWait = () => Math.max(0, (state.boss?.next || 0) - Date.now());
 
 function bossBanner() {
@@ -3669,7 +3739,7 @@ function bossIntro() {
     const wait = bossWait();
     modal(`<div class="mg boss-mg">
         <div class="mg-head"><img class="boss-ava" src="${IMG.boss}" alt=""><div><small>BOSS EVENT · NAGRODA ${money(BOSS.reward)}</small><h2>Wściekły Pies</h2></div><span class="stars hc">BOSS</span></div>
-        <p class="mg-rules">Jeździsz na dole areny i sam strzelasz dętkami w górę — stań pod psem, żeby go trafiać. ◀ / ▶ (A / D) jazda, ▲ (W / spacja) skok. Uważaj na ślinę (lecące kulki), kłapnięcie (czerwona kolumna — uciekaj z niej) i w drugiej fazie ryk (fale po ziemi — przeskocz). Masz 5 serc i 100 sekund.</p>
+        <p class="mg-rules">Jeździsz na dole areny i sam strzelasz dętkami w górę — stań pod psem, żeby go trafiać. ◀ / ▶ (A / D) jazda, ▲ (W / spacja) skok. Uważaj na ślinę (lecące kulki), kłapnięcie (czerwona kolumna — uciekaj z niej) i w drugiej fazie ryk (fale po ziemi — przeskocz). Masz 4 serca i 120 sekund, a poniżej 30% HP pies wpada w szał (faza 3).</p>
         <p class="muted small">Wejście jest darmowe. Po przegranej kolejna próba za 2 minuty, po wygranej za 30 minut.</p>
         <div class="mg-stage" id="mgStage">${wait ? `<div class="mg-result">${ic('clock', 'big')}<h3>Pies odpoczywa</h3><p>Następna walka za <b data-cool="boss">${fmtDur(wait)}</b>.</p></div>` : `<button class="btn btn-green btn-xl" data-act="bossStart">${ic('swords')}WALCZ</button>`}</div>
     </div>`, 'wide game');
@@ -3700,26 +3770,33 @@ function bossEnd(won, msg) {
 function bossWorld() {
     const W = 480, H = 340, GY = H - 40;
     const st = {
-        t: 0, px: W / 2, py: 0, vy: 0, hp: 5, inv: 0, fireT: 0, bx: W / 2, by: 86, bhp: 100, bmax: 100,
+        t: 0, px: W / 2, py: 0, vy: 0, hp: 4, inv: 0, fireT: 0, bx: W / 2, by: 86, bhp: 150, bmax: 150,
         atkT: 2, tele: null, slam: 0, shots: [], spit: [], waves: [], over: false, win: false, msg: '', hitFlash: 0, mouth: 0,
     };
-    const LIMIT = 100, SPEED = 250, JUMP = 520, GRAV = 1450;
+    const LIMIT = 120, SPEED = 250, JUMP = 520, GRAV = 1450;
     const phase2 = () => st.bhp <= st.bmax / 2;
+    const phase3 = () => st.bhp <= st.bmax * 0.3;
     const hurt = why => { if (st.inv > 0) return; st.hits = st.hits || {}; st.hits[why] = (st.hits[why] || 0) + 1; st.hp--; st.inv = 1.1; st.hitFlash = 0.3; if (st.hp <= 0) { st.over = true; st.msg = 'Pies Cię dopadł. Uciekaj z czerwonej kolumny i przeskakuj fale.'; } };
     function attack() {
-        const p2 = phase2();
+        const p2 = phase2(), p3 = phase3();
         const pick = Math.random();
-        if (p2 && pick < 0.3) {
-            st.waves.push({ x: -20, dir: 1 }, { x: W + 20, dir: -1 }); st.mouth = 0.6;
-        } else if (pick < (p2 ? 0.62 : 0.55)) {
-            const n = p2 ? 4 : 3, sp = p2 ? 215 : 175;
+        const spit = () => {
+            const n = p3 ? 5 : p2 ? 4 : 3, sp = p3 ? 250 : p2 ? 225 : 195;
             const ang = Math.atan2(GY - 20 - st.by, st.px - st.bx);
             for (let k = 0; k < n; k++) { const a = ang + (k - (n - 1) / 2) * 0.34; st.spit.push({ x: st.bx, y: st.by + 30, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp }); }
             st.mouth = 0.4;
+        };
+        if (p3 && pick < 0.35) {
+            // faza 3: ryk i ślina naraz
+            st.waves.push({ x: -20, dir: 1 }, { x: W + 20, dir: -1 }); spit();
+        } else if (p2 && pick < 0.3) {
+            st.waves.push({ x: -20, dir: 1 }, { x: W + 20, dir: -1 }); st.mouth = 0.6;
+        } else if (pick < (p2 ? 0.66 : 0.58)) {
+            spit();
         } else {
-            st.tele = { x: Math.max(60, Math.min(W - 60, st.px)), t: p2 ? 0.8 : 1.0, w: 90 };
+            st.tele = { x: Math.max(60, Math.min(W - 60, st.px)), t: p3 ? 0.55 : p2 ? 0.65 : 0.8, w: 96 };
         }
-        st.atkT = p2 ? 1.3 : 1.7;
+        st.atkT = p3 ? 1.0 : p2 ? 1.2 : 1.45;
     }
     function step(inp, dt) {
         if (st.over) return;
@@ -3758,7 +3835,7 @@ function bossWorld() {
         }
         for (const q of st.spit) { q.x += q.vx * dt; q.y += q.vy * dt; if (Math.abs(q.x - st.px) < 13 && Math.abs(q.y - (GY - st.py - 20)) < 16) { q.dead = true; hurt('spit'); } }
         st.spit = st.spit.filter(q => !q.dead && q.y < H + 20 && q.x > -20 && q.x < W + 20);
-        for (const w of st.waves) { w.x += w.dir * 250 * dt; if (Math.abs(w.x - st.px) < 18 && st.py < 26) hurt('wave'); }
+        for (const w of st.waves) { w.x += w.dir * 270 * dt; if (Math.abs(w.x - st.px) < 18 && st.py < 26) hurt('wave'); }
         st.waves = st.waves.filter(w => w.x > -40 && w.x < W + 40);
         if (st.bhp <= 0) { st.over = true; st.win = true; st.msg = `Wściekły Pies padł po ${st.t.toFixed(1)} s, zostało Ci ${st.hp} ${st.hp === 1 ? 'serce' : 'serc'}.`; }
         else if (st.t >= LIMIT) { st.over = true; st.msg = `Minęło ${LIMIT} s, a pies ma jeszcze ${st.bhp} HP.`; }
@@ -3816,8 +3893,8 @@ function bossStart() {
         cx.fillStyle = 'rgba(0,0,0,.5)'; cx.fillRect(90, 12, W - 180, 14);
         cx.fillStyle = st.bhp <= st.bmax / 2 ? '#ff4d5e' : '#f97316'; cx.fillRect(90, 12, (W - 180) * st.bhp / st.bmax, 14);
         cx.font = '900 12px Saira, sans-serif'; cx.fillStyle = '#fff'; cx.textAlign = 'center';
-        cx.fillText(`${tr('WŚCIEKŁY PIES')} ${st.bhp}/${st.bmax}${st.bhp <= st.bmax / 2 ? ' — ' + tr('FAZA 2') : ''}`, W / 2, 24); cx.textAlign = 'left';
-        cx.font = '18px sans-serif'; cx.fillStyle = '#ff4d5e'; for (let k = 0; k < 5; k++) { cx.globalAlpha = k < st.hp ? 1 : 0.2; cx.fillText('❤', 10 + k * 20, H - 12); }
+        cx.fillText(`${tr('WŚCIEKŁY PIES')} ${st.bhp}/${st.bmax}${st.bhp <= st.bmax * 0.3 ? ' — ' + tr('FAZA 3') : st.bhp <= st.bmax / 2 ? ' — ' + tr('FAZA 2') : ''}`, W / 2, 24); cx.textAlign = 'left';
+        cx.font = '18px sans-serif'; cx.fillStyle = '#ff4d5e'; for (let k = 0; k < 4; k++) { cx.globalAlpha = k < st.hp ? 1 : 0.2; cx.fillText('❤', 10 + k * 20, H - 12); }
         cx.globalAlpha = 1;
         if (st.hitFlash > 0) { cx.fillStyle = `rgba(255,0,0,${st.hitFlash})`; cx.fillRect(0, 0, W, H); }
     };
@@ -3843,26 +3920,22 @@ function bossStart() {
     hero.onload = draw;
     raf = requestAnimationFrame(loop);
     const map = { ArrowLeft: 'l', a: 'l', A: 'l', ArrowRight: 'r', d: 'r', D: 'r', ArrowUp: 'jump', w: 'jump', W: 'jump', ' ': 'jump' };
-    MG = {
+    MG = withMusic({
         stop: () => { dead = true; cancelAnimationFrame(raf); },
         key: e => { const k = map[e.key]; if (k) { e.preventDefault(); inp[k] = 1; } },
         keyup: e => { const k = map[e.key]; if (k) inp[k] = 0; },
         setAuto: f => { auto = f; },
         peek: () => ({ ...st }),
-    };
+    }, [176, 0.75], 0.32);
 }
 
 function promoModal(pre = '') {
     modal(`<h2 class="mtitle">${ic('gift')}Kod promocyjny</h2>
         <p class="muted center">Wpisz kod i odbierz bonus. Każdy kod działa raz.</p>
-        ${state.promos.includes('PLACEKER') ? '' : `<div class="promo-hint"><b translate="no">PLACEKER</b> <span>→ darmowe 1000 zł!</span></div>`}
         <form class="inline" id="promoForm"><input id="promoIn" placeholder="np. ROWER4SKINS" autocomplete="off" aria-label="Kod promocyjny" value="${esc(pre)}"><button class="btn btn-green">Odbierz</button></form>`);
     $('#promoIn').focus();
 }
 
-// Widoczny pasek z darmowym kodem (znika po użyciu).
-const placekerBar = () => (state.promos.includes('PLACEKER') ? '' : `<button class="promo-bar" data-act="promoPrefill" data-arg="PLACEKER">
-    <span class="pb-gift">${ic('gift')}</span><span class="pb-txt"><span>Wpisz kod</span> <b translate="no">PLACEKER</b> <span>— darmowe 1000 zł!</span></span><span class="pb-cta">ODBIERZ ${ic('back', 'flip')}</span></button>`);
 
 let rankBots = null;
 

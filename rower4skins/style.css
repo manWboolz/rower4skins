@@ -3016,3 +3016,14 @@ canvas.bosscv { max-width: 480px; aspect-ratio: 480 / 340; }
 .lvl-bar > div { background: linear-gradient(90deg, #3f4760, #58627f); clip-path: polygon(0 0, 100% 0, calc(100% - 12px) 100%, 0 100%); }
 
 .lvl-labels b { font-size: 15px; }
+
+/* Bananoviec: strzałki dla spoconych */
+.gseq.arrows-seq { justify-content: flex-start; min-height: 64px; }
+
+.gseq.arrows-seq span { transition: transform .08s; }
+
+.gseq.arrows-seq span.red { color: #fff; background: #dc2626; border-color: #fca5a5; box-shadow: 0 0 16px -4px #ef4444; }
+
+.gseq.arrows-seq span.cur { transform: scale(1.18); }
+
+.stars.sweat { color: #38bdf8; font-weight: 900; letter-spacing: .04em; text-shadow: 0 0 12px rgba(56, 189, 248, .6); }
