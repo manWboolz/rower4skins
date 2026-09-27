@@ -2556,3 +2556,145 @@ body.lang-zh { --font: "Saira", "Noto Sans SC", "PingFang SC", "Microsoft YaHei"
 .nav { overflow: hidden; }
 .nav a { flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 1100px) { .nav { overflow: visible; } }
+
+/* ============================================================
+   WARSTWA 3.0 — gwiazdki Rower4Skins Special, tryby, nowe minigry
+   ============================================================ */
+
+.r4star { width: 100%; height: 100%; display: block; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .5)) drop-shadow(0 0 14px rgba(255, 196, 31, .35)); }
+
+.r4star.sm { width: 54px; height: 54px; flex: 0 0 54px; }
+
+/* karta gwiazdki na ruletce */
+.icard.star-card {
+    background:
+        radial-gradient(120px 80px at 50% 40%, rgba(255, 196, 31, .35), transparent 70%),
+        linear-gradient(180deg, #2b2410, #17140a);
+    border-color: rgba(255, 196, 31, .45);
+    border-bottom: 3px solid #ffc41f;
+}
+
+.star-card .iart { height: 62px; }
+
+.star-card .iart .r4star { width: 64px; height: 64px; }
+
+.reel.v .star-card .iart .r4star { width: 46px; height: 46px; }
+
+.star-card .iw { color: #cbd5e1; font-weight: 700; }
+
+.star-card .in { color: #ffc41f; font-weight: 900; }
+
+.star-card .ip { color: #ffc41f; letter-spacing: .2em; }
+
+.ritem.star-hit { animation: starPop 1.2s ease-out; z-index: 3; box-shadow: 0 0 50px 0 rgba(255, 196, 31, .7); border-color: #ffc41f; }
+
+.ritem.star-hit .r4star { animation: starSpin 1.2s cubic-bezier(.2, .9, .2, 1); }
+
+@keyframes starPop { 0% { transform: scale(1); } 18% { transform: scale(1.18); } 40% { transform: scale(1.06); } 100% { transform: scale(1.1); } }
+
+@keyframes starSpin { 0% { transform: rotate(0) scale(1); } 45% { transform: rotate(360deg) scale(1.35); } 100% { transform: rotate(360deg) scale(1.15); } }
+
+.reel.star-mode { border-color: rgba(255, 196, 31, .6); box-shadow: 0 0 40px -10px rgba(255, 196, 31, .8), inset 0 0 60px -20px rgba(255, 196, 31, .5); }
+
+.reel.star-mode .marker { background: #ffc41f; }
+
+.ritem.rare { border-color: rgba(255, 196, 31, .35); }
+
+.ritem.rare-hit { box-shadow: 0 0 50px -2px #ffc41f; border-color: #ffc41f; animation: rareGlow 1.4s ease-in-out infinite alternate; }
+
+@keyframes rareGlow { from { box-shadow: 0 0 30px -6px #ffc41f; } to { box-shadow: 0 0 60px 0 #ffc41f; } }
+
+.star-burst { position: absolute; inset: 0; z-index: 4; pointer-events: none; display: grid; place-items: center; }
+
+.star-burst .sb-glow { position: absolute; left: 50%; top: 50%; width: 260px; height: 260px; margin: -130px 0 0 -130px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 220, 120, .75), rgba(255, 196, 31, .25) 40%, transparent 70%); animation: sbGlow 1.3s ease-out forwards; }
+
+.star-burst i { position: absolute; left: 50%; top: 50%; font-style: normal; font-size: 22px; color: #ffd54a; text-shadow: 0 0 10px #ffc41f;
+    animation: sbFly 1.1s ease-out forwards; opacity: 0; }
+
+.star-burst .sb-label { position: relative; text-align: center; padding: 6px 16px; border-radius: 10px; background: rgba(12, 10, 4, .75); border: 1px solid rgba(255, 196, 31, .6);
+    animation: sbLabel 1.3s ease-out forwards; }
+
+.star-burst .sb-label small { display: block; font-size: 11px; font-weight: 800; color: #cbd5e1; letter-spacing: .14em; }
+
+.star-burst .sb-label b { font-size: 18px; font-weight: 900; color: #ffc41f; letter-spacing: .06em; }
+
+.reel.v .star-burst .sb-label b { font-size: 12px; }
+
+@keyframes sbGlow { 0% { transform: scale(.2); opacity: 0; } 25% { transform: scale(1); opacity: 1; } 100% { transform: scale(1.4); opacity: 0; } }
+
+@keyframes sbFly { 0% { transform: translate(-50%, -50%) scale(.3); opacity: 1; } 100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1) rotate(180deg); opacity: 0; } }
+
+@keyframes sbLabel { 0% { transform: scale(.4); opacity: 0; } 20% { transform: scale(1.1); opacity: 1; } 80% { opacity: 1; } 100% { transform: scale(1); opacity: 0; } }
+
+/* gwiazdki w zawartości skrzynki */
+.icard .rstar { position: absolute; top: 5px; left: 6px; width: 22px; height: 22px; z-index: 1; }
+
+.icard .rstar .r4star { filter: drop-shadow(0 0 6px rgba(255, 196, 31, .6)); }
+
+.icard.is-rare { border-color: rgba(255, 196, 31, .3); }
+
+.star-info { display: flex; align-items: center; gap: 14px; margin: 18px 0 4px; padding: 12px 16px; border-radius: var(--r);
+    background: linear-gradient(90deg, rgba(255, 196, 31, .14), rgba(255, 196, 31, .03)); border: 1px solid rgba(255, 196, 31, .3); }
+
+.star-info b { display: block; color: #ffc41f; font-weight: 900; font-size: 15px; }
+
+.star-info span { color: var(--muted); font-size: 13px; }
+
+.modal.star-win { border-color: #ffc41f; box-shadow: 0 0 120px -20px #ffc41f; background-image: radial-gradient(600px 240px at 50% 0, rgba(255, 196, 31, .18), transparent 70%); }
+
+.modal.star-win .mtitle { color: #ffc41f; text-shadow: 0 0 20px rgba(255, 196, 31, .5); }
+
+/* pasek LIVE: rzadki drop */
+.dtile.star { box-shadow: inset 0 0 0 2px rgba(255, 196, 31, .8), 0 0 18px -6px #ffc41f; }
+
+.dtile .dstar { position: absolute; top: 3px; left: 5px; color: #ffc41f; font-size: 13px; text-shadow: 0 0 6px #ffc41f; }
+
+/* bitwy */
+.bv-nofast { display: inline-flex; align-items: center; gap: 5px; padding: 6px 10px; border-radius: 8px; background: var(--panel2); color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .04em; }
+
+.bv-nofast .ic { width: 14px; height: 14px; }
+
+.bv-sum .pts { font-style: normal; margin-left: 8px; padding: 2px 7px; border-radius: 6px; background: rgba(255, 138, 31, .18); color: #ff8a1f; font-size: 12px; }
+
+.chips { background: #1b2230; }
+
+.chip { background: transparent; border: 1px solid transparent; letter-spacing: .02em; }
+
+.chip:hover { background: var(--panel2); }
+
+.chip.on { background: #243044; border-color: rgba(255, 255, 255, .08); box-shadow: inset 0 -2px 0 var(--mc, #fff); }
+
+.chip.all { color: #fff; }
+
+.opt-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+
+/* nowe minigry */
+.garrows.three { grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 58px; width: min(100%, 420px); }
+
+.garrows.three .btn { font-size: 16px; user-select: none; -webkit-user-select: none; touch-action: none; }
+
+.garrows [data-pedal].on { filter: brightness(1.4); transform: translateY(1px); }
+
+@media (max-width: 640px) {
+    .bv-nofast { display: none; }
+    .star-info { align-items: flex-start; }
+}
+
+.reel.v .star-card { padding-top: 4px; }
+
+.reel.v .star-card .ip { display: none; }
+
+.reel.v .star-card .iw { margin-top: 2px; }
+
+/* minigry na telefonie: nagłówek z HARDCORE/OMEGA się zawija, nic nie wystaje poza okno */
+.mg-head { flex-wrap: wrap; }
+
+.modal.game { overflow-x: hidden; }
+
+.mg-stage canvas { max-width: 100%; }
+
+@media (max-width: 640px) {
+    .mg-head .stars { margin-left: 0; font-size: 15px; }
+    .mg-head h2 { font-size: 22px; }
+}

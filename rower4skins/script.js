@@ -17,6 +17,8 @@ const CUR = {
 };
 const curr = () => CUR[state.settings.cur] || CUR.usd;
 const money = n => (n < 0 ? '−' : '') + curr().f(Math.abs(n) * curr().r);
+// Tłumaczenie tekstu rysowanego na canvasie (i18n.js działa tylko na DOM).
+const tr = t => (typeof trString === 'function' ? trString(t) : t);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -94,6 +96,10 @@ const ICONS = {
     shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4M12 16h.01"/>',
     globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
     edit: '<path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+    crazy: '<circle cx="12" cy="12" r="9"/><path d="m7.5 8.5 3 1.5-3 1.5M16.5 8.5l-3 1.5 3 1.5M7.5 15c2 2.5 7 2.5 9 0"/>',
+    syringe: '<path d="m18 2 4 4M16 4l4 4M18 6 8.5 15.5M14 4l6 6-9.5 9.5-6-6zM9 9l2 2M6.5 11.5l2 2M4.5 19.5 2 22"/>',
+    counter: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l-3.5 3.5M12 12l3.5 3.5"/><path d="M4 4l3 3M20 4l-3 3"/>',
+    scooter: '<circle cx="5.5" cy="18" r="2.5"/><circle cx="18.5" cy="18" r="2.5"/><path d="M8 18h8M16 18 13 4h3"/>',
 };
 
 const ic = (name, cls = '') =>
@@ -209,6 +215,8 @@ const CASES = [
     // Legendy
     { id: 'smocza', name: 'Smocza Legenda', color: '#b91c1c', sec: 'legend', badge: 'HOT', feature: 'awp-dragon-lore', tag: 'Legenda',
         items: pool([[s => LEGEND.includes(s.id), 100]], { per: 0, mix: true, skew: 1.15 }) },
+    { id: 'special', name: 'Rower4Skins Special', color: '#f5b400', sec: 'legend', badge: 'SPECIAL', deco: 'star', starPct: 12,
+        items: pool([[R('classified'), 52], [R('covert'), 34], [KNIFE, 9, { per: 10 }], [GLOVE, 5, { per: 6 }]], { seed: 'sp' }) },
     { id: 'wyjec', name: 'Wyjec', color: '#dc2626', sec: 'legend', feature: 'm4a4-howl', tag: 'Howl',
         items: pool([[R('covert'), 20], [R('classified'), 60], [s => ['m4a4-howl', 'awp-medusa', 'awp-gungnir', 'ak-47-wild-lotus'].includes(s.id), 1.2]], { seed: 'wyjec' }) },
 
@@ -286,6 +294,21 @@ for (const c of CASES) {
     // Cena = średni drop / 0.9, czyli skrzynka oddaje średnio ok. 90% ceny.
     if (c.currency === 'usd') c.price = Math.max(0.05, round2(c.ev / 0.9));
     if (!c.feature && !c.deco) c.feature = [...c.items].sort((a, b) => SKIN[b[0]].price - SKIN[a[0]].price)[0][0];
+    rareOf(c);
+}
+
+// Gwiazdki: najrzadsze przedmioty skrzynki (łącznie ok. 1,5% szans, w skrzynce Special więcej).
+// Na ruletce zamiast nich pojawia się złota gwiazdka „Rower4Skins Special”, a po niej druga ruletka tylko z rzadkich.
+function rareOf(c) {
+    const sorted = [...c.items].sort((a, b) => a[1] - b[1] || SKIN[b[0]].price - SKIN[a[0]].price);
+    const lim = (c.starPct ?? 1.5) / 100 * c.total;
+    const rare = [];
+    let cum = 0;
+    for (const [id, w] of sorted) { if (cum + w > lim) break; cum += w; rare.push([id, w]); }
+    if (rare.length === c.items.length) rare.length = 0;
+    c.rare = new Set(rare.map(x => x[0]));
+    c.rareItems = rare;
+    c.rareTotal = cum;
 }
 
 const CASE = Object.fromEntries(CASES.map(c => [c.id, c]));
@@ -308,6 +331,8 @@ const BIKES = [
     ['Elektryk miejski', 60, '#14b8a6', '', 'timing', 4], ['Karbonowa kolarzówka', 120, '#a855f7', '', 'memory', 4],
     ['ENGWE EP-2.0 Boost', 299, '#3b82f6', 'img/engwe-ep2-boost.png', 'gears', 5],
     ['Ridingtimes GT73 Pro', 499, '#e5b98a', 'img/ridingtimes-gt73-pro.png', 'ride', 6],
+    ['Kukirin G2', 700, '#f97316', 'img/kukirin-g2.webp', 'slalom', 6],
+    ['Electrix KMA', 950, '#ef4444', 'img/electrix-kma.webp', 'climb', 6],
     ['Stark Varg', 1500, '#e2e8f0', 'img/stark-varg.png', 'wheelie', 7],
 ];
 
@@ -321,21 +346,72 @@ const IMG = {
     engwe: 'img/engwe-ep2-boost.png',
     gt73: 'img/ridingtimes-gt73-pro.png',
     varg: 'img/stark-varg.png',
+    kma: 'img/electrix-kma.webp',
+    g2: 'img/kukirin-g2.webp',
 };
 
 const PROMOS = { ROWER4SKINS: { bal: 1 }, URODZINY: { gems: 500 }, SZPRYCHA: { bal: 0.5 }, KM5: { bal: 5, gems: 500 }, VIT5: { bal: 5, gems: 500 } };
 
-const BOT_NAMES = ['kolarz_91', 'szprycha', 'MTB_Kuba', 'pedalarz', 'dętka_pl', 'Wigry3', 'turbo_romet', 'łańcuch',
-    'bmx_ola', 'peleton', 'góral_pro', 'przerzutka', 'sakwa', 'dzwonek', 'bidon', 'kadencja'];
+const BOT_NAMES = [
+    'Szprycha_Bez_Ham', 'DętkaZBiedronki', 'KołoFortuny', 'ZjazdNaTwarz', 'BMX_Babcia', 'TurboŁańcuch', 'Wigry3_Tuning',
+    'KaskDlaZasady', 'HamulecRęczny', 'PompkaPanaMietka', 'RowerowyJanusz', 'GrażynaNaGóralu', 'SebixNaSkładaku', 'KolarzZBiedry',
+    'ŁydkaStalowa', 'ŁańcuchSpadł', 'DzwonekDzyńDzyń', 'BłotnikLegenda', 'OponaKapeć', 'RoweremDoLidla', 'BezTrzymanki',
+    'WheelieWiesiek', 'StuntStaszek', 'ZjazdowyZbyszek', 'GołąbZKurczakiem', 'KarbonowyKazik', 'PompujMocniej', 'KółkoZapasowe',
+    'TataNaHolendrze', 'EBikeEdek', 'WiatrWOczy', 'BidonZKompotem', 'KolarzówkaKrysia', 'MistrzKraksy', 'SzuterSzymon',
+    'HulajnogaHalina', 'RowerNaKredyt', 'DropNaStówę', 'SkrzynkaPandory', 'AWP_za_5zł', 'CovertCzesiek', 'StatTrakStefan',
+    'KnifeKrzysiek', 'GlovesGienek', 'DragonLoreZOLX', 'LuckyLeszek', 'MinusMarek', 'AllInAdam', 'DżemZPompki',
+    'ProfesorSzprycha', 'KrólRondaBlokowa', 'DziadekNaWigrach', 'TeamSzprycha', 'SkinyZaSkarpety', 'PanPrzerzutka', 'NoScopeNorbert',
+    'CzterechPancern', 'WujekZKatowic', 'KotNaBagażniku', 'ZłotyŁańcuch', 'NożykDoMasła', 'ZgubiłemPedał', 'DrugiSkładak',
+    'GumaWDętce', 'Rower_bez_kół', 'HoldujęKnife', 'OpenujęDoRana', 'MamaMyśliŻeŚpię', 'LekcjaWFu', 'KanapkaZSerem',
+    'BurakPedałuje', 'MamoToCovert', 'OjTamOjTam', 'SzybkiJakŚlimak',
+];
 
 const MODES = {
     normal: { n: 'Normal', icon: 'swords', col: '#22a7f0',
         d: 'Podstawowy tryb. Wygrywa gracz z najwyższą łączną wartością dropów i zabiera wszystko. Pozostali dostają gwarantowany skin.' },
     underdog: { n: 'Underdog', icon: 'paw', col: '#ffc41f',
         d: 'Odwrócone zasady. Wygrywa gracz z najniższą łączną wartością dropów i zabiera wszystko.' },
+    pointrush: { n: 'Point Rush', icon: 'star', col: '#ff8a1f',
+        d: 'Każda runda to wyścig o punkt: dostaje go gracz z najdroższym dropem w tej rundzie. Najwięcej punktów zabiera wszystko (remis rozstrzyga suma). Przegrani dostają gwarantowany skin.' },
     terminal: { n: 'Terminal', icon: 'skull', col: '#ff4d5e',
         d: 'Liczy się tylko ostatnia runda. Wygrywa ten, kto wylosuje najdroższy skin w ostatniej skrzynce.' },
+    crazyrush: { n: 'Crazy Rush', icon: 'crazy', col: '#c04cf0',
+        d: 'Odwrócony Point Rush: punkt za rundę dostaje gracz z NAJTAŃSZYM dropem. Najwięcej punktów wygrywa (remis: niższa suma).' },
+    crazyterminal: { n: 'Crazy Terminal', icon: 'syringe', col: '#45d15b',
+        d: 'Liczy się tylko ostatnia runda, ale na odwrót — wygrywa NAJTAŃSZY skin w ostatniej skrzynce.' },
+    counterterminal: { n: 'Counter Terminal', icon: 'counter', col: '#ff3d8b',
+        d: 'Wszystkie rundy oprócz ostatniej się dodają, a ostatnia się ODEJMUJE. Wynik = suma wcześniejszych dropów − ostatni drop. Najwyższy wynik wygrywa.' },
 };
+
+// Wynik w trybie bitwy. prices[k][i] = cena dropu gracza i w rundzie k (w centach, żeby uniknąć błędów zaokrągleń).
+// Zwraca indeksy graczy, którzy prowadzą (więcej niż jeden = remis) oraz punkty (tryby Rush).
+function modeLeaders(mode, prices) {
+    const n = prices[0]?.length || 0;
+    const tot = Array.from({ length: n }, (_, i) => prices.reduce((s, row) => s + row[i], 0));
+    const last = prices[prices.length - 1] || tot.map(() => 0);
+    let sc = tot, low = false, pts = null, tieLow = false;
+    if (mode === 'underdog') low = true;
+    else if (mode === 'terminal') sc = last;
+    else if (mode === 'crazyterminal') { sc = last; low = true; }
+    else if (mode === 'counterterminal') sc = tot.map((t, i) => t - 2 * last[i]);
+    else if (mode === 'pointrush' || mode === 'crazyrush') {
+        pts = Array(n).fill(0);
+        for (const row of prices) {
+            const best = mode === 'pointrush' ? Math.max(...row) : Math.min(...row);
+            row.forEach((p, i) => { if (p === best) pts[i]++; });
+        }
+        sc = pts; tieLow = mode === 'crazyrush';
+    }
+    const best = low ? Math.min(...sc) : Math.max(...sc);
+    let lead = sc.map((v, i) => (v === best ? i : -1)).filter(i => i >= 0);
+    if (pts && lead.length > 1) {
+        const t = lead.map(i => tot[i]), tb = tieLow ? Math.min(...t) : Math.max(...t);
+        lead = lead.filter(i => tot[i] === tb);
+    }
+    return { lead, pts, sc };
+}
+const cents = id => Math.round(SKIN[id].price * 100);
+const CONSOLATION = ['normal', 'pointrush'];
 
 const MISSIONS = [
     { id: 'm1', t: 'Otwórz 10 skrzynek', goal: 10, v: () => state.stats.opened, gems: 400 },
@@ -344,6 +420,8 @@ const MISSIONS = [
     { id: 'm4', t: 'Znajdź ukrytą skrzynkę na banerze', goal: 1, v: () => (state.hiddenFound ? 1 : 0), gems: 800 },
     { id: 'm5', t: 'Osiągnij poziom 5', goal: 5, v: () => level(), gems: 800 },
     { id: 'm6', t: 'Wydaj łącznie $50 na skrzynki i bitwy', goal: 50, v: () => state.stats.wagered, gems: 1200 },
+    { id: 'm7', t: 'Złap gwiazdkę Rower4Skins Special', goal: 1, v: () => state.stats.stars, gems: 1500 },
+    { id: 'm8', t: 'Wygraj bitwę w trybie Crazy', goal: 1, v: () => state.stats.crazyWins, gems: 900 },
 ];
 
 // ============================================================
@@ -357,7 +435,7 @@ function fresh() {
         balance: 5, gems: 0, exp: 0, name: 'Kolarz', color: '#a855f7',
         inv: [], itemLog: [], walletLog: [], notes: [], unread: 0, favs: [],
         daily: 0, expUsed: {}, promos: [], hiddenFound: false, hiddenUsed: false, claimed: [], myBattles: [],
-        stats: { opened: 0, wagered: 0, battles: 0, battlesWon: 0, contracts: 0, best: 0 },
+        stats: { opened: 0, wagered: 0, battles: 0, battlesWon: 0, contracts: 0, best: 0, stars: 0, crazyWins: 0 },
         settings: { sound: true, fast: false, cur: 'usd', lang: 'pl' },
         eventEnd: Date.now() + 45 * 864e5 + 23 * 36e5,
     };
@@ -520,6 +598,46 @@ function beep(freq, len = 0.035, vol = 0.04, type = 'square') {
     } catch (e) { /* brak audio */ }
 }
 
+// Dźwięk ze zmianą wysokości (f0 → f1).
+function tone(f0, f1, len, vol = 0.04, type = 'sine', delay = 0) {
+    if (!state.settings.sound) return;
+    try {
+        actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+        const t = actx.currentTime + delay;
+        const o = actx.createOscillator(), g = actx.createGain();
+        o.type = type;
+        o.frequency.setValueAtTime(f0, t);
+        o.frequency.exponentialRampToValueAtTime(f1, t + len);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(vol, t + Math.min(0.03, len / 3));
+        g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+        o.connect(g).connect(actx.destination);
+        o.start(t);
+        o.stop(t + len + 0.02);
+    } catch (e) { /* brak audio */ }
+}
+
+// Lekki „dzyń” przy każdym dropie — wyżej dla lepszych rzadkości.
+function dropSound(s) {
+    const lvl = { consumer: 0, industrial: 0, milspec: 1, restricted: 2, classified: 3, covert: 4, gold: 5 }[s?.rarity] ?? 0;
+    const f = 620 * Math.pow(1.12, lvl);
+    tone(f, f, 0.16, 0.03, 'sine');
+    tone(f * 1.5, f * 1.5, 0.22, 0.022, 'sine', 0.07);
+}
+
+// Gwiazdka: świst w górę, błysk i dzwoneczki.
+function starSound() {
+    tone(220, 1760, 0.55, 0.05, 'triangle');
+    tone(110, 55, 0.6, 0.06, 'sine', 0.05);
+    [1568, 2093, 2637, 3136, 2637, 3136, 4186].forEach((f, i) => tone(f, f, 0.2, 0.025, 'sine', 0.45 + i * 0.07));
+}
+
+// Rzadki przedmiot z drugiej ruletki: fanfara.
+function rareSound() {
+    [523, 659, 784, 1047].forEach((f, i) => tone(f, f, 0.9, 0.03, 'triangle', i * 0.06));
+    [1319, 1568, 2093, 2637].forEach((f, i) => tone(f, f * 1.01, 0.3, 0.02, 'sine', 0.35 + i * 0.09));
+}
+
 function winSound(big) {
     const notes = big ? [523, 659, 784, 1047, 1319] : [523, 659, 784];
     notes.forEach((f, i) => setTimeout(() => beep(f, 0.18, 0.05, 'triangle'), i * 90));
@@ -633,6 +751,9 @@ function caseArt(c) {
             <rect x="86" y="80" width="68" height="16" rx="4" fill="#0b0e16" opacity=".75"/><text x="120" y="92" text-anchor="middle" font-size="10" font-weight="800" letter-spacing="1.5" fill="#fde047" font-family="Saira, sans-serif">CREATOR</text>
             <circle cx="156" cy="14" r="11" fill="#1d9bf0" stroke="#fff" stroke-width="2.5"/><path d="M151 14 l3.5 3.5 l6.5 -7" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g>`;
     }
+    if (c.deco === 'star') {
+        behind = `<g transform="translate(120 54) scale(.95) translate(-50 -53)" filter="url(#${id}gl)" opacity=".8"><circle cx="50" cy="53" r="40" fill="${col}"/></g><g transform="translate(120 52) scale(.98) translate(-50 -53)">${starSvg().replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '')}</g>`;
+    }
     if (c.deco === 'lvl') {
         behind = `<path d="M120 12 L136 30 L160 34 L143 52 L147 76 L120 64 L93 76 L97 52 L80 34 L104 30 Z" fill="${col}" stroke="#0b0e16" stroke-width="2.5"/><text x="120" y="58" text-anchor="middle" font-size="24" font-weight="900" fill="#0b0e16" font-family="Saira, sans-serif">${c.lvl}</text>`;
     }
@@ -684,6 +805,27 @@ function caseArt(c) {
     ${front}
     </svg>`;
 }
+
+// Złota gwiazdka „Rower4Skins Special” z kołem rowerowym w środku.
+function starSvg(cls = '') {
+    const id = 'st' + (++SID);
+    const pts = (r1, r2) => Array.from({ length: 10 }, (_, k) => {
+        const a = -Math.PI / 2 + k * Math.PI / 5, r = k % 2 ? r2 : r1;
+        return `${(50 + Math.cos(a) * r).toFixed(1)},${(53 + Math.sin(a) * r).toFixed(1)}`;
+    }).join(' ');
+    const spokes = Array.from({ length: 8 }, (_, k) => { const a = k * Math.PI / 4; return `M${(Math.cos(a) * 3).toFixed(1)} ${(Math.sin(a) * 3).toFixed(1)}L${(Math.cos(a) * 11).toFixed(1)} ${(Math.sin(a) * 11).toFixed(1)}`; }).join('');
+    return `<svg class="r4star ${cls}" viewBox="0 0 100 100" aria-hidden="true"><defs>
+        <linearGradient id="${id}a" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff4b8"/><stop offset=".45" stop-color="#ffc41f"/><stop offset="1" stop-color="#a86300"/></linearGradient>
+        <linearGradient id="${id}b" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffe066"/><stop offset=".6" stop-color="#f5a300"/><stop offset="1" stop-color="#c97800"/></linearGradient>
+    </defs>
+        <polygon points="${pts(48, 21)}" fill="url(#${id}a)" stroke="#6b3d00" stroke-width="2.2" stroke-linejoin="round"/>
+        <polygon points="${pts(39, 17)}" fill="url(#${id}b)" stroke="#fff3c4" stroke-opacity=".75" stroke-width="1.4" stroke-linejoin="round"/>
+        <g transform="translate(50 55)" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><circle r="13"/><circle r="15.5" stroke-width="1.2" stroke-opacity=".6"/><path d="${spokes}" stroke-width="1.6"/><circle r="2.8" fill="#fff"/></g>
+        <path d="M30 30 L42 27 L36 36 Z" fill="#fff" opacity=".45"/>
+    </svg>`;
+}
+
+const starCard = (cls = 'ritem') => `<div class="icard ${cls} star-card" style="--rc:#ffc41f"><div class="iart">${starSvg()}</div><div class="iw">Rare item</div><div class="in" translate="no">Rower4Skins Special</div><div class="ip">★★★</div></div>`;
 
 function bikeArt(color) {
     return `<svg viewBox="0 0 64 40" class="bart" fill="none" stroke="${color}" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="13" cy="28" r="10"/><circle cx="51" cy="28" r="10"/><path d="M13 28 22 10h19l10 18M22 10l11 18h18M19 5h7M38 5h7"/></svg>`;
@@ -773,10 +915,10 @@ function confetti() {
     setTimeout(() => box.remove(), 3800);
 }
 
-function showWin(ids, uids, title, reopen = false) {
+function showWin(ids, uids, title, reopen = false, star = false) {
     winUids = uids;
     const total = round2(ids.reduce((s, id) => s + SKIN[id].price, 0));
-    const big = ids.some(id => ['covert', 'gold'].includes(SKIN[id].rarity));
+    const big = star || ids.some(id => ['covert', 'gold'].includes(SKIN[id].rarity));
     winSound(big);
     if (big) confetti();
     modal(`<h2 class="mtitle">${title}</h2>
@@ -786,7 +928,7 @@ function showWin(ids, uids, title, reopen = false) {
             <button class="btn btn-green" data-act="winsell">${ic('wallet')}Sprzedaj za ${money(total)}</button>
             <button class="btn btn-purple" data-act="modalclose">${ic('check')}Zatrzymaj</button>
             ${reopen ? `<button class="btn btn-dark" data-act="reopen">${ic('refresh')}Otwórz ponownie</button>` : ''}
-        </div>`, big ? 'big-win' : '');
+        </div>`, (big ? 'big-win' : '') + (star ? ' star-win' : ''));
 }
 
 // ============================================================
@@ -877,8 +1019,9 @@ function renderDrops(animate) {
         const s = SKIN[d.id];
         const c = d.c && CASE[d.c];
         const link = c ? `data-act="go" data-arg="#/case/${c.id}"` : '';
-        return `<div translate="no" class="dtile ${d.mine ? 'mine' : ''} ${c ? 'has-case' : ''} ${animate && i === 0 ? 'new' : ''}" ${link} style="--rc:${RAR[s.rarity].c}" title="${esc(s.weapon)} | ${esc(s.name)} — ${money(s.price)} · ${esc(d.user)}${c ? ` · z: ${esc(c.name)}` : ''}">
-            ${d.st ? '<span class="st">ST</span>' : ''}${art(s)}${c ? `<span class="dcase">${caseArt(c)}</span>` : ''}
+        const star = c && c.rare.has(d.id);
+        return `<div translate="no" class="dtile ${d.mine ? 'mine' : ''} ${c ? 'has-case' : ''} ${star ? 'star' : ''} ${animate && i === 0 ? 'new' : ''}" ${link} style="--rc:${star ? '#ffc41f' : RAR[s.rarity].c}" title="${esc(s.weapon)} | ${esc(s.name)} — ${money(s.price)} · ${esc(d.user)}${c ? ` · z: ${esc(c.name)}` : ''}">
+            ${star ? '<span class="dstar">★</span>' : d.st ? '<span class="st">ST</span>' : ''}${art(s)}${c ? `<span class="dcase">${caseArt(c)}</span>` : ''}
             <span class="dname" translate="no">${esc(s.name)}</span><span class="duser" translate="no">${esc(d.user)}</span>
         </div>`;
     }).join('');
@@ -898,11 +1041,18 @@ const STRIP_LEN = 60, WIN_AT = 52, GAP = 6;
 
 const reelHtml = (vertical, cls = '') => `<div class="reel ${vertical ? 'v' : 'h'} ${cls}"><div class="marker"></div><div class="strip"></div></div>`;
 
-function fillReel(reel, c, winner) {
-    const ids = Array.from({ length: STRIP_LEN }, () => roll(c));
+// phase2 = druga ruletka po gwiazdce: tylko rzadkie przedmioty.
+function fillReel(reel, c, winner, phase2 = false) {
+    const pickOne = () => {
+        if (!phase2) return roll(c);
+        let r = Math.random() * c.rareTotal;
+        for (const [id, w] of c.rareItems) { r -= w; if (r < 0) return id; }
+        return c.rareItems[c.rareItems.length - 1][0];
+    };
+    const ids = Array.from({ length: STRIP_LEN }, pickOne);
     if (winner) ids[WIN_AT] = winner;
     const strip = reel.querySelector('.strip');
-    strip.innerHTML = ids.map(id => itemCard(SKIN[id], { cls: 'ritem' })).join('');
+    strip.innerHTML = ids.map(id => (!phase2 && c.rare?.has(id) ? starCard() : itemCard(SKIN[id], { cls: 'ritem' + (phase2 ? ' rare' : '') }))).join('');
     return strip;
 }
 
@@ -924,9 +1074,8 @@ function idleReel(reel, c) {
     setPos(strip, g.v, g.at(8));
 }
 
-async function spinReel(reel, c, winner, dur, ticking) {
-    if (!reel || !reel.isConnected) { await sleep(dur); return; }
-    const strip = fillReel(reel, c, winner);
+// Przewija pasek do pozycji WIN_AT, z tykaniem przy każdym przedmiocie.
+async function runStrip(reel, strip, dur, ticking) {
     const g = reelGeom(reel, strip);
     strip.style.transition = 'none';
     setPos(strip, g.v, g.at(8));
@@ -934,7 +1083,6 @@ async function spinReel(reel, c, winner, dur, ticking) {
     const jitter = (Math.random() - 0.5) * (g.size - GAP - 20);
     strip.style.transition = `transform ${dur}ms cubic-bezier(.1,.75,.12,1)`;
     setPos(strip, g.v, g.at(WIN_AT) + jitter);
-
     if (ticking && state.settings.sound) {
         let last = -1;
         const end = performance.now() + dur;
@@ -948,7 +1096,42 @@ async function spinReel(reel, c, winner, dur, ticking) {
         requestAnimationFrame(loop);
     }
     await sleep(dur + 60);
-    strip.children[WIN_AT]?.classList.add('hit');
+    return strip.children[WIN_AT];
+}
+
+const STAR_PAUSE = 1300;
+const star2Dur = dur => Math.min(dur, 3400);
+// Całkowity czas kręcenia (z gwiazdką dłużej) — potrzebny, gdy ruletka nie jest widoczna.
+const spinTotal = (c, winner, dur) => dur + 60 + (c.rare?.has(winner) ? STAR_PAUSE + star2Dur(dur) + 60 : 0);
+
+async function spinReel(reel, c, winner, dur, ticking) {
+    const star = c.rare?.has(winner);
+    if (!reel || !reel.isConnected) { await sleep(spinTotal(c, winner, dur)); return; }
+    const hit = await runStrip(reel, fillReel(reel, c, winner), dur, ticking);
+    hit?.classList.add('hit');
+    if (!star) { if (ticking) dropSound(SKIN[winner]); return; }
+    // Gwiazdka! Animacja, specjalny dźwięk, potem druga ruletka z samymi rzadkimi.
+    hit?.classList.add('star-hit');
+    reel.classList.add('star-mode');
+    starSound();
+    starBurst(reel);
+    await sleep(STAR_PAUSE);
+    if (!reel.isConnected) { await sleep(star2Dur(dur) + 60); return; }
+    const hit2 = await runStrip(reel, fillReel(reel, c, winner, true), star2Dur(dur), true);
+    hit2?.classList.add('hit', 'rare-hit');
+    rareSound();
+}
+
+// Rozbłysk złotych gwiazdek nad ruletką.
+function starBurst(reel) {
+    const box = document.createElement('div');
+    box.className = 'star-burst';
+    box.innerHTML = '<div class="sb-glow"></div>' + Array.from({ length: 18 }, (_, k) => {
+        const a = k / 18 * Math.PI * 2, d = 90 + Math.random() * 110;
+        return `<i style="--dx:${(Math.cos(a) * d).toFixed(0)}px;--dy:${(Math.sin(a) * d * 0.6).toFixed(0)}px;animation-delay:${(Math.random() * 0.15).toFixed(2)}s">★</i>`;
+    }).join('') + `<div class="sb-label"><small>RARE ITEM</small><b translate="no">ROWER4SKINS SPECIAL</b></div>`;
+    reel.appendChild(box);
+    setTimeout(() => box.remove(), STAR_PAUSE + 200);
 }
 
 const spinDur = () => (state.settings.fast ? 1500 : 5200);
@@ -1117,7 +1300,7 @@ function renderCase() {
     if (!c) { go('#/'); return null; }
     if (cur !== c) { cur = c; if (c.currency !== 'usd') qty = 1; }
     const lock = lockReason(c);
-    const sorted = [...c.items].sort((a, b) => SKIN[b[0]].price - SKIN[a[0]].price);
+    const sorted = [...c.items].sort((a, b) => a[1] - b[1] || SKIN[b[0]].price - SKIN[a[0]].price);
     return `<div class="case-page" style="--cc:${c.color}">
         <button class="back" data-act="go" data-arg="${c.currency === 'free' ? '#/free' : '#/'}">${ic('back')}Wróć</button>
         <div class="case-top">
@@ -1133,8 +1316,9 @@ function renderCase() {
             <label class="toggle"><input type="checkbox" id="fastOpen" data-ch="fast" ${state.settings.fast ? 'checked' : ''}><span></span>Szybkie otwieranie</label>
         </div>
         ${lock ? `<div class="lock-note">${ic('lock')}<span>${lock}</span></div>` : ''}
+        ${c.rare.size ? `<div class="star-info">${starSvg('sm')}<div><b>Rare item Special</b><span>Przedmioty z gwiazdką to rzadkie dropy (łącznie ${(c.rareTotal / c.total * 100).toFixed(2)}% szans). Na ruletce pokazują się jako złota gwiazdka — gdy się zatrzyma, kręci się druga ruletka tylko z nich.</span></div></div>` : ''}
         <div class="sec-title">${ic('box')}<span>Zawartość skrzynki</span></div>
-        <div class="igrid">${sorted.map(([id]) => { const ch = chanceOf(c, id); return itemCard(SKIN[id], { top: `<span class="chance">${ch.toFixed(ch < 0.01 ? 4 : ch < 0.1 ? 3 : 2)}%</span>` }); }).join('')}</div>
+        <div class="igrid">${sorted.map(([id]) => { const ch = chanceOf(c, id); return itemCard(SKIN[id], { cls: c.rare.has(id) ? 'is-rare' : '', top: `${c.rare.has(id) ? `<span class="rstar" title="Rare item Special">${starSvg()}</span>` : ''}<span class="chance">${ch.toFixed(ch < 0.01 ? 4 : ch < 0.1 ? 3 : 2)}%</span>` }); }).join('')}</div>
     </div>`;
 }
 
@@ -1181,15 +1365,18 @@ async function openCase(demo) {
     const reels = $$('#reels .reel');
     await Promise.all(winners.map((w, i) => spinReel(reels[i], c, w, spinDur(), i === 0)));
     busy = false;
+    const starN = winners.filter(w => c.rare.has(w)).length;
     if (demo) {
         const s = SKIN[winners[0]];
         toast(`Demo: wylosowałbyś ${s.weapon} | ${s.name} (${money(s.price)})`);
+        if (starN) toast('★ Gwiazdka Rower4Skins Special!');
     } else {
         const uids = giveItems(winners, `Skrzynka ${c.name}`);
         state.stats.opened += n;
+        state.stats.stars += starN;
         save();
         winners.forEach(w => pushDrop(w, state.name, true, c.id));
-        showWin(winners, uids, n > 1 ? 'Twoje dropy!' : 'Twój drop!', c.currency !== 'free');
+        showWin(winners, uids, starN ? '★ Rower4Skins Special!' : n > 1 ? 'Twoje dropy!' : 'Twój drop!', c.currency !== 'free', starN > 0);
     }
     updateOpenBar();
     if (!demo && route.name === 'case' && c.currency === 'free') {
@@ -1374,9 +1561,7 @@ function startRun(b) {
     const rolls = b.cases.map(id => b.slots.map(() => rollWith(CASE[id], rnd)));
     const wears = rolls.map(row => row.map(() => wearWith(rnd)));
     const totals = b.slots.map((s, i) => round2(rolls.reduce((sum, row) => sum + SKIN[row[i]].price, 0)));
-    const scores = b.slots.map((s, i) => (b.mode === 'terminal' ? SKIN[rolls[rolls.length - 1][i]].price : totals[i]));
-    const best = b.mode === 'underdog' ? Math.min(...scores) : Math.max(...scores);
-    const tied = scores.map((sc, i) => (sc === best ? i : -1)).filter(i => i >= 0);
+    const tied = modeLeaders(b.mode, rolls.map(row => row.map(cents))).lead;
     const r = {
         b, rolls, wears, winner: tied[Math.floor(rnd() * tied.length)], pot: round2(totals.reduce((a, x) => a + x, 0)),
         res: b.slots.map(() => ({ total: 0, drops: [], wears: [] })), round: -1, phase: 'count', count: 3, done: false,
@@ -1398,7 +1583,8 @@ async function animateRun(key) {
         if (bvOpen(key)) beep(520, 0.08, 0.04, 'triangle');
         await sleep(650);
     }
-    const dur = state.settings.fast ? 1400 : 3000;
+    // W bitwach szybkie otwieranie jest zablokowane — wszyscy oglądają pełną animację.
+    const dur = 3000;
     for (let k = 0; k < b.cases.length; k++) {
         r.round = k; r.phase = 'spin';
         const c = CASE[b.cases[k]];
@@ -1408,7 +1594,7 @@ async function animateRun(key) {
         r.rolls[k].forEach((w, i) => { const x = r.res[i]; x.total = round2(x.total + SKIN[w].price); x.drops.push(w); x.wears.push(r.wears[k][i]); });
         r.phase = 'show';
         bvPatch(key);
-        await sleep(state.settings.fast ? 700 : 1300);
+        await sleep(1300);
     }
     r.phase = 'done'; r.done = true;
     bvPatch(key);
@@ -1416,14 +1602,16 @@ async function animateRun(key) {
     const me = b.slots.findIndex(isMeSlot);
     if (me >= 0) {
         state.stats.battles++;
+        state.stats.stars += r.rolls.filter((row, k) => CASE[b.cases[k]].rare.has(row[me])).length;
         const won = r.winner === me;
         if (won) {
             state.stats.battlesWon++;
+            if (b.mode.startsWith('crazy')) state.stats.crazyWins++;
             const all = r.res.flatMap(x => x.drops), wears = r.res.flatMap(x => x.wears);
             const uids = giveItems(all, 'Wygrana bitwa', wears);
             all.forEach(id => pushDrop(id, state.name, true, b.cases[0]));
             showWin(all, uids, 'Wygrałeś bitwę!');
-        } else if (b.mode === 'normal') {
+        } else if (CONSOLATION.includes(b.mode)) {
             const g = pick(SKINS.filter(sk => sk.rarity === 'consumer')).id;
             giveItems([g], 'Gwarantowany skin z bitwy');
             toast(`Przegrana. Gwarantowany skin: ${SKIN[g].weapon} | ${SKIN[g].name}`);
@@ -1549,9 +1737,9 @@ function refreshOnline() {
 function templates() {
     const near = v => [...USD_CASES].sort((a, b) => Math.abs(a.price - v) - Math.abs(b.price - v))[0];
     return [
-        { players: 4, cases: Array(5).fill(near(1).id) },
-        { players: 3, cases: Array(3).fill(near(5).id) },
-        { players: 2, cases: Array(2).fill(near(25).id) },
+        { players: 4, mode: 'pointrush', cases: Array(5).fill(near(1).id) },
+        { players: 3, mode: 'crazyterminal', cases: Array(3).fill(near(5).id) },
+        { players: 2, mode: 'normal', cases: Array(2).fill(near(25).id) },
     ];
 }
 
@@ -1567,7 +1755,7 @@ function renderBattles() {
         <div class="bhero-art"><img src="${IMG.engwe}" alt="ENGWE EP-2.0 Boost"><span class="vs">VS</span><img src="${IMG.varg}" alt="Stark Varg"></div>
     </div>
     <div id="onlineBox">${onlineHtml()}</div>
-    <div class="page-head">${ic('swords')}<div><h2>BITWY ROWER4SKINS</h2><small>TYLKO PRAWDZIWI GRACZE — BOTY TYLKO NA TWOJE ŻYCZENIE</small></div><span class="r18">18+</span></div>
+    <div class="page-head">${ic('swords')}<div><h2>BITWY ROWER4SKINS</h2><small>TYLKO PRAWDZIWI GRACZE — BOTY NIGDY NIE DOŁĄCZAJĄ SAME, PRZYWOŁUJE JE TYLKO HOST</small></div><span class="r18">18+</span></div>
     <div class="panel bbar">
         <div class="seg big">
             <button class="${bl.tab === 'active' ? 'on' : ''}" data-act="btab" data-arg="active">${ic('swords')}AKTYWNE BITWY</button>
@@ -1582,11 +1770,11 @@ function renderBattles() {
         <button class="btn btn-purple grow-l" data-act="go" data-arg="#/create">${ic('plus')}STWÓRZ BITWĘ</button>
     </div>
     <div class="panel chips">
-        <button class="chip ${bl.mode === 'all' ? 'on' : ''}" data-act="bmode" data-arg="all">WSZYSTKIE</button>
+        <button class="chip all ${bl.mode === 'all' ? 'on' : ''}" data-act="bmode" data-arg="all">WSZYSTKIE</button>
         ${Object.entries(MODES).map(([k, m]) => `<button class="chip ${bl.mode === k ? 'on' : ''}" style="--mc:${m.col}" data-act="bmode" data-arg="${k}">${ic(m.icon)}${m.n.toUpperCase()}</button>`).join('')}
     </div>
     <div class="tpls">${tpl.map((t, i) => `<div class="tpl">
-        <span class="mode-chip" style="--mc:${MODES.normal.col}">${ic('swords')}NORMAL</span>
+        <span class="mode-chip" style="--mc:${MODES[t.mode].col}">${ic(MODES[t.mode].icon)}${MODES[t.mode].n.toUpperCase()}</span>
         <div class="tpl-info"><small>${ic('users')}${t.players} graczy</small><b>${money(round2(t.cases.reduce((s, id) => s + CASE[id].price, 0)))}</b></div>
         <div class="tpl-cases">${groupCases(t.cases).map(g => `<div>${caseArt(CASE[g.id])}${g.n > 1 ? `<span class="bx">x${g.n}</span>` : ''}</div>`).join('')}</div>
         <button class="btn btn-blue" data-act="tpl" data-arg="${i}">${ic('bolt')}STWÓRZ</button>
@@ -1625,7 +1813,7 @@ function renderCreate() {
         <div class="panel cr-card">
             <h4>${ic('info')}Podsumowanie</h4><p>Opłata jest pobierana od razu i wraca, jeśli anulujesz bitwę przed startem.</p>
             <div class="sum-box green">${ic('box')}<div><small>KOSZT SKRZYNEK</small><b>${money(crCost())}</b></div></div>
-            <div class="sum-box purple">${ic('gift')}<div><small>${cr.mode === 'normal' ? 'GWARANTOWANY' : 'RUNDY'}</small><b>${cr.mode === 'normal' ? 'SKIN' : crRounds()}</b></div></div>
+            <div class="sum-box purple">${ic('gift')}<div><small>${CONSOLATION.includes(cr.mode) ? 'GWARANTOWANY' : 'RUNDY'}</small><b>${CONSOLATION.includes(cr.mode) ? 'SKIN' : crRounds()}</b></div></div>
             <button class="btn btn-green btn-block" data-act="crCreate" ${cr.cases.length ? '' : 'disabled'}>STWÓRZ BITWĘ</button>
         </div>
     </div>
@@ -1651,12 +1839,15 @@ function createBattle(mode, players, cases) {
 
 const TAUNTS = ['Haha, Ezz!', 'GG, za łatwo!', 'Kto następny?', 'Skrzynki mnie lubią!'];
 
+function bvScore(r) {
+    if (!r || !r.res.some(x => x.drops.length)) return null;
+    const K = r.res[0].drops.length;
+    return modeLeaders(r.b.mode, Array.from({ length: K }, (_, k) => r.res.map(x => cents(x.drops[k]))));
+}
+
 function bvLeader(r) {
-    if (!r || !r.res.some(x => x.drops.length)) return -1;
-    const b = r.b;
-    const sc = r.res.map(x => (b.mode === 'terminal' ? (x.drops.length ? SKIN[x.drops[x.drops.length - 1]].price : 0) : x.total));
-    const best = b.mode === 'underdog' ? Math.min(...sc) : Math.max(...sc);
-    return sc.indexOf(best);
+    const m = bvScore(r);
+    return m ? m.lead[0] : -1;
 }
 
 function bvStage(b, r, i) {
@@ -1694,8 +1885,9 @@ function bvGrid(b, r, i) {
 }
 
 function bvSum(r, i) {
-    const lead = bvLeader(r), up = lead === i;
-    return `<span class="bv-sum ${lead < 0 ? '' : up ? 'up' : 'down'}">${lead < 0 ? '' : ic('chev', up ? 'flip' : '')}${money(r ? r.res[i].total : 0)}</span>`;
+    const m = bvScore(r), lead = m ? m.lead[0] : -1, up = lead === i;
+    const pts = m?.pts ? `<em class="pts">${m.pts[i]} pkt</em>` : '';
+    return `<span class="bv-sum ${lead < 0 ? '' : up ? 'up' : 'down'}">${lead < 0 ? '' : ic('chev', up ? 'flip' : '')}${money(r ? r.res[i].total : 0)}${pts}</span>`;
 }
 
 function bvMsg(b, r) {
@@ -1732,6 +1924,7 @@ function renderBattleView() {
             <button class="sq" data-act="go" data-arg="#/battles" aria-label="Wróć do bitew">${ic('back')}</button>
             <span class="mode-chip">${ic(m.icon)}${m.n}</span>
             <span class="bv-msg" id="bvMsg">${bvMsg(b, r)}</span>
+            <span class="bv-nofast" title="W bitwach szybkie otwieranie jest wyłączone">${ic('clock')}BEZ SZYBKIEGO OTWIERANIA</span>
             ${waiting && amHost && b.slots.includes(null) ? `<button class="btn btn-purple" data-act="bots">${ic('bolt')}Przywołaj wszystkie boty</button>` : ''}
             ${waiting && (amHost || amSeated) ? `<button class="btn btn-dark" data-act="leaveBattle">${ic('x')}${amHost ? 'Anuluj bitwę' : 'Wyjdź'}</button>` : ''}
             <button class="sq" data-act="toggleSound" aria-label="Dźwięk">${ic(state.settings.sound ? 'sound' : 'x')}</button>
@@ -2070,6 +2263,8 @@ const GAMES = {
     memory: { n: 'Szyfr kłódki', icon: 'lock', d: 'Zapamiętaj kolejność zapalających się pól i powtórz ją bez błędu.' },
     gears: { n: 'Zmiana biegów', icon: 'swap', d: 'Wciskaj strzałki w podanej kolejności. Pomyłka zabiera czas.' },
     ride: { n: 'Zjazd z góry', icon: 'bike', d: 'Omijaj kamienie i dziury, zmieniając pas strzałkami albo przyciskami.' },
+    slalom: { n: 'Slalom G2', icon: 'scooter', d: 'Przejedź G2 przez bramki z pachołków. Trzymaj ◀ / ▶ (albo A / D, strzałki) — hulajnoga ma bezwładność, więc skręcaj wcześniej. Niebieskie plamy to lód: tam prawie nie da się hamować.' },
+    climb: { n: 'Podjazd e-MTB', icon: 'bolt', d: 'Pedałuj na zmianę LEWA / PRAWA (← / → albo A / D) w równym rytmie — kadencja musi być w zielonej strefie. Ta sama noga dwa razy = poślizg łańcucha. TURBO (↑ / W / spacja) mocno pomaga, ale bateria szybko się kończy, a na końcu czeka ściana 36%.' },
     wheelie: { n: 'Wheelie OMEGA', icon: 'skull', d: 'Trzymaj Varga na tylnym kole: GAZ (↑ / W / spacja) podnosi przód, HAMULEC (↓ / S) go opuszcza. Nie dotknij przodem ziemi i nie przewróć się do tyłu. Wiatr i nierówności będą Ci przeszkadzać coraz mocniej.' },
 };
 
@@ -2081,6 +2276,8 @@ function bikeInfo(i) {
 const stars = d => (d >= 7 ? `<span class="stars omega">OMEGA++++</span>` : d >= 6 ? `<span class="stars hc">★★★★★ HARDCORE</span>`
     : `<span class="stars" title="Trudność ${d}/5">${'★'.repeat(d)}<i>${'★'.repeat(5 - d)}</i></span>`);
 const EXTREME = i => bikeInfo(i).d >= 6;
+// Gemy za wpłatę: rosną z trudnością, a dla HARDCORE/OMEGA także z wartością roweru.
+const bikeGems = i => { const { d } = bikeInfo(i), v = BIKES[i][1]; return d * 60 + (d >= 7 ? 2000 : d >= 6 ? Math.round(v * 1.2) : 0); };
 
 function depositModal() {
     const card = (i, premium) => {
@@ -2088,7 +2285,7 @@ function depositModal() {
         const { game, d } = bikeInfo(i);
         return `<button class="bike ${premium ? 'premium' : ''}" data-act="mgIntro" data-arg="${i}" style="--bc:${c}">
             ${premium ? '<span class="bike-tag">PREMIUM</span>' : ''}${img ? `<img src="${img}" alt="${esc(n)}">` : bikeArt(c)}
-            <b>${esc(n)}</b><span class="money">${money(v)}</span><small class="pos">+${money(round2(v * 0.1))} bonus · +${d * 60 + (d >= 7 ? 2000 : d >= 6 ? 600 : 0)} gemów</small>
+            <b>${esc(n)}</b><span class="money">${money(v)}</span><small class="pos">+${money(round2(v * 0.1))} bonus · +${bikeGems(i)} gemów</small>
             <span class="bike-game">${ic(GAMES[game].icon)}${GAMES[game].n} ${stars(d)}</span></button>`;
     };
     const idx = BIKES.map((b, i) => i);
@@ -2105,6 +2302,14 @@ function stopGame() {
     if (MG) { MG.stop(); MG = null; }
 }
 
+// Dopiski o zasadach dla najtrudniejszych rowerów.
+const HC = {
+    ride: 'HARDCORE: aż 50 sekund zjazdu, gęsta mgła, dwa pasy zawsze zablokowane, a pełne tempo (prawie 2×) przychodzi już po pół minuty.',
+    slalom: 'HARDCORE: 45 sekund, bramki coraz węższe i coraz dalej od siebie, lód od 12. sekundy. Wolno ominąć tylko jedną bramkę.',
+    climb: 'HARDCORE: 560 m pod górę w 57 sekund. Bez oszczędzania baterii na końcową ścianę nie ma szans.',
+    wheelie: 'OMEGA++++: 35 sekund, wąska strefa 22–38°, silnik reaguje z opóźnieniem, a trzeba spędzić w strefie co najmniej 75% czasu. Powodzenia.',
+};
+
 function mgIntro(i) {
     stopGame();
     const [n, v] = BIKES[i];
@@ -2112,7 +2317,7 @@ function mgIntro(i) {
     const g = GAMES[game];
     modal(`<div class="mg">
         <div class="mg-head">${ic(g.icon, 'big')}<div><small>WPŁATA: ${esc(n)} · ${money(round2(v * 1.1))}</small><h2>${g.n}</h2></div>${stars(d)}</div>
-        <p class="mg-rules">${g.d}${d === 6 ? ' <b class="neg">HARDCORE: 35 sekund, mgła, dwa pasy zawsze zablokowane, a tempo rośnie prawie dwukrotnie.</b>' : ''}${d >= 7 ? ' <b class="neg">OMEGA++++: 35 sekund, wąska strefa 22–38°, silnik reaguje z opóźnieniem, a trzeba spędzić w strefie co najmniej 75% czasu. Powodzenia.</b>' : ''}</p>
+        <p class="mg-rules">${g.d}${d >= 6 && HC[game] ? ` <b class="neg">${HC[game]}</b>` : ''}</p>
         <div class="mg-stage" id="mgStage"><button class="btn btn-green btn-xl" data-act="mgStart" data-arg="${i}">${ic('bolt')}START</button></div>
         <div class="mrow"><button class="btn btn-dark" data-act="depositModal">${ic('back')}Inny rower</button></div>
     </div>`, 'wide game');
@@ -2125,7 +2330,7 @@ function mgEnd(i, won, msg) {
     const stage = $('#mgStage');
     if (!stage) return;
     if (won) {
-        const total = round2(v * 1.1), gems = d * 60 + (d >= 7 ? 2000 : d >= 6 ? 600 : 0);
+        const total = round2(v * 1.1), gems = bikeGems(i);
         wallet(total, `Wpłata: ${n}`);
         state.gems += gems;
         save();
@@ -2319,8 +2524,8 @@ const GAME_RUN = {
                 cx.drawImage(img, -bw * 0.17, -bh * 0.985, bw, bh); cx.restore();
             }
             cx.font = '800 14px Saira, sans-serif';
-            if (Math.abs(gust) > 8) { cx.fillStyle = 'rgba(147,197,253,.8)'; cx.fillText(gust > 0 ? 'PODMUCH ↑' : 'PODMUCH ↓', W - 120, 24); }
-            if (mudT > 0) { cx.fillStyle = 'rgba(161,98,7,.9)'; cx.fillText('BŁOTO — silnik muli!', 12, 24); cx.fillStyle = 'rgba(120,72,20,.55)'; cx.fillRect(0, gy + 24, W, 12); }
+            if (Math.abs(gust) > 8) { cx.fillStyle = 'rgba(147,197,253,.8)'; cx.fillText(tr(gust > 0 ? 'PODMUCH ↑' : 'PODMUCH ↓'), W - 120, 24); }
+            if (mudT > 0) { cx.fillStyle = 'rgba(161,98,7,.9)'; cx.fillText(tr('BŁOTO — silnik muli!'), 12, 24); cx.fillStyle = 'rgba(120,72,20,.55)'; cx.fillRect(0, gy + 24, W, 12); }
         };
         const loop = now => {
             if (dead) return;
@@ -2377,9 +2582,9 @@ const GAME_RUN = {
 
     ride(i, d, stage) {
         const extreme = d >= 5, hard = d >= 6;
-        const survive = (hard ? 35 : extreme ? 24 : 8 + d * 2) * 1000, speed = hard ? 360 : extreme ? 330 : 220 + d * 55, spawn = extreme ? 400 : 900 - d * 110;
-        // Tempo rośnie do 1,6× (5 gwiazdek) albo 1,9× (HARDCORE) pod koniec zjazdu.
-        const boost = t => (extreme ? 1 + (hard ? 0.9 : 0.6) * Math.min(1, t / survive) : 1);
+        const survive = (hard ? 50 : extreme ? 24 : 8 + d * 2) * 1000, speed = hard ? 370 : extreme ? 330 : 220 + d * 55, spawn = extreme ? 400 : 900 - d * 110;
+        // Tempo rośnie do 1,6× (5 gwiazdek) pod koniec zjazdu, a w HARDCORE do 1,9× już po 30 s — i tak zostaje do końca.
+        const boost = t => (extreme ? 1 + (hard ? 0.9 : 0.6) * Math.min(1, t / (hard ? 30000 : survive)) : 1);
         stage.innerHTML = `<div class="mg-time"><div id="mgTime" class="fill"></div></div>
             <canvas id="rideCv" width="360" height="420" class="ride"></canvas>
             <div class="garrows two"><button class="btn btn-dark" data-act="mgLane" data-arg="-1">◀</button><button class="btn btn-dark" data-act="mgLane" data-arg="1">▶</button></div>`;
@@ -2406,9 +2611,9 @@ const GAME_RUN = {
             cx.strokeStyle = '#a54ef2'; cx.beginPath(); cx.moveTo(px - 16, y - 18); cx.lineTo(px + 16, y - 18); cx.stroke();
             if (hard) {
                 // mgła: przeszkody widać dopiero w dolnej części trasy
-                const g = cx.createLinearGradient(0, 0, 0, H * 0.62);
-                g.addColorStop(0, 'rgba(12,15,24,1)'); g.addColorStop(0.7, 'rgba(12,15,24,.92)'); g.addColorStop(1, 'rgba(12,15,24,0)');
-                cx.fillStyle = g; cx.fillRect(0, 0, W, H * 0.62);
+                const g = cx.createLinearGradient(0, 0, 0, H * 0.64);
+                g.addColorStop(0, 'rgba(12,15,24,1)'); g.addColorStop(0.7, 'rgba(12,15,24,.93)'); g.addColorStop(1, 'rgba(12,15,24,0)');
+                cx.fillStyle = g; cx.fillRect(0, 0, W, H * 0.64);
             }
         };
         const loop = now => {
@@ -2445,6 +2650,230 @@ const GAME_RUN = {
         const move = dir => { lane = Math.max(0, Math.min(2, lane + Number(dir))); };
         cv.addEventListener('pointerdown', e => { const r = cv.getBoundingClientRect(); move(e.clientX - r.left < r.width / 2 ? -1 : 1); });
         return { stop: () => { dead = true; cancelAnimationFrame(raf); }, lane: move, key: e => { if (e.key === 'ArrowLeft' || e.key === 'a') { e.preventDefault(); move(-1); } if (e.key === 'ArrowRight' || e.key === 'd') { e.preventDefault(); move(1); } } };
+    },
+
+    // Kukirin G2: slalom między pachołkami, sterowanie z bezwładnością.
+    slalom(i, d, stage) {
+        const survive = 45000, MISS_OK = 1, W = 360, H = 440, SY = H - 84, GATE_D = 190, ACC = 1000, FR = 4.6;
+        stage.innerHTML = `<div class="mg-time"><div id="mgTime" class="fill"></div></div>
+            <div class="mg-info"><span>Bramki: <b id="slOk">0</b></span><span>Pudła: <b id="slMiss">0</b> / ${MISS_OK}</span></div>
+            <canvas id="slCv" width="${W}" height="${H}" class="ride"></canvas>
+            <div class="garrows two"><button class="btn btn-dark hold" data-hold="-1">◀ LEWO</button><button class="btn btn-dark hold" data-hold="1">PRAWO ▶</button></div>`;
+        const cv = $('#slCv'), cx = cv.getContext('2d');
+        let x = W / 2, vx = 0, input = 0, keys = new Set(), last = performance.now(), t0 = last, raf = 0, dead = false;
+        let gates = [], ice = [], travel = 0, nextGate = 120, prevCx = W / 2, ok = 0, miss = 0, flash = 0, flashCol = '', onIce = 0;
+        const setInput = () => { input = (keys.has('r') ? 1 : 0) - (keys.has('l') ? 1 : 0); };
+        $$('[data-hold]', stage).forEach(b => {
+            const k = b.dataset.hold === '1' ? 'r' : 'l';
+            const on = e => { e.preventDefault(); keys.add(k); setInput(); b.classList.add('on'); };
+            const off = () => { keys.delete(k); setInput(); b.classList.remove('on'); };
+            b.addEventListener('pointerdown', on); b.addEventListener('pointerup', off); b.addEventListener('pointerleave', off); b.addEventListener('pointercancel', off);
+        });
+        const cone = (cxp, cy) => {
+            cx.fillStyle = '#f97316'; cx.beginPath(); cx.moveTo(cxp, cy - 16); cx.lineTo(cxp + 9, cy + 8); cx.lineTo(cxp - 9, cy + 8); cx.closePath(); cx.fill();
+            cx.fillStyle = '#fff'; cx.fillRect(cxp - 5.5, cy - 4, 11, 4);
+            cx.fillStyle = '#7c2d12'; cx.fillRect(cxp - 12, cy + 8, 24, 4);
+        };
+        const draw = now => {
+            cx.fillStyle = '#20242e'; cx.fillRect(0, 0, W, H);
+            cx.fillStyle = '#394150'; cx.fillRect(0, 0, 10, H); cx.fillRect(W - 10, 0, 10, H);
+            cx.strokeStyle = 'rgba(255,255,255,.12)'; cx.setLineDash([22, 18]); cx.lineWidth = 3; cx.lineDashOffset = -travel % 40;
+            cx.beginPath(); cx.moveTo(W / 2, 0); cx.lineTo(W / 2, H); cx.stroke(); cx.setLineDash([]);
+            for (const p of ice) { cx.fillStyle = 'rgba(125,211,252,.28)'; cx.beginPath(); cx.ellipse(p.x, p.y, p.r, p.r * 0.55, 0, 0, 7); cx.fill(); }
+            for (const g of gates) {
+                if (!g.done) { cx.strokeStyle = 'rgba(255,196,31,.35)'; cx.setLineDash([6, 6]); cx.lineWidth = 2; cx.beginPath(); cx.moveTo(g.cx - g.gap / 2, g.y); cx.lineTo(g.cx + g.gap / 2, g.y); cx.stroke(); cx.setLineDash([]); }
+                cone(g.cx - g.gap / 2, g.y); cone(g.cx + g.gap / 2, g.y);
+            }
+            // hulajnoga z góry, przechyla się przy skręcie
+            cx.save(); cx.translate(x, SY); cx.rotate(vx / 900);
+            cx.fillStyle = '#111'; cx.fillRect(-5, -34, 10, 14); cx.fillRect(-5, 22, 10, 14);
+            cx.fillStyle = '#6b7280'; cx.fillRect(-9, -22, 18, 46);
+            cx.fillStyle = '#f97316'; cx.fillRect(-9, -2, 18, 5);
+            cx.strokeStyle = '#d1d5db'; cx.lineWidth = 4; cx.lineCap = 'round'; cx.beginPath(); cx.moveTo(-18, -30); cx.lineTo(18, -30); cx.stroke();
+            cx.fillStyle = '#a54ef2'; cx.beginPath(); cx.arc(0, -6, 9, 0, 7); cx.fill();
+            cx.restore();
+            if (onIce > 0) { cx.font = '800 14px Saira, sans-serif'; cx.fillStyle = 'rgba(125,211,252,.95)'; cx.fillText(tr('LÓD!'), 16, 26); }
+            if (flash > 0) { cx.fillStyle = flashCol; cx.globalAlpha = Math.min(0.35, flash); cx.fillRect(0, 0, W, H); cx.globalAlpha = 1; }
+        };
+        const loop = now => {
+            if (dead) return;
+            const dt = Math.min(0.033, (now - last) / 1000);
+            last = now;
+            const t = now - t0, p = Math.min(1, t / (survive * 0.75));
+            const speed = 250 * (1 + 0.8 * p);
+            travel += speed * dt;
+            nextGate -= speed * dt;
+            if (nextGate <= 0) {
+                const gap = Math.max(80, 126 - 48 * p);
+                // Przesunięcie bramki nie większe, niż hulajnoga zdąży przejechać w bok (zawsze da się przejechać).
+                const T = GATE_D / speed, reach = ACC / FR * (T - (1 - Math.exp(-T * FR)) / FR);
+                const span = Math.min(90 + 75 * p, 0.85 * reach + gap / 2 - 14);
+                const lo = 24 + gap / 2, hi = W - 24 - gap / 2;
+                const c = Math.max(lo, Math.min(hi, prevCx + (Math.random() * 2 - 1) * span));
+                gates.push({ y: -20, cx: c, gap, done: false });
+                prevCx = c;
+                nextGate = GATE_D;
+                if (t > 12000 && Math.random() < 0.45) ice.push({ x: 40 + Math.random() * (W - 80), y: -60 - Math.random() * 60, r: 46 + Math.random() * 30 });
+            }
+            onIce = ice.some(q => Math.abs(q.x - x) < q.r && Math.abs(q.y - SY) < q.r * 0.55) ? 0.5 : Math.max(0, onIce - dt);
+            const acc = onIce > 0 ? 650 : ACC, fr = onIce > 0 ? 1.6 : FR;
+            vx += (input * acc - vx * fr) * dt;
+            x += vx * dt;
+            if (x < 22) { x = 22; vx = Math.abs(vx) * 0.3; }
+            if (x > W - 22) { x = W - 22; vx = -Math.abs(vx) * 0.3; }
+            for (const g of gates) {
+                const py = g.y;
+                g.y += speed * dt;
+                for (const q of [g.cx - g.gap / 2, g.cx + g.gap / 2]) {
+                    if (!g.hit && Math.abs(q - x) < 17 && Math.abs(g.y - SY) < 14) { g.hit = true; }
+                }
+                if (!g.done && py < SY && g.y >= SY) {
+                    g.done = true;
+                    const inside = Math.abs(x - g.cx) < g.gap / 2 - 12;
+                    if (inside && !g.hit) { ok++; beep(880 + Math.min(ok, 30) * 12, 0.05, 0.035, 'triangle'); flash = 0.25; flashCol = '#45d15b'; }
+                    else { miss++; beep(170, 0.2, 0.05, 'sawtooth'); flash = 0.5; flashCol = '#ff4d5e'; }
+                }
+            }
+            for (const q of ice) q.y += speed * dt;
+            gates = gates.filter(g => g.y < H + 30);
+            ice = ice.filter(q => q.y < H + 100);
+            flash = Math.max(0, flash - dt * 1.5);
+            draw(now);
+            $('#slOk').textContent = ok;
+            $('#slMiss').textContent = miss;
+            const bar = $('#mgTime');
+            if (bar) bar.style.width = Math.min(100, t / survive * 100) + '%';
+            if (miss > MISS_OK) { dead = true; mgEnd(i, false, `Za dużo ominiętych bramek (${miss}). Kukirin wraca do sklepu.`); return; }
+            if (t >= survive) { dead = true; mgEnd(i, true, `Slalom ukończony: ${ok} bramek, ${miss} pudło.`); return; }
+            raf = requestAnimationFrame(loop);
+        };
+        raf = requestAnimationFrame(loop);
+        const map = { ArrowLeft: 'l', a: 'l', A: 'l', ArrowRight: 'r', d: 'r', D: 'r' };
+        return {
+            stop: () => { dead = true; cancelAnimationFrame(raf); },
+            key: e => { const k = map[e.key]; if (k) { e.preventDefault(); keys.add(k); setInput(); } },
+            keyup: e => { const k = map[e.key]; if (k) { keys.delete(k); setInput(); } },
+            peek: () => ({ x, vx, gates: gates.filter(g => !g.done).map(g => ({ y: g.y, cx: g.cx, gap: g.gap })), ice: onIce > 0 }),
+            hold: u => { input = u; },
+        };
+    },
+
+    // Electrix KMA: podjazd na e-MTB — kadencja, bateria i ściana na końcu.
+    climb(i, d, stage) {
+        const LIMIT = 57000, LEN = 560, W = 420, H = 300;
+        const PROF = [[0, 0.04], [80, 0.12], [170, 0.06], [230, 0.18], [330, 0.08], [390, 0.24], [490, 0.36], [560, 0.36]];
+        const slope = m => {
+            for (let k = 1; k < PROF.length; k++) {
+                const [a, sa] = PROF[k - 1], [b, sb] = PROF[k];
+                if (m <= b) return sa + (sb - sa) * (m - a) / (b - a);
+            }
+            return PROF[PROF.length - 1][1];
+        };
+        // wysokość terenu (do rysowania) — całka ze spadku
+        const hAt = [];
+        for (let m = 0, h = 0; m <= LEN + 200; m += 2) { hAt.push(h); h += slope(m) * 2; }
+        const heightAt = m => hAt[Math.max(0, Math.min(hAt.length - 1, Math.round(m / 2)))];
+        const img = new Image();
+        img.src = IMG.kma;
+        stage.innerHTML = `<div class="mg-time"><div id="mgTime" class="fill"></div></div>
+            <div class="mg-info"><span>Dystans: <b id="clDist">0</b> / ${LEN} m</span><span>Nachylenie: <b id="clSlope">4%</b></span><span>Bateria: <b id="clBat">100%</b></span></div>
+            <canvas id="clCv" width="${W}" height="${H}" class="ride wheelie"></canvas>
+            <div class="garrows three"><button class="btn btn-dark" data-pedal="l">◀ LEWA</button><button class="btn btn-purple hold" data-turbo="1">⚡ TURBO</button><button class="btn btn-dark" data-pedal="r">PRAWA ▶</button></div>`;
+        const cv = $('#clCv'), cx = cv.getContext('2d');
+        let pos = 0, v = 0, rate = 0, lastTap = 0, lastSide = '', bat = 100, turbo = false, stall = 0, slip = 0;
+        let last = performance.now(), t0 = last, raf = 0, dead = false;
+        const tap = side => {
+            const now = performance.now();
+            if (side === lastSide) { rate *= 0.45; slip = 0.8; beep(140, 0.08, 0.04, 'sawtooth'); }
+            else {
+                const inst = lastTap ? 1000 / Math.max(90, now - lastTap) : 2;
+                rate = rate * 0.55 + inst * 0.45;
+                beep(side === 'l' ? 330 : 392, 0.03, 0.02, 'triangle');
+            }
+            lastSide = side; lastTap = now;
+        };
+        $$('[data-pedal]', stage).forEach(b => b.addEventListener('pointerdown', e => { e.preventDefault(); tap(b.dataset.pedal); b.classList.add('on'); setTimeout(() => b.classList.remove('on'), 90); }));
+        const tb = $('[data-turbo]', stage);
+        const tOn = e => { e.preventDefault(); turbo = true; tb.classList.add('on'); }, tOff = () => { turbo = false; tb.classList.remove('on'); };
+        tb.addEventListener('pointerdown', tOn); tb.addEventListener('pointerup', tOff); tb.addEventListener('pointerleave', tOff); tb.addEventListener('pointercancel', tOff);
+        const rpmNow = now => {
+            const since = now - lastTap;
+            // bez kolejnego naciśnięcia kadencja szybko spada
+            return (since > 350 ? rate * Math.max(0, 1 - (since - 350) / 700) : rate) * 20;
+        };
+        const draw = (now, rpm) => {
+            cx.fillStyle = '#141a28'; cx.fillRect(0, 0, W, H);
+            // teren: 1 m = 3 px, rowerzysta na x=120
+            const S = 3, bx = 120, base = H - 70, h0 = heightAt(pos);
+            cx.beginPath(); cx.moveTo(0, H);
+            for (let px = 0; px <= W; px += 4) { const m = pos + (px - bx) / S; cx.lineTo(px, base - (heightAt(Math.max(0, m)) - h0) * S); }
+            cx.lineTo(W, H); cx.closePath();
+            cx.fillStyle = '#2a3348'; cx.fill();
+            cx.strokeStyle = '#4ade80'; cx.lineWidth = 3; cx.stroke();
+            // meta
+            const fx = bx + (LEN - pos) * S;
+            if (fx < W + 10) { const fy = base - (heightAt(LEN) - h0) * S; cx.fillStyle = '#fff'; cx.fillRect(fx, fy - 46, 3, 46); cx.fillStyle = '#ffc41f'; cx.fillRect(fx + 3, fy - 46, 22, 14); }
+            // rower
+            if (img.complete && img.naturalWidth) {
+                const ang = Math.atan(slope(pos)), bw = 110, bh = bw * img.naturalHeight / img.naturalWidth;
+                cx.save(); cx.translate(bx, base); cx.rotate(-ang); cx.drawImage(img, -bw / 2, -bh + 4, bw, bh); cx.restore();
+            }
+            // kadencja
+            const gx = 16, gy = 16, gw = 180, gh = 14, max = 140;
+            cx.fillStyle = 'rgba(255,255,255,.08)'; cx.fillRect(gx, gy, gw, gh);
+            cx.fillStyle = 'rgba(69,209,91,.45)'; cx.fillRect(gx + gw * 60 / max, gy, gw * 40 / max, gh);
+            cx.fillStyle = rpm >= 60 && rpm <= 100 ? '#45d15b' : '#ff4d5e';
+            cx.fillRect(gx + Math.min(gw, gw * rpm / max) - 2, gy - 3, 4, gh + 6);
+            cx.font = '800 12px Saira, sans-serif'; cx.fillStyle = '#cbd5e1'; cx.fillText(`${tr('KADENCJA')} ${Math.round(rpm)} rpm`, gx, gy + gh + 14);
+            // bateria
+            const bxp = W - 110, byp = 14;
+            cx.strokeStyle = '#cbd5e1'; cx.lineWidth = 2; cx.strokeRect(bxp, byp, 80, 20); cx.fillStyle = '#cbd5e1'; cx.fillRect(bxp + 80, byp + 6, 4, 8);
+            cx.fillStyle = bat > 30 ? '#45d15b' : bat > 12 ? '#ffc41f' : '#ff4d5e'; cx.fillRect(bxp + 2, byp + 2, 76 * bat / 100, 16);
+            if (turbo && bat > 0) { cx.fillStyle = '#c084fc'; cx.fillText('⚡ TURBO', bxp, byp + 36); }
+            if (slip > 0) { cx.fillStyle = '#ff4d5e'; cx.fillText(tr('POŚLIZG ŁAŃCUCHA!'), gx, gy + 48); }
+            if (stall > 0.2) { cx.fillStyle = '#ff4d5e'; cx.font = '900 18px Saira, sans-serif'; cx.textAlign = 'center'; cx.fillText(tr('STAJESZ!'), W / 2, H / 2 - 40); cx.textAlign = 'left'; }
+        };
+        const loop = now => {
+            if (dead) return;
+            // Limit czasu liczy się w prawdziwych sekundach, więc fizykę liczymy w małych krokach
+            // (na wolnym telefonie gra nie zwalnia).
+            const dtAll = Math.min(0.25, (now - last) / 1000);
+            last = now;
+            const t = now - t0;
+            const rpm = rpmNow(now);
+            const eff = rpm < 60 ? rpm / 60 * 0.75 : rpm <= 100 ? 1 : Math.max(0.25, 1 - (rpm - 100) / 50);
+            for (let left = dtAll; left > 0; left -= 0.02) {
+                const dt = Math.min(0.02, left);
+                const boost = turbo && bat > 0;
+                if (boost) bat = Math.max(0, bat - 9 * dt);
+                const F = 4.6 * eff * (boost ? 1.8 : 1);
+                v = Math.max(0, v + (F - (slope(pos) * 12.74 + 0.4 + 0.02 * v * v)) * dt);
+                pos += v * dt;
+                slip = Math.max(0, slip - dt);
+                if (v < 0.4 && t > 2500) stall += dt; else stall = 0;
+            }
+            const sl = slope(pos);
+            draw(now, rpm);
+            $('#clDist').textContent = Math.min(LEN, Math.floor(pos));
+            $('#clSlope').textContent = Math.round(sl * 100) + '%';
+            $('#clBat').textContent = Math.ceil(bat) + '%';
+            const bar = $('#mgTime');
+            if (bar) bar.style.width = Math.min(100, t / LIMIT * 100) + '%';
+            if (pos >= LEN) { dead = true; mgEnd(i, true, `Podjazd zdobyty w ${(t / 1000).toFixed(1)} s, zostało ${Math.ceil(bat)}% baterii.`); return; }
+            if (stall > 1.2) { dead = true; mgEnd(i, false, `Stanąłeś na ${Math.round(sl * 100)}% nachylenia (${Math.floor(pos)} m). ${bat <= 0 ? 'Bateria pusta.' : 'Trzeba było użyć turbo.'}`); return; }
+            if (t >= LIMIT) { dead = true; mgEnd(i, false, `Czas minął na ${Math.floor(pos)} m z ${LEN}. Szybciej i równiej!`); return; }
+            raf = requestAnimationFrame(loop);
+        };
+        img.onload = () => draw(performance.now(), 0);
+        raf = requestAnimationFrame(loop);
+        const pedal = { ArrowLeft: 'l', a: 'l', A: 'l', ArrowRight: 'r', d: 'r', D: 'r' }, tk = { ArrowUp: 1, w: 1, W: 1, ' ': 1 };
+        return {
+            stop: () => { dead = true; cancelAnimationFrame(raf); },
+            key: e => { if (pedal[e.key]) { e.preventDefault(); if (!e.repeat) tap(pedal[e.key]); } else if (tk[e.key]) { e.preventDefault(); turbo = true; } },
+            keyup: e => { if (tk[e.key]) turbo = false; },
+            peek: () => ({ pos, v, bat, slope: slope(pos) }),
+            tap, setTurbo: on => { turbo = on; },
+        };
     },
 };
 
@@ -2594,7 +3023,7 @@ const ACT = {
     toggleSound: () => { state.settings.sound = !state.settings.sound; save(); if (route.name === 'battle' && !RUN.get(route.arg)) renderPage(); toast(state.settings.sound ? 'Dźwięk włączony' : 'Dźwięk wyłączony'); },
     tpl: i => {
         const t = templates()[Number(i)];
-        createBattle('normal', t.players, t.cases);
+        createBattle(t.mode, t.players, t.cases);
     },
     crAddModal: () => {
         modal(`<h2 class="mtitle">${ic('plus')}Dodaj skrzynkę</h2>
