@@ -3215,3 +3215,18 @@ canvas.bosscv { max-width: 480px; aspect-ratio: 480 / 340; }
 .bet-row input { width: 0; flex: 1 1 0; }
 
 .bet-row button { flex: 0 0 auto; padding: 0 10px; }
+
+/* wybór skrzynek do bitwy */
+.cr-pick-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 6px 0 12px; }
+
+.cr-pick-bar .search { flex: 1 1 200px; }
+
+.cr-pick-info { margin-left: auto; color: var(--muted); font-size: 13px; }
+
+.cr-pick-info b { color: var(--text); }
+
+#crPickGrid { max-height: 58vh; overflow-y: auto; padding: 4px; }
+
+#crPickGrid .ccard.picked { outline: 2px solid var(--yellow); outline-offset: -2px; }
+
+#crPickGrid .cr-n { position: absolute; top: 8px; right: 8px; z-index: 3; padding: 2px 8px; border-radius: 999px; background: var(--yellow); color: #111; font-weight: 900; font-size: 12px; }

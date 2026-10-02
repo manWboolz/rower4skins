@@ -1701,7 +1701,7 @@ function parseBattle(raw, host) {
     const { id, mode, players, cases, slots, status, seed, t } = raw;
     if (typeof id !== 'string' || !/^[a-z0-9]{1,12}$/.test(id)) return null;
     if (!MODES[mode] || ![2, 3, 4].includes(players)) return null;
-    if (!Array.isArray(cases) || !cases.length || cases.length > 20 || !cases.every(c => typeof c === 'string' && CASE[c]?.currency === 'usd')) return null;
+    if (!Array.isArray(cases) || !cases.length || cases.length > MAX_ROUNDS || !cases.every(c => typeof c === 'string' && CASE[c]?.currency === 'usd')) return null;
     if (!Array.isArray(slots) || slots.length !== players) return null;
     if (!['waiting', 'running'].includes(status) || !Number.isSafeInteger(seed)) return null;
     const b = {
@@ -2075,7 +2075,28 @@ function renderBattles() {
     <div id="blist" class="blist">${battleListHtml()}</div>`;
 }
 
+const MAX_ROUNDS = 50;
 const cr = { cases: [], players: 2, mode: 'normal' };
+// Wybór skrzynek do bitwy: sortowanie, szukanie, kategoria.
+const crPick = { sort: 'pa', q: '', sec: 'all' };
+function crPickGrid() {
+    const q = crPick.q.trim().toLowerCase();
+    let list = USD_CASES.filter(c => (crPick.sec === 'all' || c.sec === crPick.sec) && (!q || c.name.toLowerCase().includes(q)));
+    const by = { pa: (a, b) => a.price - b.price, pd: (a, b) => b.price - a.price, az: (a, b) => a.name.localeCompare(b.name, 'pl'), ev: (a, b) => b.ev / b.price - a.ev / a.price }[crPick.sort];
+    list = [...list].sort(by);
+    if (!list.length) return `<div class="empty small">${ic('search')}<p>Brak skrzynek dla tego filtra.</p></div>`;
+    return list.map(c => {
+        const n = cr.cases.find(x => x.id === c.id)?.n || 0;
+        return `<div class="ccard ${n ? 'picked' : ''}" data-act="crAdd" data-arg="${c.id}" style="--cc:${c.color}">
+            ${n ? `<span class="cr-n">x${n}</span>` : ''}
+            <div class="cart">${caseArt(c)}</div><div class="cfoot"><span class="cname">${esc(c.name)}</span><span class="cprice">${money(c.price)}</span></div></div>`;
+    }).join('');
+}
+const crPickInfo = () => `Rundy: <b>${crRounds()}</b> / ${MAX_ROUNDS} · koszt <b>${money(crCost())}</b>`;
+function crPickRefresh() {
+    const g = $('#crPickGrid'); if (g) g.innerHTML = crPickGrid();
+    const i = $('#crPickInfo'); if (i) i.innerHTML = crPickInfo();
+}
 const crCost = () => round2(cr.cases.reduce((s, x) => s + CASE[x.id].price * x.n, 0));
 const crRounds = () => cr.cases.reduce((s, x) => s + x.n, 0);
 
@@ -2250,6 +2271,7 @@ function bvPatch(key) {
     $$('.bv-case', root).forEach((el, i) => {
         el.classList.toggle('cur', i === r.round && !r.done);
         el.classList.toggle('done', i < r.round || r.done);
+        if (i === r.round && !r.done) { const st = el.parentElement; st.scrollTo({ left: el.offsetLeft - st.clientWidth / 2 + el.clientWidth / 2, behavior: 'smooth' }); }
     });
     $$('.bv-col', root).forEach((el, i) => {
         $('.bv-stage', el).innerHTML = bvStage(b, r, i);
@@ -4337,7 +4359,7 @@ function refreshAfterInv() {
 }
 
 // Akcje, po których okno modalne ma zostać otwarte (np. kolejne dodawanie skrzynek).
-const KEEP_MODAL = ['modalclose', 'winsell', 'crAdd', 'mgIntro', 'mgStart', 'bossStart', 'mgTap', 'mgPad', 'mgArrow', 'mgLane', 'depositModal'];
+const KEEP_MODAL = ['modalclose', 'winsell', 'crAdd', 'crClear', 'mgIntro', 'mgStart', 'bossStart', 'mgTap', 'mgPad', 'mgArrow', 'mgLane', 'depositModal'];
 
 const ACT = {
     go: arg => go(arg),
@@ -4425,22 +4447,38 @@ const ACT = {
         createBattle(t.mode, t.players, t.cases);
     },
     crAddModal: () => {
+        const secs = [...new Set(USD_CASES.map(c => c.sec))].map(id => SECTIONS.find(x => x.id === id)).filter(Boolean);
         modal(`<h2 class="mtitle">${ic('plus')}Dodaj skrzynkę</h2>
-            <p class="muted center">Kliknij skrzynkę, żeby dodać rundę. Maksymalnie 20 rund.</p>
-            <div class="cgrid sm">${[...USD_CASES].sort((a, b) => a.price - b.price).map(c => `<div class="ccard" data-act="crAdd" data-arg="${c.id}" style="--cc:${c.color}">
-                <div class="cart">${caseArt(c)}</div><div class="cfoot"><span class="cname">${esc(c.name)}</span><span class="cprice">${money(c.price)}</span></div></div>`).join('')}</div>
-            <div class="mrow"><button class="btn btn-green" data-act="modalclose">Gotowe</button></div>`, 'wide');
+            <p class="muted center">Kliknij skrzynkę, żeby dodać rundę (każde kliknięcie = +1). Maksymalnie ${MAX_ROUNDS} rund.</p>
+            <div class="cr-pick-bar">
+                <label class="search">${ic('search')}<input id="crPickQ" data-in="crq" placeholder="Nazwa skrzynki" value="${esc(crPick.q)}"></label>
+                <div class="select"><select data-ch="crsort" aria-label="Sortowanie">
+                    <option value="pa" ${crPick.sort === 'pa' ? 'selected' : ''}>Cena rosnąco</option>
+                    <option value="pd" ${crPick.sort === 'pd' ? 'selected' : ''}>Cena malejąco</option>
+                    <option value="az" ${crPick.sort === 'az' ? 'selected' : ''}>Nazwa A–Z</option>
+                    <option value="ev" ${crPick.sort === 'ev' ? 'selected' : ''}>Najlepszy zwrot</option>
+                </select>${ic('chev')}</div>
+                <div class="select"><select data-ch="crsec" aria-label="Kategoria">
+                    <option value="all">Wszystkie kategorie</option>
+                    ${secs.map(x => `<option value="${x.id}" ${crPick.sec === x.id ? 'selected' : ''}>${esc(x.title)}</option>`).join('')}
+                </select>${ic('chev')}</div>
+                <span class="cr-pick-info" id="crPickInfo">${crPickInfo()}</span>
+            </div>
+            <div class="cgrid sm" id="crPickGrid">${crPickGrid()}</div>
+            <div class="mrow"><button class="btn btn-dark" data-act="crClear">${ic('x')}Wyczyść</button><button class="btn btn-green" data-act="modalclose">Gotowe</button></div>`, 'wide');
     },
     crAdd: id => {
-        if (crRounds() >= 20) { toast('Maksymalnie 20 rund.', 'err'); return; }
+        if (crRounds() >= MAX_ROUNDS) { toast(`Maksymalnie ${MAX_ROUNDS} rund.`, 'err'); return; }
         const x = cr.cases.find(y => y.id === id);
         if (x) x.n++;
         else cr.cases.push({ id, n: 1 });
-        toast(`Dodano: ${CASE[id].name} (rund: ${crRounds()})`);
+        beep(700 + Math.min(crRounds(), 50) * 8, 0.04, 0.03, 'triangle');
         renderPage();
+        crPickRefresh();
     },
+    crClear: () => { cr.cases = []; renderPage(); crPickRefresh(); },
     crRm: i => { cr.cases.splice(Number(i), 1); renderPage(); },
-    crInc: i => { if (crRounds() >= 20) { toast('Maksymalnie 20 rund.', 'err'); return; } cr.cases[Number(i)].n++; renderPage(); },
+    crInc: i => { if (crRounds() >= MAX_ROUNDS) { toast(`Maksymalnie ${MAX_ROUNDS} rund.`, 'err'); return; } cr.cases[Number(i)].n++; renderPage(); },
     crDec: i => { const x = cr.cases[Number(i)]; x.n--; if (!x.n) cr.cases.splice(Number(i), 1); renderPage(); },
     crPlayers: n => { cr.players = Number(n); renderPage(); },
     crMode: m => { cr.mode = m; renderPage(); },
@@ -4619,6 +4657,8 @@ document.addEventListener('click', e => {
 });
 
 const CH = {
+    crsort: t => { crPick.sort = t.value; crPickRefresh(); },
+    crsec: t => { crPick.sec = t.value; crPickRefresh(); },
     fsort: t => { filt.sort = t.value; refreshSections(); },
     faff: t => { filt.afford = t.checked; refreshSections(); },
     fast: t => { state.settings.fast = t.checked; save(); },
@@ -4635,6 +4675,7 @@ const IN = {
     exq: t => { exQ = t.value; $('#exMarket').innerHTML = exMarketHtml(); },
     twbet: t => { tw.bet = Math.max(0, round2(Number(t.value) || 0)); },
     bjbet: t => { bj.bet = Math.max(0, round2(Number(t.value) || 0)); },
+    crq: t => { crPick.q = t.value; crPickRefresh(); },
     upq: t => { up.q = t.value; $('#upGrid').innerHTML = upTargetsHtml(); },
     upbal: t => { up.bal = Math.max(0, Math.min(state.balance, round2(Number(t.value) || 0))); upRefresh(); },
     pq: t => { pQ = t.value; $('#pGrid').innerHTML = profInvHtml(); },
