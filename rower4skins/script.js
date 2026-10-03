@@ -1534,7 +1534,8 @@ function sectionsHtml() {
         if (sec.id === 'gems') list.sort((a, b) => a.gems - b.gems);
         if (sorters[filt.sort]) list = [...list].sort(sorters[filt.sort]);
         if (!list.length) return '';
-        return `<div class="sec-title">${ic(sec.icon)}<span>${sec.title}</span></div><div class="cgrid">${list.map(c => caseCard(c)).join('')}</div>`;
+        const shut = (state.hideSec || []).includes(sec.id);
+        return `<div class="sec-title">${ic(sec.icon)}<span>${sec.title}</span><button class="sec-tog ${shut ? 'shut' : ''}" data-act="secTog" data-arg="${sec.id}" aria-label="${shut ? 'Rozwiń' : 'Zwiń'}">${shut ? `<small>${list.length}</small>` : ''}${ic('chev')}</button></div>${shut ? '' : `<div class="cgrid">${list.map(c => caseCard(c)).join('')}</div>`}`;
     }).join('');
     return html || `<div class="empty">${ic('search')}<p>Żadna skrzynka nie pasuje do filtrów.</p></div>`;
 }
@@ -1649,6 +1650,7 @@ async function openCase(demo) {
         if (c.sec === 'bday') {
             const g = Math.max(1, Math.round(c.price * n * 10));
             state.gems += g;
+            state.stats.evGems = (state.stats.evGems || 0) + g;
             renderTop();
             setTimeout(() => toast(`+${g} gemów za skrzynię eventową`, 'ok'), 300);
         }
@@ -1691,7 +1693,7 @@ const cleanColor = v => (/^#[0-9a-f]{6}$/i.test(String(v)) ? v : '');
 const isMeSlot = s => !!s && !s.bot && s.peer === NET.me;
 
 function packBattle(b) {
-    return { id: b.id, mode: b.mode, players: b.players, cases: b.cases, status: b.status, seed: b.seed || 0, t: b.t,
+    return { id: b.id, mode: b.mode, players: b.players, cases: b.cases, status: b.status, seed: b.seed || 0, t: b.t, priv: !!b.priv,
         slots: b.slots.map(s => (s ? { peer: s.peer, nick: s.nick, color: s.color, bot: s.bot } : null)) };
 }
 
@@ -1705,7 +1707,7 @@ function parseBattle(raw, host) {
     if (!Array.isArray(slots) || slots.length !== players) return null;
     if (!['waiting', 'running'].includes(status) || !Number.isSafeInteger(seed)) return null;
     const b = {
-        id, mode, players, cases: [...cases], status, seed, t: Number(t) || 0, host,
+        id, mode, players, cases: [...cases], status, seed, t: Number(t) || 0, host, priv: raw.priv === true,
         slots: slots.map(s => (s && typeof s === 'object' ? { peer: String(s.peer ?? '').slice(0, 80), nick: cleanNick(s.nick), color: cleanColor(s.color), bot: !!s.bot } : null)),
     };
     b.bid = bid(b);
@@ -1971,7 +1973,7 @@ function battleRow(b) {
     const st = r ? (r.done ? 'KONIEC' : 'W TOKU') : 'CZEKA';
     const label = canJoin(b) ? 'DOŁĄCZ' : mine ? 'GRASZ' : st === 'CZEKA' ? 'PEŁNA' : 'OGLĄDAJ';
     return `<div class="brow" style="--mc:${m.col}">
-        <div class="bstatus">${ic(m.icon)}<span>${st}</span><small>${m.n}</small></div>
+        <div class="bstatus">${ic(m.icon)}<span>${st}</span><small>${b.priv ? '🔒 ' : ''}${m.n}</small></div>
         <div class="bcases">${cells}${empties}</div>
         <div class="binfo">
             <div><small>WARTOŚĆ BITWY</small><b class="money">${ic('wallet')}${money(bValue(b))}</b></div>
@@ -1997,7 +1999,9 @@ function battleListHtml() {
             <span>${fmtTime(r.t)}</span><span>${r.players} graczy</span><span>Koszt ${money(r.value)}</span>
             <b class="${r.won ? 'pos' : 'neg'}">${r.won ? `Wygrana ${money(r.prize)}` : 'Przegrana'}</b></div>`).join('')}</div>`;
     }
-    let list = allBattles().filter(b => (bl.mode === 'all' || b.mode === bl.mode) && (!bl.avail || canJoin(b)));
+    // Prywatne bitwy widzi tylko host i gracze, którzy w nich siedzą (reszta dołącza kodem).
+    const mineB = b => b.host === NET.me || b.slots.some(isMeSlot) || (SEAT && SEAT.h === b.host && SEAT.b === b.id);
+    let list = allBattles().filter(b => (!b.priv || mineB(b)) && (bl.mode === 'all' || b.mode === bl.mode) && (!bl.avail || canJoin(b)));
     if (bl.sort === 'val') list = [...list].sort((a, b) => bValue(b) - bValue(a));
     if (bl.sort === 'cheap') list = [...list].sort((a, b) => bValue(a) - bValue(b));
     if (list.length) return list.map(battleRow).join('');
@@ -2060,6 +2064,7 @@ function renderBattles() {
             <option value="cheap" ${bl.sort === 'cheap' ? 'selected' : ''}>Najtańsze</option>
         </select>${ic('chev')}</div>
         <label class="check"><input id="bAvail" type="checkbox" data-ch="bavail" ${bl.avail ? 'checked' : ''}><span></span>Można dołączyć</label>
+        <form class="inline code-join" id="codeForm"><input id="codeIn" maxlength="5" placeholder="Kod bitwy" autocomplete="off" aria-label="Kod bitwy" translate="no"><button class="btn btn-blue">${ic('lock')}Dołącz kodem</button></form>
         <button class="btn btn-purple grow-l" data-act="go" data-arg="#/create">${ic('plus')}STWÓRZ BITWĘ</button>
     </div>
     <div class="panel chips">
@@ -2076,23 +2081,38 @@ function renderBattles() {
 }
 
 const MAX_ROUNDS = 50;
-const cr = { cases: [], players: 2, mode: 'normal' };
-// Wybór skrzynek do bitwy: sortowanie, szukanie, kategoria.
-const crPick = { sort: 'pa', q: '', sec: 'all' };
+const cr = { cases: [], players: 2, mode: 'normal', priv: false };
+// Kod prywatnej bitwy: 5 znaków z jej id (wpisuje się go na liście bitew).
+const battleCode = b => b.id.slice(0, 5).toUpperCase();
+// Wybór skrzynek do bitwy: sortowanie, szukanie, kategoria, ceny, ulubione, saldo.
+const crPick = { sort: 'pa', q: '', sec: 'all', min: '', max: '', fav: false, afford: false };
 function crPickGrid() {
     const q = crPick.q.trim().toLowerCase();
-    let list = USD_CASES.filter(c => (crPick.sec === 'all' || c.sec === crPick.sec) && (!q || c.name.toLowerCase().includes(q)));
+    const min = parseFloat(crPick.min.replace(',', '.')) / curr().r, max = parseFloat(crPick.max.replace(',', '.')) / curr().r;
+    const left = state.balance - crCost();
+    let list = USD_CASES.filter(c => (crPick.sec === 'all' || c.sec === crPick.sec) && (!q || c.name.toLowerCase().includes(q))
+        && (isNaN(min) || c.price >= min) && (isNaN(max) || c.price <= max)
+        && (!crPick.fav || state.favs.includes(c.id)) && (!crPick.afford || c.price <= left));
     const by = { pa: (a, b) => a.price - b.price, pd: (a, b) => b.price - a.price, az: (a, b) => a.name.localeCompare(b.name, 'pl'), ev: (a, b) => b.ev / b.price - a.ev / a.price }[crPick.sort];
     list = [...list].sort(by);
     if (!list.length) return `<div class="empty small">${ic('search')}<p>Brak skrzynek dla tego filtra.</p></div>`;
     return list.map(c => {
         const n = cr.cases.find(x => x.id === c.id)?.n || 0;
         return `<div class="ccard ${n ? 'picked' : ''}" data-act="crAdd" data-arg="${c.id}" style="--cc:${c.color}">
-            ${n ? `<span class="cr-n">x${n}</span>` : ''}
-            <div class="cart">${caseArt(c)}</div><div class="cfoot"><span class="cname">${esc(c.name)}</span><span class="cprice">${money(c.price)}</span></div></div>`;
+            <div class="cart">${caseArt(c)}</div>
+            <div class="cr-step"><button data-act="crSub" data-arg="${c.id}" aria-label="Mniej" ${n ? '' : 'disabled'}>${ic('minus')}</button><b>${n}</b><button data-act="crAdd" data-arg="${c.id}" aria-label="Więcej">${ic('plus')}</button></div>
+            <div class="cfoot"><span class="cname">${esc(c.name)}</span><span class="cprice">${money(c.price)}</span></div></div>`;
     }).join('');
 }
-const crPickInfo = () => `Rundy: <b>${crRounds()}</b> / ${MAX_ROUNDS} · koszt <b>${money(crCost())}</b>`;
+const crPickInfo = () => {
+    const left = round2(state.balance - crCost());
+    return `<div class="crm-stat blue">${ic('box')}<div><b>${crRounds()}/${MAX_ROUNDS}</b><small>LICZBA SKRZYNEK</small></div></div>
+        <div class="crm-stat gold">${ic('wallet')}<div><b>${money(crCost())}</b><small>KOSZT SKRZYNEK</small></div></div>
+        <div class="crm-stat ${left < 0 ? 'red' : 'green'}">${ic('wallet')}<div><b>${money(left)}</b><small>POZOSTAŁE SALDO</small></div></div>
+        <span class="crm-gap"></span>
+        <button class="btn btn-dark" data-act="crClear">${ic('x')}Wyczyść</button>
+        <button class="btn btn-green btn-xl" data-act="modalclose">GOTOWE ${ic('check')}</button>`;
+};
 function crPickRefresh() {
     const g = $('#crPickGrid'); if (g) g.innerHTML = crPickGrid();
     const i = $('#crPickInfo'); if (i) i.innerHTML = crPickInfo();
@@ -2101,10 +2121,22 @@ const crCost = () => round2(cr.cases.reduce((s, x) => s + CASE[x.id].price * x.n
 const crRounds = () => cr.cases.reduce((s, x) => s + x.n, 0);
 
 function renderCreate() {
-    const m = MODES[cr.mode];
+    const m = MODES[cr.mode], rounds = crRounds(), left = round2(state.balance - crCost());
+    const strip = cr.cases.map(x => `<div class="cr-slot" style="--cc:${CASE[x.id].color}">${caseArt(CASE[x.id])}${x.n > 1 ? `<span class="bx">x${x.n}</span>` : ''}</div>`).join('')
+        + Array.from({ length: Math.max(0, 9 - cr.cases.length) }, () => '<div class="cr-slot ghost"></div>').join('');
     return `
     <button class="back" data-act="go" data-arg="#/battles">${ic('back')}Bitwy</button>
-    <div class="page-head">${ic('plus')}<div><h2>STWÓRZ BITWĘ</h2><small>WYBIERZ SKRZYNKI I ZASADY</small></div><span class="r18">18+</span></div>
+    <div class="page-head">${ic('plus')}<div><h2>STWÓRZ BITWĘ</h2><small>STWÓRZ BITWĘ SWOICH MARZEŃ</small></div><span class="r18">18+</span></div>
+    <div class="cr-info">
+        <div class="panel cr-inf">${ic('box')}<div><b>Liczba rund</b><span>Bitwa trwa tyle rund, ile skrzynek dodasz (maks. ${MAX_ROUNDS}). W każdej rundzie każdy gracz otwiera tę samą skrzynkę.</span></div></div>
+        <div class="panel cr-inf">${ic('lock')}<div><b>Prywatność</b><span>Publiczną bitwę widzą wszyscy na stronie. Do prywatnej dołączysz tylko z kodem, który pokaże się po jej stworzeniu.</span></div></div>
+        <div class="panel cr-inf">${ic('gift')}<div><b>Gwarantowany skin</b><span>W trybach Normal i Point Rush przegrani dostają gwarantowany skin, więc nikt nie wychodzi z pustymi rękami.</span></div></div>
+    </div>
+    <div class="cr-strip">
+        <div class="cr-rounds">${ic('box')}<b>${rounds}</b><small>RUNDY</small></div>
+        ${strip}
+    </div>
+    <h3 class="settings-h">WYBRANE SKRZYNKI (${rounds}/${MAX_ROUNDS})</h3>
     <div class="cr-cases">
         ${cr.cases.map((x, i) => `<div class="cr-case" style="--cc:${CASE[x.id].color}">
             <button class="cr-x" data-act="crRm" data-arg="${i}" aria-label="Usuń">${ic('x')}</button>
@@ -2120,6 +2152,11 @@ function renderCreate() {
             <h4>${ic('users')}Liczba graczy</h4><p>Im więcej, tym weselej!</p>
             ${[2, 3, 4].map(n => `<button class="opt ${cr.players === n ? 'on' : ''}" data-act="crPlayers" data-arg="${n}">${ic(n === 2 ? 'user' : 'users')}${n} GRACZY</button>`).join('')}
         </div>
+        <div class="panel cr-card">
+            <h4>${ic('lock')}Prywatność</h4><p>Graj, z kim chcesz!</p>
+            <button class="opt ${cr.priv ? '' : 'on'}" data-act="crPriv" data-arg="0">${ic('eye')}PUBLICZNA</button>
+            <button class="opt ${cr.priv ? 'on' : ''}" data-act="crPriv" data-arg="1">${ic('eyeoff')}PRYWATNA</button>
+        </div>
         <div class="panel cr-card wide">
             <h4>${ic('swords')}Tryb bitwy</h4><p>Zdecyduj, jak potoczy się bitwa!</p>
             <div class="opt-grid">${Object.entries(MODES).map(([k, mm]) => `<button class="opt ${cr.mode === k ? 'on' : ''}" data-act="crMode" data-arg="${k}">${ic(mm.icon)}${mm.n.toUpperCase()}</button>`).join('')}</div>
@@ -2127,17 +2164,18 @@ function renderCreate() {
         <div class="panel cr-card">
             <h4>${ic('info')}Podsumowanie</h4><p>Opłata jest pobierana od razu i wraca, jeśli anulujesz bitwę przed startem.</p>
             <div class="sum-box green">${ic('box')}<div><small>KOSZT SKRZYNEK</small><b>${money(crCost())}</b></div></div>
-            <div class="sum-box purple">${ic('gift')}<div><small>${CONSOLATION.includes(cr.mode) ? 'GWARANTOWANY' : 'RUNDY'}</small><b>${CONSOLATION.includes(cr.mode) ? 'SKIN' : crRounds()}</b></div></div>
+            <div class="sum-box purple">${ic('gift')}<div><small>${CONSOLATION.includes(cr.mode) ? 'GWARANTOWANY' : 'RUNDY'}</small><b>${CONSOLATION.includes(cr.mode) ? 'SKIN' : rounds}</b></div></div>
+            <div class="sum-box ${left < 0 ? 'red' : 'blue'}">${ic('wallet')}<div><small>SALDO PO BITWIE</small><b>${money(left)}</b></div></div>
             <button class="btn btn-green btn-block" data-act="crCreate" ${cr.cases.length ? '' : 'disabled'}>STWÓRZ BITWĘ</button>
         </div>
     </div>
     <div class="panel mode-info" style="--mc:${m.col}"><span class="mode-ico">${ic(m.icon)}</span><div><h3>${m.n}</h3><p>${m.d}</p></div></div>`;
 }
 
-function createBattle(mode, players, cases) {
+function createBattle(mode, players, cases, priv = false) {
     if (MYB) { toast('Masz już otwartą bitwę. Zakończ ją albo anuluj.', 'err'); go('#/battle/' + myBattle().bid); return; }
     if (SEAT) { toast('Siedzisz już w innej bitwie.', 'err'); return; }
-    const b = { id: Math.random().toString(36).slice(2, 10), mode, players, cases, status: 'waiting', seed: 0, t: Date.now(),
+    const b = { id: Math.random().toString(36).slice(2, 10), mode, players, cases, status: 'waiting', seed: 0, t: Date.now(), priv,
         slots: [mySlot(), ...Array(players - 1).fill(null)] };
     const cost = bValue(b);
     if (state.balance < cost) { toast('Za mało środków na tę bitwę.', 'err'); return; }
@@ -2238,6 +2276,7 @@ function renderBattleView() {
             <button class="sq" data-act="go" data-arg="#/battles" aria-label="Wróć do bitew">${ic('back')}</button>
             <span class="mode-chip">${ic(m.icon)}${m.n}</span>
             <span class="bv-msg" id="bvMsg">${bvMsg(b, r)}</span>
+            ${b.priv ? `<span class="bv-code" translate="no">${ic('lock')}KOD: <b>${battleCode(b)}</b></span>` : ''}
             <span class="bv-nofast" title="W bitwach szybkie otwieranie jest wyłączone">${ic('clock')}BEZ SZYBKIEGO OTWIERANIA</span>
             ${waiting && amHost && b.slots.includes(null) ? `<button class="btn btn-purple" data-act="bots">${ic('bolt')}Przywołaj wszystkie boty</button>` : ''}
             ${waiting && (amHost || amSeated) ? `<button class="btn btn-dark" data-act="leaveBattle">${ic('x')}${amHost ? 'Anuluj bitwę' : 'Wyjdź'}</button>` : ''}
@@ -2885,7 +2924,7 @@ function renderProfile() {
 
 function renderGems() {
     const tiers = CASES.filter(c => c.sec === 'gemtier');
-    return `
+    return `${eventNav('gems')}
     <div class="gems-hero">
         <div class="gh-text">
             <span class="eyebrow">${ic('gem')}SKLEP GEMÓW</span>
@@ -2905,28 +2944,108 @@ function renderGems() {
 }
 
 function renderFree() {
+    const tab = ['faq', 'table'].includes(route.arg) ? route.arg : 'cases';
+    const L = level(), max = L >= MAX_LEVEL, a = levelStart(L), b = max ? a : levelStart(L + 1);
+    const pct = max ? 100 : (state.exp - a) / (b - a) * 100;
     const exp = CASES.filter(c => c.kind === 'exp');
+    const next = exp.find(c => L < c.lvl);
     const lockedTag = c => {
+        if (c === next) return `<div class="lock-over next">${ic('lock')}<b>ODBLOKUJ NASTĘPNĄ</b><span>Poziom ${c.lvl}</span><button class="btn btn-green" data-act="depositModal">${ic('bike')}WPŁAĆ (+10%)</button></div>`;
         const l = lockReason(c);
         return l ? `<div class="lock-over">${ic('lock')}<span>${l}</span></div>` : '';
     };
     const dl = lockReason(CASE.daily);
+    const faq = [
+        ['bolt', 'Jak zdobywać poziomy?', 'Za każdy wydany $1 (skrzynki, bitwy, upgrader, Wieża Dętek, blackjack) dostajesz 100 EXP.'],
+        ['gift', 'Kiedy dostaję skrzynię?', 'Co 10 poziomów odblokowujesz nową skrzynię levelu. Każdą otwierasz za darmo raz na 24 godziny.'],
+        ['shield', 'Czy poziom jest na zawsze?', 'Tak. Poziom nigdy nie spada — zniknie tylko po resecie konta.'],
+        ['clock', 'Ile EXP potrzeba?', 'Z poziomu L na L+1 potrzeba 2400 × L EXP. Poziom 100 to ok. $119 000 wydanych.'],
+        ['crown', 'Co jest w skrzyniach?', 'Im wyższy poziom, tym lepsza zawartość. Od poziomu 80 w środku są już tylko noże i rękawice.'],
+        ['star', 'Codzienna skrzynka', 'Niezależnie od poziomu raz na 24 godziny możesz otworzyć darmową Codzienną Skrzynkę.'],
+    ];
+    const marks = [1, 5, 10, 15, 20, 25, 30, 40, 50, 60, 70, 80, 90, 100];
+    let body;
+    if (tab === 'faq') body = `<div class="faq-grid">${faq.map(([i, t, d]) => `<div class="panel faq">${ic(i)}<div><b>${t}</b><span>${d}</span></div></div>`).join('')}</div>`;
+    else if (tab === 'table') body = `<div class="table lvl-table">
+        <div class="trow head"><span>Poziom</span><span>Łącznie EXP</span><span>Wydane</span><span>Nagroda</span></div>
+        ${marks.map(m => `<div class="trow ${L >= m ? 'reached' : ''} ${L === m ? 'you' : ''}"><span class="hex sm">${m}</span><span>${fmtGems(levelStart(m))} EXP</span><span class="money">${money(levelStart(m) / 100)}</span><span>${m % 10 === 0 ? `${ic('gift')}Skrzynia „Poziom ${m}”` : '—'}</span></div>`).join('')}
+    </div>`;
+    else body = `<div class="cgrid">${exp.map(c => caseCard(c, lockedTag(c))).join('')}</div>`;
     return `
-    <div class="page-head">${ic('gift')}<div><h2>DARMOWE SKRZYNKI</h2><small>CODZIENNA SKRZYNKA I SKRZYNKI ZA POZIOMY</small></div></div>
+    <div class="page-head">${ic('gift')}<div><h2>SKRZYNIE BONUSOWE</h2><small>OTWIERAJ DARMOWE SKRZYNIE ZA KOLEJNE POZIOMY</small></div><span class="r18">18+</span></div>
     <div class="free-top">
+        <div class="panel lv-card">
+            <div class="lv-who"><span class="lv-ava">${avatar(me(), 'xl')}<span class="lvl">${L}</span></span>
+                <div><b translate="no">${esc(state.name)}</b><small>POZIOM ${L}</small></div>
+                <button class="btn btn-green" data-act="depositModal">${ic('bike')}WPŁAĆ (+10%)</button></div>
+            <div class="lvl-bar-wrap">
+                <div class="lvl-labels"><b>Poziom ${L}</b><b>${max ? 'MAX' : `Poziom ${L + 1}`}</b></div>
+                <div class="lvl-bar"><div style="width:${pct.toFixed(2)}%"></div><span>${max ? 'MAX' : `${state.exp - a}/${b - a} EXP`}</span><em>${pct.toFixed(2)}%</em></div>
+            </div>
+        </div>
         <div class="panel free-daily">
             <div class="fd-art">${caseArt(CASE.daily)}</div>
             <div><h3>Codzienna skrzynka</h3><p>Otwieraj ją za darmo raz na 24 godziny.</p>
             ${dl ? `<div class="lock-note">${ic('clock')}<span>${dl}</span></div>` : `<button class="btn btn-green btn-xl" data-act="go" data-arg="#/case/daily">${ic('gift')}OTWÓRZ ZA DARMO</button>`}</div>
         </div>
-        <div class="panel free-lvl"><div class="hex">${level()}</div><div><h3>Twój poziom: ${level()}</h3><p>Zdobywasz 100 EXP za każdy wydany $1, a każdy poziom wymaga więcej. Co 10 poziomów nowa skrzynia levelu (maks. poziom 100). Otwierasz je raz na 24 h.</p></div></div>
     </div>
-    <div class="sec-title">${ic('star')}<span>Skrzynki EXP</span></div>
-    <div class="cgrid">${exp.map(c => caseCard(c, lockedTag(c))).join('')}</div>`;
+    <div class="tabs three">
+        <button class="${tab === 'cases' ? 'on' : ''}" data-act="go" data-arg="#/free">${ic('box')}SKRZYNIE BONUSOWE</button>
+        <button class="${tab === 'faq' ? 'on' : ''}" data-act="go" data-arg="#/free/faq">${ic('info')}JAK DZIAŁAJĄ POZIOMY?</button>
+        <button class="${tab === 'table' ? 'on' : ''}" data-act="go" data-arg="#/free/table">${ic('grid')}TABELA POZIOMÓW</button>
+    </div>
+    ${body}`;
 }
 
+// Ranking eventu: gemy zebrane ze skrzyń eventowych. Boty zbierają powoli przez cały event.
+const EV_LEN = 45 * 864e5 + 23 * 36e5;
+const EV_PRIZES = [50, 25, 10, 5, 5, 2, 2, 2, 2, 2];
+function evRanking() {
+    const prog = Math.max(0, Math.min(1, 1 - (state.eventEnd - Date.now()) / EV_LEN));
+    const bots = BOT_NAMES.slice(0, 40).map(n => {
+        const r = srand(hash(n + 'ev'));
+        return { name: n, gems: Math.round((150 + Math.pow(r(), 3) * 9000) * (0.12 + 0.88 * prog)) };
+    });
+    return [...bots, { name: state.name, you: true, gems: state.stats.evGems || 0 }].sort((a, b) => b.gems - a.gems || (a.you ? -1 : 1));
+}
+
+function eventNav(tab) {
+    const t = (k, href, icon, label, art) => `<button class="ev-tab ${tab === k ? 'on' : ''}" data-act="go" data-arg="${href}"><span>${ic(icon)}${label}</span><i>${art}</i></button>`;
+    return `<div class="ev-nav">
+        ${t('missions', '#/event', 'star', 'MISJE EVENTU', starSvg())}
+        ${t('gems', '#/gems', 'gem', 'SKRZYNKI ZA GEMY', ORBS)}
+        ${t('ranking', '#/event/ranking', 'trophy', 'RANKING', TROPHY)}
+    </div>`;
+}
+
+function renderRanking() {
+    const rows = evRanking(), myK = rows.findIndex(r => r.you), ended = Date.now() >= state.eventEnd;
+    const prize = k => (EV_PRIZES[k] ? money(EV_PRIZES[k]) : '—');
+    const pod = k => {
+        const r = rows[k];
+        return `<div class="pod p${k + 1} ${r.you ? 'you' : ''}"><span class="pod-pos">#${k + 1} MIEJSCE</span>${avatar(r.you ? me() : { name: r.name }, 'xl')}
+            <b translate="no">${esc(r.name)}</b><span class="gemprice">${ic('gem')}${fmtGems(r.gems)}</span><span class="pod-prize">${prize(k)}</span></div>`;
+    };
+    const line = (r, k) => `<div class="trow ${r.you ? 'you' : ''}"><span class="rk ${k < 3 ? 'top' + k : ''}">${k + 1}</span>
+        <span class="rname" translate="no">${avatar(r.you ? me() : { name: r.name }, 'xs')}${esc(r.name)}</span>
+        <span class="gemprice">${ic('gem')}${fmtGems(r.gems)}</span><b class="money">${prize(k)}</b></div>`;
+    const claimOk = ended && myK < EV_PRIZES.length && !state.evClaimed;
+    return `
+    <div class="panel ev-rush">
+        <h2>CZAS UCIEKA!</h2>
+        <p>Ranking kończy się razem z eventem. Zbieraj gemy, otwierając skrzynki urodzinowe, i walcz o nagrody dla najlepszej dziesiątki.</p>
+        <div class="countdown" data-cd="event"></div>
+        ${claimOk ? `<button class="btn btn-green btn-xl" data-act="evClaim">${ic('trophy')}ODBIERZ ${prize(myK)}</button>` : `<button class="btn btn-green btn-xl" data-act="go" data-arg="#/event">${ic('cake')}ZBIERAJ GEMY</button>`}
+    </div>
+    <div class="podium">${pod(1)}${pod(0)}${pod(2)}</div>
+    <div class="table rank ev-table">${rows.slice(3, 15).map((r, k) => line(r, k + 3)).join('')}
+        ${myK >= 15 ? `<div class="trow gap">…</div>${line(rows[myK], myK)}` : ''}</div>
+    <p class="muted center small">Liczą się gemy zdobyte ze skrzynek eventowych od teraz. Pozostali gracze w rankingu to boty.</p>`;
+}
 function renderEvent() {
-    return `${bossBanner()}${bannerHtml()}
+    const tab = route.arg === 'ranking' ? 'ranking' : 'missions';
+    if (tab === 'ranking') return `${bannerHtml()}${eventNav(tab)}${renderRanking()}`;
+    return `${bossBanner()}${bannerHtml()}${eventNav(tab)}
     <div class="page-head">${ic('star')}<div><h2>MISJE EVENTU</h2><small>WYKONUJ ZADANIA I ZBIERAJ NAGRODY</small></div></div>
     <div class="missions">${MISSIONS.map(m => {
         const v = Math.min(m.goal, m.v());
@@ -4359,7 +4478,7 @@ function refreshAfterInv() {
 }
 
 // Akcje, po których okno modalne ma zostać otwarte (np. kolejne dodawanie skrzynek).
-const KEEP_MODAL = ['modalclose', 'winsell', 'crAdd', 'crClear', 'mgIntro', 'mgStart', 'bossStart', 'mgTap', 'mgPad', 'mgArrow', 'mgLane', 'depositModal'];
+const KEEP_MODAL = ['modalclose', 'winsell', 'crAdd', 'crSub', 'crFavF', 'crClear', 'mgIntro', 'mgStart', 'bossStart', 'mgTap', 'mgPad', 'mgArrow', 'mgLane', 'depositModal'];
 
 const ACT = {
     go: arg => go(arg),
@@ -4398,6 +4517,19 @@ const ACT = {
         note('Znalazłeś ukrytą skrzynkę!');
         toast('Znalazłeś ukrytą skrzynkę! Otwórz ją za darmo.', 'ok');
         go('#/case/hidden');
+    },
+    secTog: id => {
+        const h = new Set(state.hideSec || []);
+        h.has(id) ? h.delete(id) : h.add(id);
+        state.hideSec = [...h]; save(); refreshSections();
+    },
+    evClaim: () => {
+        const k = evRanking().findIndex(r => r.you);
+        if (Date.now() < state.eventEnd || state.evClaimed || !EV_PRIZES[k]) return;
+        state.evClaimed = true;
+        wallet(EV_PRIZES[k], `Ranking eventu: #${k + 1}`);
+        toast(`Odebrano ${money(EV_PRIZES[k])}!`, 'ok'); confetti();
+        renderPage();
     },
     claim: id => {
         const m = MISSIONS.find(x => x.id === id);
@@ -4448,10 +4580,8 @@ const ACT = {
     },
     crAddModal: () => {
         const secs = [...new Set(USD_CASES.map(c => c.sec))].map(id => SECTIONS.find(x => x.id === id)).filter(Boolean);
-        modal(`<h2 class="mtitle">${ic('plus')}Dodaj skrzynkę</h2>
-            <p class="muted center">Kliknij skrzynkę, żeby dodać rundę (każde kliknięcie = +1). Maksymalnie ${MAX_ROUNDS} rund.</p>
+        modal(`<div class="crm-head">${ic('box', 'big')}<div><h2>DODAJ SKRZYNKI</h2><small>DO SWOJEJ BITWY · KLIKNIJ SKRZYNKĘ = +1 RUNDA (MAKS. ${MAX_ROUNDS})</small></div></div>
             <div class="cr-pick-bar">
-                <label class="search">${ic('search')}<input id="crPickQ" data-in="crq" placeholder="Nazwa skrzynki" value="${esc(crPick.q)}"></label>
                 <div class="select"><select data-ch="crsort" aria-label="Sortowanie">
                     <option value="pa" ${crPick.sort === 'pa' ? 'selected' : ''}>Cena rosnąco</option>
                     <option value="pd" ${crPick.sort === 'pd' ? 'selected' : ''}>Cena malejąco</option>
@@ -4462,11 +4592,24 @@ const ACT = {
                     <option value="all">Wszystkie kategorie</option>
                     ${secs.map(x => `<option value="${x.id}" ${crPick.sec === x.id ? 'selected' : ''}>${esc(x.title)}</option>`).join('')}
                 </select>${ic('chev')}</div>
-                <span class="cr-pick-info" id="crPickInfo">${crPickInfo()}</span>
+                <div class="range"><input data-in="crmin" inputmode="decimal" placeholder="${money(0)}" value="${esc(crPick.min)}" aria-label="Cena od"><span>–</span><input data-in="crmax" inputmode="decimal" placeholder="${money(0)}" value="${esc(crPick.max)}" aria-label="Cena do"></div>
+                <label class="search">${ic('search')}<input id="crPickQ" data-in="crq" placeholder="Nazwa skrzynki" value="${esc(crPick.q)}"></label>
+                <button class="fbtn ${crPick.fav ? 'on' : ''}" data-act="crFavF" aria-label="Tylko ulubione">${ic('heart')}</button>
+                <label class="toggle"><input type="checkbox" data-ch="craff" ${crPick.afford ? 'checked' : ''}><span></span>Wystarczające saldo</label>
             </div>
             <div class="cgrid sm" id="crPickGrid">${crPickGrid()}</div>
-            <div class="mrow"><button class="btn btn-dark" data-act="crClear">${ic('x')}Wyczyść</button><button class="btn btn-green" data-act="modalclose">Gotowe</button></div>`, 'wide');
+            <div class="crm-foot" id="crPickInfo">${crPickInfo()}</div>`, 'wide crm');
     },
+    crFavF: (_, el) => { crPick.fav = !crPick.fav; el.classList.toggle('on', crPick.fav); crPickRefresh(); },
+    crSub: id => {
+        const k = cr.cases.findIndex(y => y.id === id);
+        if (k < 0) return;
+        if (!--cr.cases[k].n) cr.cases.splice(k, 1);
+        beep(500, 0.04, 0.03, 'triangle');
+        renderPage();
+        crPickRefresh();
+    },
+    crPriv: v => { cr.priv = v === '1'; renderPage(); },
     crAdd: id => {
         if (crRounds() >= MAX_ROUNDS) { toast(`Maksymalnie ${MAX_ROUNDS} rund.`, 'err'); return; }
         const x = cr.cases.find(y => y.id === id);
@@ -4484,7 +4627,7 @@ const ACT = {
     crMode: m => { cr.mode = m; renderPage(); },
     crCreate: () => {
         if (!cr.cases.length) return;
-        createBattle(cr.mode, cr.players, cr.cases.flatMap(x => Array(x.n).fill(x.id)));
+        createBattle(cr.mode, cr.players, cr.cases.flatMap(x => Array(x.n).fill(x.id)), cr.priv);
     },
 
     // kontrakt
@@ -4659,6 +4802,7 @@ document.addEventListener('click', e => {
 const CH = {
     crsort: t => { crPick.sort = t.value; crPickRefresh(); },
     crsec: t => { crPick.sec = t.value; crPickRefresh(); },
+    craff: t => { crPick.afford = t.checked; crPickRefresh(); },
     fsort: t => { filt.sort = t.value; refreshSections(); },
     faff: t => { filt.afford = t.checked; refreshSections(); },
     fast: t => { state.settings.fast = t.checked; save(); },
@@ -4676,6 +4820,8 @@ const IN = {
     twbet: t => { tw.bet = Math.max(0, round2(Number(t.value) || 0)); },
     bjbet: t => { bj.bet = Math.max(0, round2(Number(t.value) || 0)); },
     crq: t => { crPick.q = t.value; crPickRefresh(); },
+    crmin: t => { crPick.min = t.value; crPickRefresh(); },
+    crmax: t => { crPick.max = t.value; crPickRefresh(); },
     upq: t => { up.q = t.value; $('#upGrid').innerHTML = upTargetsHtml(); },
     upbal: t => { up.bal = Math.max(0, Math.min(state.balance, round2(Number(t.value) || 0))); upRefresh(); },
     pq: t => { pQ = t.value; $('#pGrid').innerHTML = profInvHtml(); },
@@ -4685,6 +4831,14 @@ document.addEventListener('change', e => { const t = e.target.closest('[data-ch]
 document.addEventListener('input', e => { const t = e.target.closest('[data-in]'); if (t) IN[t.dataset.in]?.(t, e); });
 
 document.addEventListener('submit', e => {
+    if (e.target.id === 'codeForm') {
+        e.preventDefault();
+        const code = $('#codeIn').value.trim().toUpperCase();
+        const b = code.length === 5 && allBattles().find(x => battleCode(x) === code);
+        if (!b) { toast('Nie ma bitwy z takim kodem.', 'err'); return; }
+        if (canJoin(b)) ACT.join(b.bid); else go('#/battle/' + b.bid);
+        return;
+    }
     if (e.target.id !== 'promoForm') return;
     e.preventDefault();
     const code = $('#promoIn').value.trim().toUpperCase();
