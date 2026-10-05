@@ -3489,3 +3489,111 @@ canvas.bosscv { max-width: 480px; aspect-ratio: 480 / 340; }
     .ev-tab span { flex-direction: column; gap: 2px; }
     .ev-tab i { display: none; }
 }
+
+/* ============================================================
+   Szybka gra: bramki z polami do stania (jak lobby w grach)
+   ============================================================ */
+.lobby { padding: 16px; margin-bottom: 16px; background: radial-gradient(600px 220px at 50% 100%, rgba(34, 197, 94, .1), transparent 70%), linear-gradient(180deg, var(--glass2), var(--glass)); }
+
+.lobby-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+
+.lobby-bar .chip { padding: 8px 14px; background: var(--panel2); }
+
+.lobby-tip { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
+
+.lobby-tip .ic { width: 15px; height: 15px; }
+
+kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 5px; background: #e5e7eb; color: #111827; font: 900 11px var(--font); box-shadow: 0 2px 0 #6b7280; }
+
+.gates { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+
+.gate { position: relative; display: grid; gap: 12px; padding: 44px 14px 14px; border-radius: 18px; background: linear-gradient(180deg, #17393f, #0f2328); border: 1px solid rgba(45, 212, 191, .25); box-shadow: inset 0 -40px 60px -40px rgba(0, 0, 0, .7); }
+
+.gate-arch { position: absolute; top: 10px; left: 22px; right: 22px; height: 30px; border: 8px solid #facc15; border-bottom: 0; border-radius: 6px 6px 0 0; box-shadow: 0 0 22px rgba(250, 204, 21, .45), inset 0 0 12px rgba(250, 204, 21, .35); opacity: .9; }
+
+.gate-head { position: relative; display: flex; justify-content: space-between; align-items: center; }
+
+.gate-head b { font-size: 18px; font-weight: 900; letter-spacing: .04em; }
+
+.q-pads { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 10px; }
+
+.qpad { position: relative; display: grid; justify-items: center; gap: 6px; padding: 0; background: none; color: var(--text); }
+
+.q-plac { display: grid; place-items: center; width: 42px; height: 34px; border-radius: 6px; background: #f8fafc; color: #0f172a; box-shadow: 0 4px 10px rgba(0, 0, 0, .5); }
+
+.q-plac .ic { width: 22px; height: 22px; }
+
+.q-floor { position: relative; display: grid; place-items: center; align-content: center; gap: 4px; width: 100%; aspect-ratio: 1 / .78; border-radius: 12px; overflow: hidden;
+    background: radial-gradient(circle at 50% 60%, color-mix(in srgb, var(--pc) 85%, #fff 15%), color-mix(in srgb, var(--pc) 70%, #000) 70%);
+    box-shadow: 0 0 26px color-mix(in srgb, var(--pc) 70%, transparent), inset 0 0 0 3px color-mix(in srgb, var(--pc) 50%, #fff 20%);
+    transform: perspective(260px) rotateX(28deg); animation: padGlow 1.8s ease-in-out infinite; }
+
+.q-floor b { max-width: 92%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 900; text-shadow: 0 1px 3px #000; }
+
+@keyframes padGlow { 50% { box-shadow: 0 0 40px color-mix(in srgb, var(--pc) 90%, transparent), inset 0 0 0 3px color-mix(in srgb, var(--pc) 40%, #fff 40%); } }
+
+.qpad:not(:disabled):hover .q-floor { filter: brightness(1.25); transform: perspective(260px) rotateX(20deg) translateY(-3px); }
+
+.qpad.taken .q-floor { animation: none; filter: saturate(.85); }
+
+.qpad.me .q-floor { box-shadow: 0 0 30px var(--pc), inset 0 0 0 3px #fff; }
+
+.qpad:disabled { opacity: 1; cursor: default; }
+
+.q-hint { position: absolute; left: 50%; top: 58%; transform: translate(-50%, -50%); display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 8px; background: rgba(15, 23, 42, .88); font-size: 12px; font-weight: 800; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .15s; z-index: 2; }
+
+.qpad:hover .q-hint, .qpad:focus-visible .q-hint { opacity: 1; }
+
+.gate-foot { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; }
+
+.gate-foot svg { width: 64px; height: auto; flex: 0 0 auto; }
+
+.gate-foot b { color: var(--text); }
+
+/* puste miejsce w widoku bitwy */
+.qpad.solo { width: 120px; }
+
+.q-join kbd { margin-right: 2px; }
+
+/* pasek kolejki */
+.qbar { position: fixed; inset: 0; z-index: 70; pointer-events: none; }
+
+.qb-top { position: absolute; top: 84px; left: 50%; transform: translateX(-50%); display: grid; justify-items: center; gap: 6px; width: min(420px, 90vw); }
+
+.qb-top b { font-size: 20px; font-weight: 900; letter-spacing: .06em; color: #fde047; text-shadow: 0 2px 0 #000, 0 0 18px rgba(250, 204, 21, .6); animation: qbBlink 1.4s ease-in-out infinite; }
+
+@keyframes qbBlink { 50% { opacity: .55; } }
+
+.qb-bar { position: relative; width: 100%; height: 16px; border-radius: 8px; background: rgba(15, 23, 42, .85); border: 1px solid rgba(255, 255, 255, .15); overflow: hidden; }
+
+.qb-bar div { height: 100%; background: linear-gradient(90deg, #22c55e, #facc15); transition: width .3s; }
+
+.qb-bar span { position: absolute; inset: 0; display: grid; place-items: center; font-size: 11px; font-weight: 900; text-shadow: 0 1px 2px #000; }
+
+.qb-bot { position: absolute; bottom: 64px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; pointer-events: auto; }
+
+.qb-bot .btn-red { min-width: 220px; box-shadow: 0 10px 30px -8px #ff4d5e; }
+
+@media (max-width: 900px) {
+    .gates { grid-template-columns: minmax(0, 1fr); }
+    .lobby-tip { display: none; }
+}
+
+@media (max-width: 640px) {
+    .qb-top { top: 66px; }
+    .qb-top b { font-size: 16px; }
+    .qb-bot { bottom: 56px; flex-direction: column; width: calc(100% - 32px); }
+    .qb-bot .btn { width: 100%; }
+}
+
+.q-pads { grid-template-columns: repeat(var(--n), minmax(0, 104px)); justify-content: center; }
+
+.qb-top { top: 76px; padding: 10px 18px 12px; border-radius: 14px; background: rgba(8, 11, 20, .88); border: 1px solid rgba(250, 204, 21, .35); box-shadow: 0 12px 30px -10px #000; backdrop-filter: blur(6px); }
+
+.gate { align-content: start; }
+
+body:has(#qbar:not([hidden])) .toasts { bottom: 130px; }
+
+@media (max-width: 640px) { body:has(#qbar:not([hidden])) .toasts { bottom: 200px; left: 16px; } }
+
+@media (max-width: 640px) { .q-hint { display: none; } }

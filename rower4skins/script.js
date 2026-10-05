@@ -1122,8 +1122,14 @@ function closeModal() { stopGame(); $('#modal').hidden = true; }
 
 $('#modal').addEventListener('click', e => { if (e.target.id === 'modal') closeModal(); });
 document.addEventListener('keyup', e => { if (MG?.keyup) MG.keyup(e); });
+document.addEventListener('mouseover', e => { const q = e.target.closest?.('.qpad[data-q]'); lobby.hover = q ? q.dataset.q : lobby.hover && e.target.closest?.('.gates') ? lobby.hover : null; });
 document.addEventListener('keydown', e => {
     if (e.key === 'Escape') { closeModal(); $('#drawer').hidden = true; return; }
+    if ((e.key === 'e' || e.key === 'E') && !e.repeat && $('#modal').hidden && !e.target.closest?.('input,textarea,select')) {
+        if (route.name === 'battles' && lobby.hover) { ACT.qpad(lobby.hover); return; }
+        const j = route.name === 'battle' && $('#bv .q-join');
+        if (j) { j.click(); return; }
+    }
     if (MG?.key && !$('#modal').hidden) MG.key(e);
 });
 
@@ -1420,6 +1426,7 @@ function renderPage() {
     $('#app').innerHTML = html;
     $$('.nav a').forEach(a => a.classList.toggle('active', a.dataset.nav === p.nav));
     p.after?.();
+    refreshQueue();
     tick();
 }
 
@@ -1693,7 +1700,7 @@ const cleanColor = v => (/^#[0-9a-f]{6}$/i.test(String(v)) ? v : '');
 const isMeSlot = s => !!s && !s.bot && s.peer === NET.me;
 
 function packBattle(b) {
-    return { id: b.id, mode: b.mode, players: b.players, cases: b.cases, status: b.status, seed: b.seed || 0, t: b.t, priv: !!b.priv,
+    return { id: b.id, mode: b.mode, players: b.players, cases: b.cases, status: b.status, seed: b.seed || 0, t: b.t, priv: !!b.priv, quick: b.quick || 0,
         slots: b.slots.map(s => (s ? { peer: s.peer, nick: s.nick, color: s.color, bot: s.bot } : null)) };
 }
 
@@ -1707,7 +1714,7 @@ function parseBattle(raw, host) {
     if (!Array.isArray(slots) || slots.length !== players) return null;
     if (!['waiting', 'running'].includes(status) || !Number.isSafeInteger(seed)) return null;
     const b = {
-        id, mode, players, cases: [...cases], status, seed, t: Number(t) || 0, host, priv: raw.priv === true,
+        id, mode, players, cases: [...cases], status, seed, t: Number(t) || 0, host, priv: raw.priv === true, quick: QUICK_STAKES.includes(raw.quick) ? raw.quick : 0,
         slots: slots.map(s => (s && typeof s === 'object' ? { peer: String(s.peer ?? '').slice(0, 80), nick: cleanNick(s.nick), color: cleanColor(s.color), bot: !!s.bot } : null)),
     };
     b.bid = bid(b);
@@ -1853,7 +1860,10 @@ function startRun(b) {
     RUN.set(b.bid, r);
     const me = b.slots.findIndex(isMeSlot);
     if (me >= 0 && state.hold) { spend(state.hold.cost); state.hold = null; save(); }
+    // Szybka gra: gdy wszyscy stanęli na polach, od razu przenosimy gracza do bitwy.
+    if (b.quick && me >= 0 && !(route.name === 'battle' && route.arg === b.bid)) { beep(880, 0.12, 0.05, 'triangle'); go('#/battle/' + b.bid); }
     animateRun(b.bid);
+    refreshQueue();
 }
 
 const bvOpen = key => route.name === 'battle' && route.arg === key && !!$('#bv');
@@ -1912,7 +1922,8 @@ async function animateRun(key) {
 }
 
 function refreshBattleUi() {
-    if (route.name === 'battles') { refreshBattleList(); refreshOnline(); }
+    refreshQueue();
+    if (route.name === 'battles') { refreshBattleList(); refreshOnline(); refreshLobby(); }
     if (route.name === 'battle') {
         const r = RUN.get(route.arg);
         if (!r || r.done) renderPage();
@@ -1977,7 +1988,7 @@ function battleRow(b) {
         <div class="bcases">${cells}${empties}</div>
         <div class="binfo">
             <div><small>WARTOŚĆ BITWY</small><b class="money">${ic('wallet')}${money(bValue(b))}</b></div>
-            <div><small>GRACZE</small><div class="bslots">${b.slots.map(s => slotAvatar(s, 'xs')).join('')}</div><small class="bhost">host: <span translate="no">${esc(b.slots[0]?.nick || '—')}</span></small></div>
+            <div><small>GRACZE</small><div class="bslots">${b.slots.map(s => slotAvatar(s, 'xs')).join('')}</div><small class="bhost">host: <span translate="no">${esc((b.slots.find(x => x && x.peer === b.host) || b.slots[0])?.nick || '—')}</span></small></div>
         </div>
         <div class="bact">
             <button class="btn btn-join-b" data-act="${canJoin(b) ? 'join' : 'watch'}" data-arg="${esc(b.bid)}">${ic(canJoin(b) ? m.icon : 'eye')}${label}</button>
@@ -2051,6 +2062,7 @@ function renderBattles() {
         </div>
         <div class="bhero-art"><img src="${IMG.engwe}" alt="ENGWE EP-2.0 Boost"><span class="vs">VS</span><img src="${IMG.varg}" alt="Stark Varg"></div>
     </div>
+    <div id="lobbyBox">${lobbyHtml()}</div>
     <div id="onlineBox">${onlineHtml()}</div>
     <div class="page-head">${ic('swords')}<div><h2>BITWY ROWER4SKINS</h2><small>TYLKO PRAWDZIWI GRACZE — BOTY NIGDY NIE DOŁĄCZAJĄ SAME, PRZYWOŁUJE JE TYLKO HOST</small></div><span class="r18">18+</span></div>
     <div class="panel bbar">
@@ -2081,6 +2093,61 @@ function renderBattles() {
 }
 
 const MAX_ROUNDS = 50;
+// Szybka gra (lobby jak w grach z polami do stania): bramki 2/3/4 graczy, stawka za rundę, 3 rundy Normal.
+const QUICK_STAKES = [0.5, 1, 5, 25], QUICK_ROUNDS = 3;
+const PAD_ROLES = [['user', '#3b82f6'], ['bike', '#ef4444'], ['user', '#22c55e'], ['bike', '#f59e0b']];
+const lobby = { stake: 1, hover: null };
+const quickCases = st => { const c = [...USD_CASES].sort((a, b) => Math.abs(a.price - st) - Math.abs(b.price - st))[0]; return Array(QUICK_ROUNDS).fill(c.id); };
+// Kolejka, w której właśnie czekam (jako host albo gracz).
+function myQueue() {
+    if (MYB && MYB.quick && MYB.status === 'waiting') return myBattle();
+    if (SEAT) { const b = allBattles().find(x => x.host === SEAT.h && x.id === SEAT.b); if (b?.quick && b.status === 'waiting') return b; }
+    return null;
+}
+function gateBattle(n) {
+    const mine = myQueue();
+    if (mine && mine.players === n && mine.quick === lobby.stake) return mine;
+    return allBattles().find(b => b.quick === lobby.stake && b.status === 'waiting' && b.players === n && !b.priv && b.host !== NET.me && b.slots.includes(null)) || null;
+}
+function gateHtml(n) {
+    const b = gateBattle(n), mine = myQueue(), cases = quickCases(lobby.stake), cost = round2(cases.reduce((a, id) => a + CASE[id].price, 0));
+    const pads = Array.from({ length: n }, (_, i) => {
+        const s = b?.slots[i], pend = !s && b && SEAT && SEAT.h === b.host && SEAT.b === b.id && SEAT.i === i;
+        const [icon, col] = PAD_ROLES[i], meHere = isMeSlot(s) || pend;
+        const who = s ? `${slotAvatar(s, 'sm')}<b translate="no">${esc(isMeSlot(s) ? state.name : s.nick)}</b>` : pend ? `${avatar(me(), 'sm')}<b translate="no">${esc(state.name)}</b>` : '';
+        return `<button class="qpad ${s || pend ? 'taken' : ''} ${meHere ? 'me' : ''}" style="--pc:${col}" data-act="qpad" data-arg="${n}:${i}" data-q="${n}:${i}" ${s || pend || mine ? 'disabled' : ''}>
+            <span class="q-plac">${ic(icon)}</span><span class="q-floor">${who}</span>${s || pend || mine ? '' : `<span class="q-hint"><kbd>E</kbd>Dołącz jako Gracz ${i + 1}</span>`}</button>`;
+    }).join('');
+    const filled = b ? b.slots.filter(Boolean).length : 0;
+    return `<div class="gate" style="--n:${n}">
+        <div class="gate-arch"></div>
+        <div class="gate-head"><b>${n} GRACZY</b><span class="cprice">${money(cost)}</span></div>
+        <div class="q-pads">${pads}</div>
+        <div class="gate-foot">${caseArt(CASE[cases[0]])}<span>${QUICK_ROUNDS}× ${esc(CASE[cases[0]].name)} · Normal<br><b>${b ? `${filled}/${n} na polach` : 'Bramka wolna'}</b></span></div>
+    </div>`;
+}
+function lobbyHtml() {
+    const mine = myQueue();
+    if (mine) lobby.stake = mine.quick;
+    return `<div class="page-head sm">${ic('bolt')}<div><h2>SZYBKA GRA</h2><small>STAŃ NA POLU, POCZEKAJ NA GRACZY — BITWA RUSZA SAMA</small></div></div>
+    <div class="panel lobby">
+        <div class="lobby-bar"><span class="muted">Stawka za rundę:</span>
+            ${QUICK_STAKES.map(v => `<button class="chip ${lobby.stake === v ? 'on' : ''}" data-act="qStake" data-arg="${v}" ${mine ? 'disabled' : ''}>${money(v)}</button>`).join('')}
+            <span class="lobby-tip">${ic('info')}Kliknij pole albo najedź na nie i wciśnij <kbd>E</kbd></span></div>
+        <div class="gates">${[2, 3, 4].map(gateHtml).join('')}</div>
+    </div>`;
+}
+const refreshLobby = () => { const el = $('#lobbyBox'); if (el) el.innerHTML = lobbyHtml(); };
+function refreshQueue() {
+    const el = $('#qbar');
+    if (!el) return;
+    const b = myQueue();
+    el.hidden = !b;
+    if (!b) { el.innerHTML = ''; return; }
+    const filled = b.slots.filter(Boolean).length + (SEAT && !b.slots.some(isMeSlot) ? 1 : 0);
+    el.innerHTML = `<div class="qb-top"><b>CZEKAMY NA GRACZY…</b><div class="qb-bar"><div style="width:${(filled / b.players * 100).toFixed(0)}%"></div><span>${filled}/${b.players}</span></div></div>
+        <div class="qb-bot">${b.host === NET.me ? `<button class="btn btn-purple" data-act="bots">${ic('bolt')}PRZYWOŁAJ BOTY</button>` : ''}<button class="btn btn-red btn-xl" data-act="leaveQueue">${ic('x')}OPUŚĆ KOLEJKĘ</button></div>`;
+}
 const cr = { cases: [], players: 2, mode: 'normal', priv: false };
 // Kod prywatnej bitwy: 5 znaków z jej id (wpisuje się go na liście bitew).
 const battleCode = b => b.id.slice(0, 5).toUpperCase();
@@ -2172,7 +2239,13 @@ function renderCreate() {
     <div class="panel mode-info" style="--mc:${m.col}"><span class="mode-ico">${ic(m.icon)}</span><div><h3>${m.n}</h3><p>${m.d}</p></div></div>`;
 }
 
+// Moja bitwa już się rozegrała (czeka tylko na sprzątnięcie) — zwolnij ją, żeby dało się zacząć następną.
+function dropFinished() {
+    if (MYB && MYB.status === 'running' && RUN.get(myBattle().bid)?.done) { MYB = null; publish(); }
+}
+
 function createBattle(mode, players, cases, priv = false) {
+    dropFinished();
     if (MYB) { toast('Masz już otwartą bitwę. Zakończ ją albo anuluj.', 'err'); go('#/battle/' + myBattle().bid); return; }
     if (SEAT) { toast('Siedzisz już w innej bitwie.', 'err'); return; }
     const b = { id: Math.random().toString(36).slice(2, 10), mode, players, cases, status: 'waiting', seed: 0, t: Date.now(), priv,
@@ -2208,10 +2281,11 @@ function bvStage(b, r, i) {
         let act = '';
         if (b.status === 'waiting') {
             if (b.host === NET.me) act = `<button class="btn btn-purple" data-act="summon" data-arg="${i}">${ic('bolt')}Przywołaj bota</button>`;
-            else if (canJoin(b)) act = `<button class="btn btn-blue" data-act="join" data-arg="${esc(b.bid)}:${i}">${ic('plus')}Dołącz za ${money(bValue(b))}</button>`;
+            else if (canJoin(b)) act = `<button class="btn btn-blue q-join" data-act="join" data-arg="${esc(b.bid)}:${i}"><kbd>E</kbd>Dołącz jako Gracz ${i + 1} · ${money(bValue(b))}</button>`;
             else if (SEAT && SEAT.h === b.host && SEAT.b === b.id && SEAT.i === i) act = `<span class="muted">Czekam, aż host Cię przyjmie…</span>`;
         }
-        return `<div class="st-wait"><span class="st-ring">${ic('user')}</span><b>Czekamy na gracza…</b>${act}</div>`;
+        const [icon, col] = PAD_ROLES[i];
+        return `<div class="st-wait"><span class="qpad solo" style="--pc:${col}"><span class="q-plac">${ic(icon)}</span><span class="q-floor"></span></span><b>Czekamy na gracza…</b>${act}</div>`;
     }
     if (r && r.phase === 'count') return `<div class="st-count">${r.count}</div>`;
     if (r && r.phase === 'spin') return reelHtml(true, 'bv-reel');
@@ -2285,7 +2359,7 @@ function renderBattleView() {
         <div class="bv-arena" style="--n:${b.players}">${b.slots.map((sl, i) => `
             <div class="bv-col ${r?.done ? (i === r.winner ? 'win' : 'lose') : ''}">
                 <div class="bv-stage">${bvStage(b, r, i)}</div>
-                <div class="bv-bar">${slotAvatar(sl, 'sm')}<div class="bv-who"><b translate="no">${sl?.bot ? 'BOT | ' : ''}${esc(sl ? (isMeSlot(sl) ? state.name : sl.nick) : 'Wolne miejsce')}</b><small>${!sl ? 'CZEKA NA GRACZA' : isMeSlot(sl) ? 'TY' : sl.bot ? 'BOT' : i === 0 ? 'HOST' : 'GRACZ'}</small></div><span class="bv-sumw">${bvSum(r, i)}</span></div>
+                <div class="bv-bar">${slotAvatar(sl, 'sm')}<div class="bv-who"><b translate="no">${sl?.bot ? 'BOT | ' : ''}${esc(sl ? (isMeSlot(sl) ? state.name : sl.nick) : 'Wolne miejsce')}</b><small>${!sl ? 'CZEKA NA GRACZA' : isMeSlot(sl) ? 'TY' : sl.bot ? 'BOT' : sl.peer === b.host ? 'HOST' : 'GRACZ'}</small></div><span class="bv-sumw">${bvSum(r, i)}</span></div>
                 <div class="bv-grid">${bvGrid(b, r, i)}</div>
             </div>`).join('')}
         </div>
@@ -4556,6 +4630,41 @@ const ACT = {
         go('#/battle/' + b.bid);
     },
     watch: key => go('#/battle/' + key),
+    qStake: v => { if (myQueue()) return; lobby.stake = Number(v); refreshLobby(); },
+    qpad: arg => {
+        const [n, i] = String(arg).split(':').map(Number);
+        dropFinished();
+        if (myQueue()) { toast('Już czekasz w kolejce. Najpierw ją opuść.', 'err'); return; }
+        if (MYB || SEAT) { toast('Siedzisz już w innej bitwie.', 'err'); return; }
+        const b = gateBattle(n);
+        if (b) {
+            if (b.slots[i] || !canJoin(b)) { toast('To pole jest już zajęte.', 'err'); return; }
+            if (state.balance < bValue(b)) { toast('Za mało środków na tę bitwę.', 'err'); return; }
+            holdFor(b);
+            SEAT = { h: b.host, b: b.id, i };
+        } else {
+            const cases = quickCases(lobby.stake);
+            const slots = Array(n).fill(null);
+            slots[i] = mySlot();
+            const nb = { id: Math.random().toString(36).slice(2, 10), mode: 'normal', players: n, cases, status: 'waiting', seed: 0, t: Date.now(), priv: false, quick: lobby.stake, slots };
+            if (state.balance < bValue(nb)) { toast('Za mało środków na tę bitwę.', 'err'); return; }
+            MYB = nb;
+            holdFor(myBattle());
+        }
+        tone(500, 900, 0.18, 0.05, 'triangle');
+        publish();
+        refreshLobby(); refreshQueue();
+    },
+    leaveQueue: () => {
+        if (MYB && MYB.status === 'waiting') { MYB = null; releaseHold(); }
+        else if (SEAT) { SEAT = null; releaseHold(); }
+        else return;
+        publish();
+        tone(700, 300, 0.18, 0.04, 'triangle');
+        toast('Opuściłeś kolejkę, opłata wróciła.');
+        refreshQueue();
+        if (['battles', 'battle'].includes(route.name)) renderPage();
+    },
     summon: i => {
         if (!MYB || MYB.status !== 'waiting' || MYB.slots[Number(i)]) return;
         MYB.slots[Number(i)] = botPlayer();
