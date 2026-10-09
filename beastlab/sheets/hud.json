@@ -1,0 +1,166 @@
+{
+  "sheet": "hud",
+  "struct": "HudRow",
+  "doc": "Every message the player sees. {x} placeholders are filled by the system named in used_by.",
+  "columns": {
+    "id": {
+      "type": "string"
+    },
+    "used_by": {
+      "type": "string",
+      "ref": "systems"
+    },
+    "seconds": {
+      "type": "float",
+      "doc": "how long it stays (0 = permanent line)"
+    },
+    "color": {
+      "type": "string"
+    },
+    "text": {
+      "type": "string"
+    }
+  },
+  "rows": [
+    {
+      "id": "banner_dawn",
+      "used_by": "daynight",
+      "seconds": 6,
+      "color": "#ffd29a",
+      "text": "DAWN - day {day}. Scavenge before dark."
+    },
+    {
+      "id": "banner_day",
+      "used_by": "daynight",
+      "seconds": 4,
+      "color": "#ffffff",
+      "text": "DAY"
+    },
+    {
+      "id": "banner_dusk",
+      "used_by": "daynight",
+      "seconds": 6,
+      "color": "#ff8a50",
+      "text": "DUSK - get to the workbench. Night is coming."
+    },
+    {
+      "id": "banner_night",
+      "used_by": "daynight",
+      "seconds": 6,
+      "color": "#ff3b3b",
+      "text": "NIGHT - Volatiles are hunting. Survive till dawn."
+    },
+    {
+      "id": "clock",
+      "used_by": "daynight",
+      "seconds": 0,
+      "color": "#ffffff",
+      "text": "Day {day}  {phase}  {left}"
+    },
+    {
+      "id": "stash_line",
+      "used_by": "stash",
+      "seconds": 0,
+      "color": "#c8e6ff",
+      "text": "Parts {parts}  Meds {meds}  Kills {kills}"
+    },
+    {
+      "id": "loot_found",
+      "used_by": "scavenge",
+      "seconds": 4,
+      "color": "#ffffff",
+      "text": "{cache}: {items}"
+    },
+    {
+      "id": "loot_empty",
+      "used_by": "scavenge",
+      "seconds": 3,
+      "color": "#999999",
+      "text": "{cache}: empty"
+    },
+    {
+      "id": "weapon_spawned",
+      "used_by": "scavenge",
+      "seconds": 5,
+      "color": "#ffd060",
+      "text": "Found {weapon} ({rarity}, dmg {damage})"
+    },
+    {
+      "id": "med_used",
+      "used_by": "stash",
+      "seconds": 4,
+      "color": "#5fd35f",
+      "text": "Used {item} (+{heal} health)"
+    },
+    {
+      "id": "ammo_added",
+      "used_by": "stash",
+      "seconds": 3,
+      "color": "#ffffff",
+      "text": "+{count} {group} ammo ({item})"
+    },
+    {
+      "id": "infected_killed",
+      "used_by": "infected",
+      "seconds": 3,
+      "color": "#ff9a9a",
+      "text": "{type} down - loot added"
+    },
+    {
+      "id": "bench_prompt",
+      "used_by": "crafting",
+      "seconds": 0,
+      "color": "#ffe9a8",
+      "text": "Hold still: crafting {recipe} in {left}s"
+    },
+    {
+      "id": "bench_cant",
+      "used_by": "crafting",
+      "seconds": 0,
+      "color": "#bbbbbb",
+      "text": "Workbench - need {missing}"
+    },
+    {
+      "id": "crafted",
+      "used_by": "crafting",
+      "seconds": 5,
+      "color": "#7dff7d",
+      "text": "Crafted {result}"
+    },
+    {
+      "id": "no_dltb",
+      "used_by": "dltb_reader",
+      "seconds": 0,
+      "color": "#ff6060",
+      "text": "Dying Light: The Beast not found - install it (Steam) or set DltbPath in UserData/BeastLab.cfg"
+    },
+    {
+      "id": "dltb_loaded",
+      "used_by": "dltb_reader",
+      "seconds": 8,
+      "color": "#9fe0ff",
+      "text": "The Beast loaded: {weapons} weapons, {infected} infected, {recipes} recipes"
+    },
+    {
+      "id": "bench_no_recipes",
+      "used_by": "crafting",
+      "seconds": 0,
+      "color": "#bbbbbb",
+      "text": "Workbench - no recipes found in your copy of The Beast"
+    },
+    {
+      "id": "dltb_loading",
+      "used_by": "dltb_reader",
+      "seconds": 0,
+      "color": "#9fe0ff",
+      "text": "Reading Dying Light: The Beast..."
+    },
+    {
+      "id": "system_off",
+      "used_by": "hud",
+      "seconds": 8,
+      "color": "#ff6060",
+      "text": "BeastLab: {system} is off ({why})"
+    }
+  ]
+}

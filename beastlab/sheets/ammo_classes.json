@@ -1,0 +1,16 @@
+{
+  "sheet": "ammo_classes",
+  "struct": "AmmoClassRow",
+  "doc": "The Beast's ammo items go into BONELAB's ammo pouch groups.",
+  "columns": {
+    "id":    {"type": "string"},
+    "match": {"type": "string", "doc": "regex on Beast ammo id"},
+    "hook":  {"type": "string", "ref": "hooks", "doc": "AmmoInventory group property; 'none' has hook 'ammo_inventory' and is never added"}
+  },
+  "rows": [
+    {"id": "heavy",  "match": "shotgun|shell|rifle|sniper|heavy|buckshot", "hook": "ammo_heavy"},
+    {"id": "medium", "match": "assault|medium|smg|carbine|762|556",        "hook": "ammo_medium"},
+    {"id": "light",  "match": ".",                                         "hook": "ammo_light"},
+    {"id": "none",   "match": "^$",                                        "hook": "ammo_inventory"}
+  ]
+}

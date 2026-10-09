@@ -1,0 +1,16 @@
+{
+  "sheet": "crafting",
+  "struct": "CraftingRow",
+  "doc": "The workbench. Recipes themselves come from The Beast (dltb_sources 'recipes'); this sheet only places the bench and sets how crafting is triggered (stand at the bench for dwell_seconds; each stay crafts the next affordable recipe).",
+  "columns": {
+    "id":            {"type": "string"},
+    "label":         {"type": "string"},
+    "offset_fwd":    {"type": "float", "doc": "metres in front of where the player starts"},
+    "radius":        {"type": "float"},
+    "dwell_seconds": {"type": "float"},
+    "cooldown":      {"type": "float"}
+  },
+  "rows": [
+    {"id": "workbench", "label": "Workbench", "offset_fwd": 2.0, "radius": 1.4, "dwell_seconds": 3.0, "cooldown": 2.0}
+  ]
+}

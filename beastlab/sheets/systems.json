@@ -1,0 +1,23 @@
+{
+  "sheet": "systems",
+  "struct": "SystemRow",
+  "doc": "Every game system the mashup touches. One row = one runtime system class.",
+  "columns": {
+    "id":         {"type": "string", "doc": "system id"},
+    "cls":        {"type": "string", "doc": "C# class that implements it"},
+    "summary":    {"type": "string"},
+    "tick_hz":    {"type": "float",  "doc": "how often Tick runs per second"},
+    "needs_dltb": {"type": "bool",   "doc": "does nothing useful without The Beast's data"},
+    "depends_on": {"type": "string[]", "ref": "systems"}
+  },
+  "rows": [
+    {"id": "dltb_reader", "cls": "DltbReaderSystem", "summary": "Finds Dying Light: The Beast on this PC and reads items, weapons, infected, recipes and day/night rules from its data0.pak", "tick_hz": 0.0, "needs_dltb": true,  "depends_on": []},
+    {"id": "player",      "cls": "PlayerSystem",     "summary": "Finds the BONELAB player rig (head position, health) each level", "tick_hz": 2.0, "needs_dltb": false, "depends_on": []},
+    {"id": "hud",         "cls": "HudSystem",        "summary": "Floating text in front of the player: clock, phase, stash, prompts", "tick_hz": 30.0, "needs_dltb": false, "depends_on": ["player"]},
+    {"id": "daynight",    "cls": "DayNightSystem",   "summary": "Dawn/day/dusk/night clock with The Beast's timings; darkens the level with fog at night", "tick_hz": 10.0, "needs_dltb": false, "depends_on": ["player", "dltb_reader"]},
+    {"id": "scavenge",    "cls": "ScavengeSystem",   "summary": "Places loot caches around the player at dawn; walking up to one searches it and rolls The Beast's items", "tick_hz": 5.0, "needs_dltb": true, "depends_on": ["player", "hud", "dltb_reader", "stash"]},
+    {"id": "stash",       "cls": "StashSystem",      "summary": "What the player carries: The Beast's craft parts, consumables and ammo; auto-uses medkits at low health", "tick_hz": 2.0, "needs_dltb": true, "depends_on": ["player", "hud"]},
+    {"id": "infected",    "cls": "InfectedSystem",   "summary": "Spawns BONELAB NPCs as The Beast's infected types with The Beast's stats; more and nastier at night", "tick_hz": 1.0, "needs_dltb": true, "depends_on": ["player", "daynight", "dltb_reader", "stash"]},
+    {"id": "crafting",    "cls": "CraftingSystem",   "summary": "A workbench marker; standing at it crafts the next affordable recipe from The Beast's real recipes", "tick_hz": 5.0, "needs_dltb": true, "depends_on": ["player", "hud", "stash", "dltb_reader"]}
+  ]
+}

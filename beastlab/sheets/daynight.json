@@ -1,0 +1,25 @@
+{
+  "sheet": "daynight",
+  "struct": "PhaseRow",
+  "doc": "The four phases of a BeastLab day. Lengths are shares of The Beast's day/night length (columns_dltb daynight.*). Fog darkens the level; spawn_interval is seconds between infected spawns.",
+  "columns": {
+    "id":             {"type": "string"},
+    "display":        {"type": "string"},
+    "length_of":      {"type": "enum", "values": ["day", "night"], "doc": "which Beast length this phase takes a share of"},
+    "share":          {"type": "float", "doc": "fraction of that length"},
+    "fog_color":      {"type": "string"},
+    "fog_density":    {"type": "float"},
+    "ambient_scale":  {"type": "float"},
+    "spawn_interval": {"type": "float"},
+    "max_alive":      {"type": "int"},
+    "infected_phase": {"type": "enum", "values": ["day", "night"], "doc": "which infected rows can spawn"},
+    "loot_drop":      {"type": "bool", "doc": "places new loot caches when the phase starts"},
+    "banner":         {"type": "string", "ref": "hud"}
+  },
+  "rows": [
+    {"id": "dawn",  "display": "Dawn",  "length_of": "day",   "share": 0.15, "fog_color": "#c9a27a", "fog_density": 0.010, "ambient_scale": 0.8, "spawn_interval": 40, "max_alive": 2,  "infected_phase": "day",   "loot_drop": true,  "banner": "banner_dawn"},
+    {"id": "day",   "display": "Day",   "length_of": "day",   "share": 0.70, "fog_color": "#b8c4cc", "fog_density": 0.004, "ambient_scale": 1.0, "spawn_interval": 25, "max_alive": 4,  "infected_phase": "day",   "loot_drop": false, "banner": "banner_day"},
+    {"id": "dusk",  "display": "Dusk",  "length_of": "day",   "share": 0.15, "fog_color": "#6b3d2e", "fog_density": 0.020, "ambient_scale": 0.5, "spawn_interval": 15, "max_alive": 5,  "infected_phase": "day",   "loot_drop": false, "banner": "banner_dusk"},
+    {"id": "night", "display": "Night", "length_of": "night", "share": 1.00, "fog_color": "#05070c", "fog_density": 0.060, "ambient_scale": 0.12,"spawn_interval": 6,  "max_alive": 10, "infected_phase": "night", "loot_drop": false, "banner": "banner_night"}
+  ]
+}

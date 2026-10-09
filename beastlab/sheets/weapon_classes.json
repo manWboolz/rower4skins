@@ -1,0 +1,25 @@
+{
+  "sheet": "weapon_classes",
+  "struct": "WeaponClassRow",
+  "doc": "Which BONELAB physics weapon carries each Beast weapon (by its id/category). First match wins. The weapon keeps The Beast's name, rarity and damage (shown on its label).",
+  "columns": {
+    "id":          {"type": "string"},
+    "match":       {"type": "string", "doc": "regex on Beast weapon id + category"},
+    "bonelab":     {"type": "string", "ref": "bonelab_crates"},
+    "ammo_class":  {"type": "string", "ref": "ammo_classes", "doc": "'none' for melee"}
+  },
+  "rows": [
+    {"id": "shotgun",   "match": "shotgun|sawed|sawn",                       "bonelab": "gun_m590a1",            "ammo_class": "heavy"},
+    {"id": "rifle",     "match": "rifle|assault|carbine|_ak|ar15|sniper",    "bonelab": "gun_akm",               "ammo_class": "medium"},
+    {"id": "smg",       "match": "smg|uzi|submachine|mp5",                   "bonelab": "gun_mp5",               "ammo_class": "light"},
+    {"id": "pistol",    "match": "pistol|revolver|handgun|firearm|gun",      "bonelab": "gun_m1911",             "ammo_class": "light"},
+    {"id": "two_hand_blade", "match": "katana|longsword|claymore|greatsword|sword|scythe", "bonelab": "melee_claymore", "ammo_class": "none"},
+    {"id": "blade",     "match": "machete|blade|knife|cleaver|sickle|sharp", "bonelab": "melee_machete",         "ammo_class": "none"},
+    {"id": "axe",       "match": "axe|hatchet",                              "bonelab": "melee_axe_firefighter", "ammo_class": "none"},
+    {"id": "heavy_blunt","match": "sledge|mace|heavy|2h|two_?hand|maul",     "bonelab": "melee_sledgehammer",    "ammo_class": "none"},
+    {"id": "spear",     "match": "spear|pike|polearm|staff",                 "bonelab": "melee_spear",           "ammo_class": "none"},
+    {"id": "crowbar",   "match": "crowbar|wrench|pipe|rebar|tool",           "bonelab": "melee_crowbar",         "ammo_class": "none"},
+    {"id": "bat",       "match": "bat|club|stick|plank|blunt",               "bonelab": "melee_baseball_bat",    "ammo_class": "none"},
+    {"id": "any_melee", "match": ".",                                         "bonelab": "melee_hammer",          "ammo_class": "none"}
+  ]
+}

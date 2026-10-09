@@ -1,0 +1,23 @@
+{
+  "sheet": "loot",
+  "struct": "LootRow",
+  "doc": "Loot cache types placed around the player at dawn. Searching a cache rolls 'rolls' times over the sources with these weights (then by rarity weight).",
+  "columns": {
+    "id":            {"type": "string"},
+    "label":         {"type": "string"},
+    "per_dawn":      {"type": "int"},
+    "rolls":         {"type": "int"},
+    "w_weapons":     {"type": "float"},
+    "w_consumables": {"type": "float"},
+    "w_ammo":        {"type": "float"},
+    "w_craftparts":  {"type": "float"},
+    "min_dist":      {"type": "float"},
+    "max_dist":      {"type": "float"},
+    "search_radius": {"type": "float"}
+  },
+  "rows": [
+    {"id": "supply_bag",   "label": "Supply Bag",   "per_dawn": 6, "rolls": 2, "w_weapons": 0,  "w_consumables": 30, "w_ammo": 20, "w_craftparts": 50, "min_dist": 4, "max_dist": 18, "search_radius": 1.6},
+    {"id": "weapon_crate", "label": "Weapon Crate", "per_dawn": 2, "rolls": 1, "w_weapons": 100,"w_consumables": 0,  "w_ammo": 0,  "w_craftparts": 0,  "min_dist": 6, "max_dist": 22, "search_radius": 1.6},
+    {"id": "medical_box",  "label": "Medical Box",  "per_dawn": 2, "rolls": 2, "w_weapons": 0,  "w_consumables": 70, "w_ammo": 0,  "w_craftparts": 30, "min_dist": 5, "max_dist": 20, "search_radius": 1.6}
+  ]
+}

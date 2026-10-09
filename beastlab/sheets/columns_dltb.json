@@ -1,0 +1,175 @@
+{
+  "sheet": "columns_dltb",
+  "struct": "DltbColumnRow",
+  "doc": "Each property the mod reads from a Beast block, and the Param keys tried, in order. A property not found in the player's copy is reported (hook report) and the BONELAB value is left as it is, except where 'fallback' is used, which the report labels as a BeastLab default.",
+  "columns": {
+    "id": {
+      "type": "string",
+      "doc": "source.property"
+    },
+    "source": {
+      "type": "string",
+      "ref": "dltb_sources"
+    },
+    "property": {
+      "type": "string"
+    },
+    "keys": {
+      "type": "string[]",
+      "doc": "Param names tried in order (case-insensitive, exact)"
+    },
+    "fallback": {
+      "type": "float",
+      "doc": "-1 = no fallback (leave BONELAB's own value)"
+    }
+  },
+  "rows": [
+    {
+      "id": "weapons.damage",
+      "source": "weapons",
+      "property": "damage",
+      "keys": [
+        "Damage",
+        "BaseDamage",
+        "DamageBase",
+        "DamageValue",
+        "Dmg"
+      ],
+      "fallback": -1
+    },
+    {
+      "id": "weapons.rarity",
+      "source": "weapons",
+      "property": "rarity",
+      "keys": [
+        "Rarity",
+        "ItemRarity",
+        "Quality",
+        "Tier"
+      ],
+      "fallback": 0
+    },
+    {
+      "id": "consumables.heal",
+      "source": "consumables",
+      "property": "heal",
+      "keys": [
+        "HealAmount",
+        "Heal",
+        "HealthRestore",
+        "RestoreHealth",
+        "HealValue",
+        "Health"
+      ],
+      "fallback": 40
+    },
+    {
+      "id": "consumables.rarity",
+      "source": "consumables",
+      "property": "rarity",
+      "keys": [
+        "Rarity",
+        "ItemRarity",
+        "Quality"
+      ],
+      "fallback": 0
+    },
+    {
+      "id": "ammo.count",
+      "source": "ammo",
+      "property": "count",
+      "keys": [
+        "StackSize",
+        "MaxStack",
+        "Amount",
+        "Count",
+        "AmmoAmount",
+        "Capacity"
+      ],
+      "fallback": 12
+    },
+    {
+      "id": "ammo.rarity",
+      "source": "ammo",
+      "property": "rarity",
+      "keys": [
+        "Rarity",
+        "ItemRarity"
+      ],
+      "fallback": 0
+    },
+    {
+      "id": "craftparts.rarity",
+      "source": "craftparts",
+      "property": "rarity",
+      "keys": [
+        "Rarity",
+        "ItemRarity",
+        "Quality"
+      ],
+      "fallback": 0
+    },
+    {
+      "id": "infected.health",
+      "source": "infected",
+      "property": "health",
+      "keys": [
+        "Health",
+        "MaxHealth",
+        "HP",
+        "HealthMax",
+        "BaseHealth"
+      ],
+      "fallback": -1
+    },
+    {
+      "id": "infected.speed",
+      "source": "infected",
+      "property": "speed",
+      "keys": [
+        "RunSpeed",
+        "Speed",
+        "MoveSpeed",
+        "SprintSpeed",
+        "MaxSpeed"
+      ],
+      "fallback": -1
+    },
+    {
+      "id": "infected.damage",
+      "source": "infected",
+      "property": "damage",
+      "keys": [
+        "Damage",
+        "AttackDamage",
+        "MeleeDamage",
+        "HitDamage"
+      ],
+      "fallback": -1
+    },
+    {
+      "id": "daynight.day_seconds",
+      "source": "daynight",
+      "property": "day_seconds",
+      "keys": [
+        "DayDuration",
+        "DayLength",
+        "DayTime",
+        "DayLengthInSeconds"
+      ],
+      "fallback": 480
+    },
+    {
+      "id": "daynight.night_seconds",
+      "source": "daynight",
+      "property": "night_seconds",
+      "keys": [
+        "NightDuration",
+        "NightLength",
+        "NightTime",
+        "NightLengthInSeconds"
+      ],
+      "fallback": 240
+    }
+  ]
+}

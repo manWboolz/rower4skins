@@ -1,0 +1,62 @@
+{
+  "sheet": "rarity",
+  "struct": "RarityRow",
+  "doc": "The Beast's rarity tiers (matched against the item's Rarity param or its id) and how often each drops. Matched from the last row up, so 'uncommon' is not taken for 'common'.",
+  "columns": {
+    "id": {
+      "type": "string"
+    },
+    "tier": {
+      "type": "int",
+      "doc": "numeric value when the Rarity param is a number"
+    },
+    "match": {
+      "type": "string",
+      "doc": "regex on the Rarity text or item id"
+    },
+    "weight": {
+      "type": "float"
+    },
+    "color": {
+      "type": "string",
+      "doc": "hex HUD color"
+    }
+  },
+  "rows": [
+    {
+      "id": "common",
+      "tier": 0,
+      "match": "common|white|^0$",
+      "weight": 60,
+      "color": "#d8d8d8"
+    },
+    {
+      "id": "uncommon",
+      "tier": 1,
+      "match": "uncommon|green|^1$",
+      "weight": 25,
+      "color": "#5fd35f"
+    },
+    {
+      "id": "rare",
+      "tier": 2,
+      "match": "rare|blue|^2$",
+      "weight": 10,
+      "color": "#4aa3ff"
+    },
+    {
+      "id": "epic",
+      "tier": 3,
+      "match": "epic|purple|^3$",
+      "weight": 4,
+      "color": "#b45cff"
+    },
+    {
+      "id": "legendary",
+      "tier": 4,
+      "match": "legend|gold|orange|^4$",
+      "weight": 1,
+      "color": "#ffb020"
+    }
+  ]
+}

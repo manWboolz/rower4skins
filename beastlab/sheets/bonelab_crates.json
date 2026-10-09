@@ -1,0 +1,30 @@
+{
+  "sheet": "bonelab_crates",
+  "struct": "CrateRow",
+  "doc": "BONELAB spawnables (barcodes from BoneLib CommonBarcodes.cs, which tracks the shipped game). These are BONELAB's own content in the player's game.",
+  "columns": {
+    "id":      {"type": "string"},
+    "name":    {"type": "string"},
+    "barcode": {"type": "string"},
+    "kind":    {"type": "enum", "values": ["npc", "melee", "gun"]}
+  },
+  "rows": [
+    {"id": "npc_early_exit_zombie",  "name": "Early Exit Zombie",  "barcode": "c1534c5a-2ab7-46fe-b0d6-7495466f7264", "kind": "npc"},
+    {"id": "npc_nullbody",           "name": "Nullbody",           "barcode": "c1534c5a-d82d-4f65-89fd-a4954e756c6c", "kind": "npc"},
+    {"id": "npc_nullbody_corrupted", "name": "Corrupted Nullbody", "barcode": "c1534c5a-2775-4009-9447-22d94e756c6c", "kind": "npc"},
+    {"id": "npc_skeleton_steel",     "name": "Steel Skeleton",     "barcode": "c1534c5a-a750-44ca-9730-b487536b656c", "kind": "npc"},
+    {"id": "npc_skeleton_fire_mage", "name": "Fire Mage Skeleton", "barcode": "c1534c5a-bd53-469d-97f1-165e4e504353", "kind": "npc"},
+    {"id": "melee_machete",          "name": "Machete",            "barcode": "c1534c5a-a767-4a58-b3ef-26064d616368", "kind": "melee"},
+    {"id": "melee_claymore",         "name": "Claymore",           "barcode": "c1534c5a-b59c-4790-9b09-499553776f72", "kind": "melee"},
+    {"id": "melee_axe_firefighter",  "name": "Firefighter Axe",    "barcode": "c1534c5a-4774-460f-a814-149541786546", "kind": "melee"},
+    {"id": "melee_sledgehammer",     "name": "Sledgehammer",       "barcode": "c1534c5a-1f5a-4993-bbc1-03be4d656c65", "kind": "melee"},
+    {"id": "melee_baseball_bat",     "name": "Baseball Bat",       "barcode": "c1534c5a-6441-40aa-a070-909542617365", "kind": "melee"},
+    {"id": "melee_crowbar",          "name": "Crowbar",            "barcode": "c1534c5a-0c8a-4b82-9f8b-7a9543726f77", "kind": "melee"},
+    {"id": "melee_spear",            "name": "Spear",              "barcode": "c1534c5a-a97f-4bff-b512-e44d53706561", "kind": "melee"},
+    {"id": "melee_hammer",           "name": "Hammer",             "barcode": "c1534c5a-11d0-4632-b36e-fa9548616d6d", "kind": "melee"},
+    {"id": "gun_m1911",              "name": "M1911",              "barcode": "c1534c5a-fcfc-4f43-8fb0-d29531393131", "kind": "gun"},
+    {"id": "gun_mp5",                "name": "MP5",                "barcode": "c1534c5a-d00c-4aa8-adfd-3495534d474d", "kind": "gun"},
+    {"id": "gun_akm",                "name": "AKM",                "barcode": "c1534c5a-a6b5-4177-beb8-04d947756e41", "kind": "gun"},
+    {"id": "gun_m590a1",             "name": "M590A1",             "barcode": "c1534c5a-7f05-402f-9320-609647756e35", "kind": "gun"}
+  ]
+}

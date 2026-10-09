@@ -1,0 +1,698 @@
+{
+  "sheet": "hooks",
+  "struct": "HookRow",
+  "doc": "Every BONELAB/Unity member the mod touches, resolved by reflection at load. 'source' says where the name comes from; 'verified' becomes true only after the hook report from a real run shows it resolved.",
+  "columns": {
+    "id": {
+      "type": "string"
+    },
+    "assembly": {
+      "type": "string",
+      "doc": "Il2Cpp proxy assembly name in MelonLoader/Il2CppAssemblies"
+    },
+    "type": {
+      "type": "string",
+      "doc": "full type name"
+    },
+    "member": {
+      "type": "string",
+      "doc": "member name, '-' for the type itself"
+    },
+    "kind": {
+      "type": "enum",
+      "values": [
+        "type",
+        "method",
+        "static_method",
+        "property",
+        "static_property",
+        "ctor"
+      ]
+    },
+    "used_by": {
+      "type": "string",
+      "ref": "systems"
+    },
+    "required": {
+      "type": "bool",
+      "doc": "if missing, the system that uses it is switched off (and says so)"
+    },
+    "source": {
+      "type": "string"
+    },
+    "verified": {
+      "type": "bool"
+    }
+  },
+  "rows": [
+    {
+      "id": "unity_object",
+      "assembly": "UnityEngine.CoreModule",
+      "type": "UnityEngine.Object",
+      "member": "-",
+      "kind": "type",
+      "used_by": "player",
+      "required": true,
+      "source": "Unity API",
+      "verified": false
+    },
+    {
+      "id": "find_of_type",
+      "assembly": "UnityEngine.CoreModule",
+      "type": "UnityEngine.Object",
+      "member": "FindObjectOfType",
+      "kind": "static_method",
+      "used_by": "player",
+      "required": true,
+      "source": "Unity API; BoneLib Player.FindObjectReferences",
+      "verified": false
+    },
+    {
+      "id": "go_type",
+      "assembly": "UnityEngine.CoreModule",
+      "type": "UnityEngine.GameObject",
+      "member": "-",
+      "kind": "type",
+      "used_by": "hud",
+      "required": true,
+      "source": "Unity API",
+      "verified": false
+    },
+    {
+      "id": "transform_position",
+      "assembly": "UnityEngine.CoreModule",
+      "type": "UnityEngine.Transform",
+      "member": "position",
+      "kind": "property",
+      "used_by": "player",
+      "required": true,
+      "source": "Unity API",
+      "verified": false
+    },
+    {
+      "id": "transform_forward",
+      "assembly": "UnityEngine.CoreModule",
+      "type": "UnityEngine.Transform",
+      "member": "forward",
+      "kind": "property",
+      "used_by": "hud",
+      "required": true,
+      "source": "Unity API",
+      "verified": false
+    },
+    {
+      "id": "transform_rotation",
+      "assembly": "UnityEngine.CoreModule",
+      "type": "UnityEngine.Transform",
+      "member": "rotation",
+      "kind": "property",
+      "used_by": "hud",
+      "required": true,
+      "source": "Unity API",
+      "verified": false
+    },
+    {
+      "id": "vector3",
+      "assembly": "UnityEngine.CoreModule",
+      "type": "UnityEngine.Vector3",
+      "member": "-",
+      "kind": "type",
+      "used_by": "player",
+      "required": true,
+      "source": "Unity API",
+      "verified": false
+    },
+    {
+      "id": "quaternion",
+      "assembly": "UnityEngine.CoreModule",
+      "type": "UnityEngine.Quaternion",
+      "member": "-",
+      "kind": "type",
+      "used_by": "hud",
+      "required": true,
+      "source": "Unity API",
+      "verified": false
+    },
+    {
+      "id": "color",
+      "assembly": "UnityEngine.CoreModule",
+      "type": "UnityEngine.Color",
+      "member": "-",
+      "kind": "type",
+      "used_by": "daynight",
+      "required": true,
+      "source": "Unity API",
+      "verified": false
+    },
+    {
+      "id": "render_fog",
+      "assembly": "UnityEngine.CoreModule",
+      "type": "UnityEngine.RenderSettings",
+      "member": "fog",
+      "kind": "static_property",
+      "used_by": "daynight",
+      "required": true,
+      "source": "Unity API",
+      "verified": false
+    },
+    {
+      "id": "render_fog_color",
+      "assembly": "UnityEngine.CoreModule",
+      "type": "UnityEngine.RenderSettings",
+      "member": "fogColor",
+      "kind": "static_property",
+      "used_by": "daynight",
+      "required": true,
+      "source": "Unity API",
+      "verified": false
+    },
+    {
+      "id": "render_fog_density",
+      "assembly": "UnityEngine.CoreModule",
+      "type": "UnityEngine.RenderSettings",
+      "member": "fogDensity",
+      "kind": "static_property",
+      "used_by": "daynight",
+      "required": true,
+      "source": "Unity API",
+      "verified": false
+    },
+    {
+      "id": "render_fog_mode",
+      "assembly": "UnityEngine.CoreModule",
+      "type": "UnityEngine.RenderSettings",
+      "member": "fogMode",
+      "kind": "static_property",
+      "used_by": "daynight",
+      "required": false,
+      "source": "Unity API",
+      "verified": false
+    },
+    {
+      "id": "render_ambient",
+      "assembly": "UnityEngine.CoreModule",
+      "type": "UnityEngine.RenderSettings",
+      "member": "ambientLight",
+      "kind": "static_property",
+      "used_by": "daynight",
+      "required": false,
+      "source": "Unity API",
+      "verified": false
+    },
+    {
+      "id": "text_mesh",
+      "assembly": "UnityEngine.TextRenderingModule",
+      "type": "UnityEngine.TextMesh",
+      "member": "-",
+      "kind": "type",
+      "used_by": "hud",
+      "required": true,
+      "source": "Unity API",
+      "verified": false
+    },
+    {
+      "id": "font",
+      "assembly": "UnityEngine.TextRenderingModule",
+      "type": "UnityEngine.Font",
+      "member": "-",
+      "kind": "type",
+      "used_by": "hud",
+      "required": false,
+      "source": "Unity API",
+      "verified": false
+    },
+    {
+      "id": "physics_raycast",
+      "assembly": "UnityEngine.PhysicsModule",
+      "type": "UnityEngine.Physics",
+      "member": "Raycast",
+      "kind": "static_method",
+      "used_by": "infected",
+      "required": false,
+      "source": "Unity API",
+      "verified": false
+    },
+    {
+      "id": "rig_manager",
+      "assembly": "Il2CppSLZ.Marrow",
+      "type": "Il2CppSLZ.Marrow.RigManager",
+      "member": "-",
+      "kind": "type",
+      "used_by": "player",
+      "required": true,
+      "source": "BoneLib Player.cs (using Il2CppSLZ.Marrow)",
+      "verified": false
+    },
+    {
+      "id": "rig_physics_rig",
+      "assembly": "Il2CppSLZ.Marrow",
+      "type": "Il2CppSLZ.Marrow.RigManager",
+      "member": "physicsRig",
+      "kind": "property",
+      "used_by": "player",
+      "required": true,
+      "source": "BoneLib Player.cs RigManager.physicsRig",
+      "verified": false
+    },
+    {
+      "id": "physics_rig_head",
+      "assembly": "Il2CppSLZ.Marrow",
+      "type": "Il2CppSLZ.Marrow.PhysicsRig",
+      "member": "m_head",
+      "kind": "property",
+      "used_by": "player",
+      "required": true,
+      "source": "BoneLib Player.cs PhysicsRig.m_head",
+      "verified": false
+    },
+    {
+      "id": "player_health",
+      "assembly": "Il2CppSLZ.Marrow",
+      "type": "Il2CppSLZ.Marrow.Player_Health",
+      "member": "-",
+      "kind": "type",
+      "used_by": "stash",
+      "required": false,
+      "source": "BoneLib Hooking.cs Player_Health",
+      "verified": false
+    },
+    {
+      "id": "player_health_cur",
+      "assembly": "Il2CppSLZ.Marrow",
+      "type": "Il2CppSLZ.Marrow.Player_Health",
+      "member": "curr_Health",
+      "kind": "property",
+      "used_by": "stash",
+      "required": false,
+      "source": "Marrow Health base class field name (community); unverified",
+      "verified": false
+    },
+    {
+      "id": "player_health_max",
+      "assembly": "Il2CppSLZ.Marrow",
+      "type": "Il2CppSLZ.Marrow.Player_Health",
+      "member": "max_Health",
+      "kind": "property",
+      "used_by": "stash",
+      "required": false,
+      "source": "Marrow Health base class field name (community); unverified",
+      "verified": false
+    },
+    {
+      "id": "ammo_inventory",
+      "assembly": "Il2CppSLZ.Marrow",
+      "type": "Il2CppSLZ.Marrow.AmmoInventory",
+      "member": "Instance",
+      "kind": "static_property",
+      "used_by": "stash",
+      "required": false,
+      "source": "BoneLib DefaultMenu.cs AmmoInventory.Instance",
+      "verified": false
+    },
+    {
+      "id": "ammo_add",
+      "assembly": "Il2CppSLZ.Marrow",
+      "type": "Il2CppSLZ.Marrow.AmmoInventory",
+      "member": "AddCartridge",
+      "kind": "method",
+      "used_by": "stash",
+      "required": false,
+      "source": "BoneLib DefaultMenu.cs AmmoInventory.AddCartridge(AmmoGroup,int)",
+      "verified": false
+    },
+    {
+      "id": "ammo_light",
+      "assembly": "Il2CppSLZ.Marrow",
+      "type": "Il2CppSLZ.Marrow.AmmoInventory",
+      "member": "lightAmmoGroup",
+      "kind": "property",
+      "used_by": "stash",
+      "required": false,
+      "source": "BoneLib DefaultMenu.cs",
+      "verified": false
+    },
+    {
+      "id": "ammo_medium",
+      "assembly": "Il2CppSLZ.Marrow",
+      "type": "Il2CppSLZ.Marrow.AmmoInventory",
+      "member": "mediumAmmoGroup",
+      "kind": "property",
+      "used_by": "stash",
+      "required": false,
+      "source": "BoneLib DefaultMenu.cs",
+      "verified": false
+    },
+    {
+      "id": "ammo_heavy",
+      "assembly": "Il2CppSLZ.Marrow",
+      "type": "Il2CppSLZ.Marrow.AmmoInventory",
+      "member": "heavyAmmoGroup",
+      "kind": "property",
+      "used_by": "stash",
+      "required": false,
+      "source": "BoneLib DefaultMenu.cs",
+      "verified": false
+    },
+    {
+      "id": "crate_ref",
+      "assembly": "Il2CppSLZ.Marrow",
+      "type": "Il2CppSLZ.Marrow.Warehouse.SpawnableCrateReference",
+      "member": "-",
+      "kind": "ctor",
+      "used_by": "infected",
+      "required": true,
+      "source": "BoneLib HelperMethods.SpawnCrate: new SpawnableCrateReference(barcode)",
+      "verified": false
+    },
+    {
+      "id": "spawnable",
+      "assembly": "Il2CppSLZ.Marrow",
+      "type": "Il2CppSLZ.Marrow.Data.Spawnable",
+      "member": "crateRef",
+      "kind": "property",
+      "used_by": "infected",
+      "required": true,
+      "source": "BoneLib HelperMethods.SpawnCrate: new Spawnable{crateRef}",
+      "verified": false
+    },
+    {
+      "id": "spawner_register",
+      "assembly": "Il2CppSLZ.Marrow",
+      "type": "Il2CppSLZ.Marrow.Pool.AssetSpawner",
+      "member": "Register",
+      "kind": "static_method",
+      "used_by": "infected",
+      "required": true,
+      "source": "BoneLib HelperMethods.SpawnCrate: AssetSpawner.Register",
+      "verified": false
+    },
+    {
+      "id": "spawner_spawn",
+      "assembly": "Il2CppSLZ.Marrow",
+      "type": "Il2CppSLZ.Marrow.Pool.AssetSpawner",
+      "member": "Spawn",
+      "kind": "static_method",
+      "used_by": "infected",
+      "required": true,
+      "source": "BoneLib HelperMethods.SpawnCrate: AssetSpawner.Spawn(spawnable,pos,rot,Nullable<Vector3>,null,bool,Nullable<int>,Action<GameObject>,Action<GameObject>)",
+      "verified": false
+    },
+    {
+      "id": "ai_brain",
+      "assembly": "Il2CppSLZ.Marrow",
+      "type": "Il2CppSLZ.Marrow.AI.AIBrain",
+      "member": "-",
+      "kind": "type",
+      "used_by": "infected",
+      "required": true,
+      "source": "BoneLib Hooking.cs AIBrain (Il2CppSLZ.Marrow.AI)",
+      "verified": false
+    },
+    {
+      "id": "ai_brain_isdead",
+      "assembly": "Il2CppSLZ.Marrow",
+      "type": "Il2CppSLZ.Marrow.AI.AIBrain",
+      "member": "isDead",
+      "kind": "property",
+      "used_by": "infected",
+      "required": false,
+      "source": "community; unverified (falls back to 'object despawned')",
+      "verified": false
+    },
+    {
+      "id": "nav_behaviour",
+      "assembly": "Il2CppSLZ.Marrow",
+      "type": "Il2CppSLZ.Marrow.PuppetMasta.BehaviourBaseNav",
+      "member": "-",
+      "kind": "type",
+      "used_by": "infected",
+      "required": false,
+      "source": "BoneLib Hooking.cs BehaviourBaseNav (Il2CppSLZ.Marrow.PuppetMasta)",
+      "verified": false
+    },
+    {
+      "id": "go_ctor",
+      "assembly": "UnityEngine.CoreModule",
+      "type": "UnityEngine.GameObject",
+      "member": "-",
+      "kind": "ctor",
+      "used_by": "hud",
+      "required": true,
+      "source": "Unity API",
+      "verified": false
+    },
+    {
+      "id": "go_add_component",
+      "assembly": "UnityEngine.CoreModule",
+      "type": "UnityEngine.GameObject",
+      "member": "AddComponent",
+      "kind": "method",
+      "used_by": "hud",
+      "required": true,
+      "source": "Unity API (generic AddComponent<T>)",
+      "verified": false
+    },
+    {
+      "id": "go_get_in_children",
+      "assembly": "UnityEngine.CoreModule",
+      "type": "UnityEngine.GameObject",
+      "member": "GetComponentInChildren",
+      "kind": "method",
+      "used_by": "infected",
+      "required": true,
+      "source": "Unity API (generic GetComponentInChildren<T>)",
+      "verified": false
+    },
+    {
+      "id": "go_transform",
+      "assembly": "UnityEngine.CoreModule",
+      "type": "UnityEngine.GameObject",
+      "member": "transform",
+      "kind": "property",
+      "used_by": "hud",
+      "required": true,
+      "source": "Unity API",
+      "verified": false
+    },
+    {
+      "id": "go_active",
+      "assembly": "UnityEngine.CoreModule",
+      "type": "UnityEngine.GameObject",
+      "member": "activeInHierarchy",
+      "kind": "property",
+      "used_by": "infected",
+      "required": true,
+      "source": "Unity API",
+      "verified": false
+    },
+    {
+      "id": "object_destroy",
+      "assembly": "UnityEngine.CoreModule",
+      "type": "UnityEngine.Object",
+      "member": "Destroy",
+      "kind": "static_method",
+      "used_by": "hud",
+      "required": true,
+      "source": "Unity API",
+      "verified": false
+    },
+    {
+      "id": "object_alive",
+      "assembly": "UnityEngine.CoreModule",
+      "type": "UnityEngine.Object",
+      "member": "op_Implicit",
+      "kind": "static_method",
+      "used_by": "player",
+      "required": true,
+      "source": "Unity API (Object to bool)",
+      "verified": false
+    },
+    {
+      "id": "component_go",
+      "assembly": "UnityEngine.CoreModule",
+      "type": "UnityEngine.Component",
+      "member": "gameObject",
+      "kind": "property",
+      "used_by": "player",
+      "required": true,
+      "source": "Unity API",
+      "verified": false
+    },
+    {
+      "id": "quat_look",
+      "assembly": "UnityEngine.CoreModule",
+      "type": "UnityEngine.Quaternion",
+      "member": "LookRotation",
+      "kind": "static_method",
+      "used_by": "hud",
+      "required": true,
+      "source": "Unity API",
+      "verified": false
+    },
+    {
+      "id": "quat_identity",
+      "assembly": "UnityEngine.CoreModule",
+      "type": "UnityEngine.Quaternion",
+      "member": "identity",
+      "kind": "static_property",
+      "used_by": "infected",
+      "required": true,
+      "source": "Unity API",
+      "verified": false
+    },
+    {
+      "id": "resources_builtin",
+      "assembly": "UnityEngine.CoreModule",
+      "type": "UnityEngine.Resources",
+      "member": "GetBuiltinResource",
+      "kind": "static_method",
+      "used_by": "hud",
+      "required": false,
+      "source": "Unity API (generic GetBuiltinResource<Font>(\"Arial.ttf\"))",
+      "verified": false
+    },
+    {
+      "id": "mesh_renderer",
+      "assembly": "UnityEngine.CoreModule",
+      "type": "UnityEngine.MeshRenderer",
+      "member": "-",
+      "kind": "type",
+      "used_by": "hud",
+      "required": false,
+      "source": "Unity API",
+      "verified": false
+    },
+    {
+      "id": "renderer_material",
+      "assembly": "UnityEngine.CoreModule",
+      "type": "UnityEngine.Renderer",
+      "member": "material",
+      "kind": "property",
+      "used_by": "hud",
+      "required": false,
+      "source": "Unity API",
+      "verified": false
+    },
+    {
+      "id": "font_material",
+      "assembly": "UnityEngine.TextRenderingModule",
+      "type": "UnityEngine.Font",
+      "member": "material",
+      "kind": "property",
+      "used_by": "hud",
+      "required": false,
+      "source": "Unity API",
+      "verified": false
+    },
+    {
+      "id": "textmesh_text",
+      "assembly": "UnityEngine.TextRenderingModule",
+      "type": "UnityEngine.TextMesh",
+      "member": "text",
+      "kind": "property",
+      "used_by": "hud",
+      "required": true,
+      "source": "Unity API",
+      "verified": false
+    },
+    {
+      "id": "textmesh_color",
+      "assembly": "UnityEngine.TextRenderingModule",
+      "type": "UnityEngine.TextMesh",
+      "member": "color",
+      "kind": "property",
+      "used_by": "hud",
+      "required": true,
+      "source": "Unity API",
+      "verified": false
+    },
+    {
+      "id": "textmesh_font_size",
+      "assembly": "UnityEngine.TextRenderingModule",
+      "type": "UnityEngine.TextMesh",
+      "member": "fontSize",
+      "kind": "property",
+      "used_by": "hud",
+      "required": true,
+      "source": "Unity API",
+      "verified": false
+    },
+    {
+      "id": "textmesh_char_size",
+      "assembly": "UnityEngine.TextRenderingModule",
+      "type": "UnityEngine.TextMesh",
+      "member": "characterSize",
+      "kind": "property",
+      "used_by": "hud",
+      "required": true,
+      "source": "Unity API",
+      "verified": false
+    },
+    {
+      "id": "textmesh_anchor",
+      "assembly": "UnityEngine.TextRenderingModule",
+      "type": "UnityEngine.TextMesh",
+      "member": "anchor",
+      "kind": "property",
+      "used_by": "hud",
+      "required": true,
+      "source": "Unity API",
+      "verified": false
+    },
+    {
+      "id": "textmesh_font",
+      "assembly": "UnityEngine.TextRenderingModule",
+      "type": "UnityEngine.TextMesh",
+      "member": "font",
+      "kind": "property",
+      "used_by": "hud",
+      "required": false,
+      "source": "Unity API",
+      "verified": false
+    },
+    {
+      "id": "text_anchor",
+      "assembly": "UnityEngine.TextRenderingModule",
+      "type": "UnityEngine.TextAnchor",
+      "member": "-",
+      "kind": "type",
+      "used_by": "hud",
+      "required": true,
+      "source": "Unity API",
+      "verified": false
+    },
+    {
+      "id": "raycast_hit",
+      "assembly": "UnityEngine.PhysicsModule",
+      "type": "UnityEngine.RaycastHit",
+      "member": "point",
+      "kind": "property",
+      "used_by": "infected",
+      "required": false,
+      "source": "Unity API",
+      "verified": false
+    },
+    {
+      "id": "il2cpp_nullable",
+      "assembly": "Il2Cppmscorlib",
+      "type": "Il2CppSystem.Nullable`1",
+      "member": "-",
+      "kind": "type",
+      "used_by": "infected",
+      "required": true,
+      "source": "BoneLib HelperMethods.SpawnCrate: Il2CppSystem.Nullable<T>",
+      "verified": false
+    },
+    {
+      "id": "delegate_support",
+      "assembly": "Il2CppInterop.Runtime",
+      "type": "Il2CppInterop.Runtime.DelegateSupport",
+      "member": "ConvertDelegate",
+      "kind": "static_method",
+      "used_by": "infected",
+      "required": false,
+      "source": "Il2CppInterop runtime",
+      "verified": false
+    }
+  ]
+}

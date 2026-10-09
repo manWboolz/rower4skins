@@ -1,0 +1,22 @@
+{
+  "sheet": "dltb_sources",
+  "struct": "DltbSourceRow",
+  "doc": "Where each kind of Dying Light: The Beast data is read from inside the player's own ph_ft/source/data*.pak (zip archives of .scr scripts). Blocks are Name(args){ Param(key, value); ... } calls.",
+  "columns": {
+    "id":            {"type": "string"},
+    "path_regex":    {"type": "string", "doc": "which .scr entries inside the pak to read (case-insensitive)"},
+    "block_regex":   {"type": "string", "doc": "call name of a block that defines one thing"},
+    "include_regex": {"type": "string", "doc": "the block's id + category must match this"},
+    "exclude_regex": {"type": "string", "doc": "...and must not match this ('^$' = nothing excluded)"},
+    "used_by":       {"type": "string", "ref": "systems"}
+  },
+  "rows": [
+    {"id": "weapons",     "path_regex": "(inventory|weapon|item).*\\.scr$",       "block_regex": "^Item$",                         "include_regex": "melee|firearm|weapon|wpn|gun|pistol|rifle|shotgun|smg|machete|axe|hammer|sword|knife|katana|bat|pipe|mace|spear|blade|club|wrench|crowbar|revolver", "exclude_regex": "ammo|bullet|shell|blueprint|craftpart|mod_|upgrade|skin|charm|_bp$|dummy|test|debug|throw|grenade", "used_by": "scavenge"},
+    {"id": "consumables", "path_regex": "(inventory|item|consum).*\\.scr$",       "block_regex": "^Item$",                         "include_regex": "medkit|med_kit|bandage|heal|first_?aid|painkiller|consumable|booster", "exclude_regex": "blueprint|_bp$|dummy|test|debug", "used_by": "stash"},
+    {"id": "ammo",        "path_regex": "(inventory|item|ammo).*\\.scr$",         "block_regex": "^Item$",                         "include_regex": "ammo|bullet|shell|cartridge|magazine",  "exclude_regex": "blueprint|_bp$|dummy|test|debug|arrow|bolt", "used_by": "stash"},
+    {"id": "craftparts",  "path_regex": "(inventory|item|craft).*\\.scr$",        "block_regex": "^Item$",                         "include_regex": "craft|scrap|part|alcohol|rag|tape|chemical|herb|metal|cloth|gauze|sugar|nails|gunpowder|resource|material", "exclude_regex": "blueprint|_bp$|dummy|test|debug|ammo|weapon|wpn", "used_by": "crafting"},
+    {"id": "recipes",     "path_regex": "(craft|blueprint|recipe).*\\.scr$",      "block_regex": "recipe|blueprint|craft",         "include_regex": ".",                                    "exclude_regex": "dummy|test|debug", "used_by": "crafting"},
+    {"id": "infected",    "path_regex": "(ai|npc|zombie|infected|enemy|preset|monster).*\\.scr$", "block_regex": ".",           "include_regex": "biter|viral|volatile|goon|spitter|demolisher|bolter|screamer|suicider|howler|toad", "exclude_regex": "anim|sound|sfx|fx_|decal|ragdoll|test|debug", "used_by": "infected"},
+    {"id": "daynight",    "path_regex": "\\.scr$",                                "block_regex": ".",                              "include_regex": "day|night|time",                       "exclude_regex": "^$", "used_by": "daynight"}
+  ]
+}

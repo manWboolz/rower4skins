@@ -1,0 +1,21 @@
+{
+  "sheet": "infected",
+  "struct": "InfectedRow",
+  "doc": "The Beast's infected types played by BONELAB's own NPC bodies. Stats come from the Beast block whose id matches dltb_match; only stats actually read are applied.",
+  "columns": {
+    "id":             {"type": "string"},
+    "display":        {"type": "string", "doc": "name shown in game (The Beast's type name)"},
+    "dltb_match":     {"type": "string", "doc": "regex on Beast block id"},
+    "bonelab_npc":    {"type": "string", "ref": "bonelab_crates"},
+    "phase":          {"type": "enum", "values": ["day", "night", "both"]},
+    "weight":         {"type": "float", "doc": "relative spawn chance within its phase"},
+    "loot_rolls":     {"type": "int", "doc": "loot rolls dropped into the stash on death"}
+  },
+  "rows": [
+    {"id": "biter",    "display": "Biter",    "dltb_match": "biter",    "bonelab_npc": "npc_early_exit_zombie", "phase": "both",  "weight": 70, "loot_rolls": 1},
+    {"id": "viral",    "display": "Viral",    "dltb_match": "viral",    "bonelab_npc": "npc_nullbody",          "phase": "both",  "weight": 25, "loot_rolls": 1},
+    {"id": "goon",     "display": "Goon",     "dltb_match": "goon",     "bonelab_npc": "npc_skeleton_steel",    "phase": "both",  "weight": 5,  "loot_rolls": 3},
+    {"id": "spitter",  "display": "Spitter",  "dltb_match": "spitter",  "bonelab_npc": "npc_skeleton_fire_mage","phase": "night", "weight": 10, "loot_rolls": 2},
+    {"id": "volatile", "display": "Volatile", "dltb_match": "volatile", "bonelab_npc": "npc_nullbody_corrupted","phase": "night", "weight": 40, "loot_rolls": 3}
+  ]
+}

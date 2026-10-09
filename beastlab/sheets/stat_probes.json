@@ -1,0 +1,19 @@
+{
+  "sheet": "stat_probes",
+  "struct": "StatProbeRow",
+  "doc": "Where an infected stat read from The Beast is written on the BONELAB NPC. Member paths are tried in order on the component; the hook report says which (if any) resolved. Values are scaled from The Beast's units by 'scale'.",
+  "columns": {
+    "id":        {"type": "string"},
+    "stat":      {"type": "string", "ref": "columns_dltb"},
+    "component": {"type": "string", "ref": "hooks"},
+    "paths":     {"type": "string[]", "doc": "dotted member paths on the component"},
+    "scale":     {"type": "float"},
+    "min":       {"type": "float"},
+    "max":       {"type": "float"}
+  },
+  "rows": [
+    {"id": "npc_health", "stat": "infected.health", "component": "nav_behaviour", "paths": ["health.maxHitPoints", "health.maxAppendageHp", "health.cur_hp", "maxHealth"], "scale": 0.1, "min": 1, "max": 400},
+    {"id": "npc_speed",  "stat": "infected.speed",  "component": "nav_behaviour", "paths": ["locoState.runSpeed", "runSpeed", "maxSpeed", "agroedSpeed"],            "scale": 1.0, "min": 0.5, "max": 12},
+    {"id": "npc_damage", "stat": "infected.damage", "component": "nav_behaviour", "paths": ["baseDamage", "damage", "attackDamage"],                                "scale": 0.1, "min": 0.1, "max": 60}
+  ]
+}
